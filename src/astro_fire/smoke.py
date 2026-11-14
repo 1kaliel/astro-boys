@@ -63,7 +63,7 @@ def run(settings: Settings, inputs: list[str] | None = None) -> dict:
         rows_back = con.execute(
             f"SELECT count(*) FROM read_parquet('{out}/**/*.parquet', hive_partitioning = true)"
         ).fetchone()[0]
-        partitions = sorted(str(p.relative_to(out)) for p in out.glob("*/*/*") if p.is_dir())
+        partitions = sorted(p.relative_to(out).as_posix() for p in out.glob("*/*/*") if p.is_dir())
 
         if settings.is_remote:
             storage.upload_dir(str(out), f"{target}/hotspots")
