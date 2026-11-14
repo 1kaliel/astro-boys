@@ -2,15 +2,20 @@
 
 ## Budget alert checklist (Kali, before creating any paid resource)
 
-- [ ] Billing account linked to the project. Check if free-trial credits apply (Global Offers / new-customer
-      trial) and note the expiry.
-- [ ] Budget created in **Billing → Budgets & alerts**, scoped to this project only.
-- [ ] Amount set to what the team is willing to spend (decision for Kali; log it in the diary).
-- [ ] Alert thresholds: **50%, 90%, 100% of actual spend**, plus **100% of forecasted spend**.
-- [ ] Alert emails go to billing admins and users; add Kali's email and one teammate.
-- [ ] Note in the diary: budget amount, thresholds, recipients.
+- [x] Billing account linked to the project; promotional credit confirmed by the project owner. Exact credit
+      expiry still needs to be copied from Billing before the post-event cleanup decision.
+- [x] Project-scoped budget `astro-boys-credit-guardrail-2026` created.
+- [x] Amount: **BRL 250 per month**, counting gross usage before credits (`EXCLUDE_ALL_CREDITS`). This warns
+      early instead of waiting for promotional credit to be exhausted.
+- [x] Alert thresholds: **50%, 80%, 90%, 100% of actual spend**, plus **100% of forecasted spend**.
+- [x] Default IAM recipients enabled (billing admins and project users with the required billing role).
+- [x] Decision and live resource state recorded in the diary.
 
 A budget **alerts**; it does **not** stop spending. The hard limits come from the safety nets below.
+
+Live state (2026-11-14): the processing VM is stopped, the Artifact Registry is empty, no Cloud Run service is
+deployed, and the bucket holds 9.08 GiB of immutable FIRMS source archives. Bucket and stopped-VM disk storage
+can still incur small charges.
 
 ## What costs money here
 

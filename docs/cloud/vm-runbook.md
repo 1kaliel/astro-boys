@@ -24,11 +24,16 @@ APPLY=1 ./infra/gcp/30-vm.sh               # create (Kali)
 ./infra/gcp/vm-control.sh ssh              # SSH through IAP
 # on the VM:
 curl -fsSL https://raw.githubusercontent.com/1kaliel/astro-boys/main/infra/gcp/vm/bootstrap.sh -o bootstrap.sh
-less bootstrap.sh && bash bootstrap.sh
+less bootstrap.sh
+GCP_PROJECT_ID=astro-boys \
+GCS_BUCKET=astro-boys-data-301238386836 \
+bash bootstrap.sh
 ```
 
 The bootstrap installs git + uv (pinned), clones the repo, runs `uv sync --frozen --extra gcs`, writes a cloud
 `.env`, runs the smoke test, and installs the idle auto-shutdown. It is safe to re-run (it pulls the latest code).
+The bucket and project identifiers are not secrets. `FIRMS_MAP_KEY` remains blank until the data collaborator
+adds it directly on the VM; never commit it.
 
 ## Daily use
 

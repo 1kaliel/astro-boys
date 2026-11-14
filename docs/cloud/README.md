@@ -25,7 +25,21 @@ Laptop (fallback / dev): uv + Python + DuckDB on data/ (small samples or a pilot
   and avoiding it keeps the laptop fallback identical. Revisit only if the dashboard needs ad-hoc SQL over
   all raw hotspots at interactive speed.
 - **Safe by default.** Every infra script is a dry run unless `APPLY=1`, and asks for the project ID to confirm.
-  No service-account keys anywhere. Costs capped by VM auto-stop, Cloud Run max instances, and a budget alert.
+  No service-account keys anywhere. Costs are controlled by VM auto-stop, Cloud Run scale-to-zero/max instances,
+  lifecycle rules and a budget alert; Google Cloud budgets are alerts, not a universal hard spending cap.
+
+## Live status (2026-11-14)
+
+- Project `astro-boys`, region `us-central1`, zone `us-central1-a`.
+- Private bucket `gs://astro-boys-data-301238386836` with public access prevention and 14-day cleanup for
+  `astro/interim/`.
+- Pipeline and dashboard service accounts exist without downloaded keys.
+- `astro-pipeline-vm` is bootstrapped, smoke-tested and **stopped**. Idle shutdown is installed for future runs.
+- Artifact Registry repository `astro` is ready and empty.
+- Cloud Run is enabled but no service is deployed; deployment waits for the Dashboard team to supply a runnable
+  container/Dockerfile.
+- FIRMS raw archive is present: 48 immutable ZIPs (MODIS 2000–2025, VIIRS S-NPP 2012–2025 and NOAA-20
+  2018–2025), 9.08 GiB total, with a matching 48-entry SHA-256 manifest.
 
 ## Docs
 
