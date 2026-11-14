@@ -1,0 +1,32 @@
+[project]
+name = "astro-dashboard"
+version = "0.1.0"
+description = "Dashboard API and single-page frontend for the harmonized MODIS + VIIRS hotspot calendar"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.163.0",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]
+
+# Not an installable package: the container runs the backend straight from backend/.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+src = ["backend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
