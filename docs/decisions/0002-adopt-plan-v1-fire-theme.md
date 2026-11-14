@@ -2,12 +2,12 @@
 
 - **Date:** 2026-11-14 13:36 UTC
 - **Status:** accepted (working plan; official challenge still to be confirmed)
-- **Deciders:** Lucas
+- **Deciders:** Kali
 
 ## Context
 
 The team needs a concrete direction before the hackathon so preparation (data access, roles, stack) can start.
-Lucas drafted plan v1 for a 6-person team over 48 hours.
+Kali drafted plan v1 for a 6-person team over 48 hours.
 
 ## Decision
 
@@ -20,7 +20,7 @@ Adopt plan v1 as the working plan:
 - **Six roles** with backups and support pairs.
 - **NASA FIRMS** is the primary data source; Global Offers are optional, never hard dependencies.
 
-Structured in [../project-plan.md](../project-plan.md); original in [../plan/plan-v1-original-pt.md](../plan/plan-v1-original-pt.md).
+Structured in [../project-plan.md](../project-plan.md).
 
 ## Options considered
 

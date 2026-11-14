@@ -102,7 +102,6 @@ docs/data-access.md               how to get FIRMS MODIS + VIIRS history
 docs/resources.md                 everything we use, with credits
 docs/diary/                       daily timestamped log
 docs/decisions/                   ADRs for big decisions
-docs/plan/                        original plan documents
 data/                             raw/ (immutable), interim/, processed/ (git-ignored except docs)
 notebooks/                        exploration and experiments
 src/                              pipeline, analysis and app code

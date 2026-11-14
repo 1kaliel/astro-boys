@@ -10,10 +10,10 @@ A task is done only when its deliverable exists, someone else can reproduce it, 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | 1 | Confirm all 6 are registered on the **same Local Event** and listed on the team's Members tab | | ⬜ | Eligibility rule |
-| 2 | Confirm the Local Event timezone; fix UTC times in `timeline.md` | | ⬜ | |
+| 2 | Confirm the Local Event timezone; fix UTC times in `timeline.md` | Kali | ✅ | Brasília (UTC−3) |
 | 3 | Name the submission owner and the demo lead (`team.md`) | | ⬜ | |
 | 4 | Agree the data contract: harmonized dataset schema (`data-dictionary.md`) | 1 per team | ⬜ | Unblocks Dashboard |
-| 5 | Keep the AI-use record current (`resources.md`) | Everyone | 🔄 | Required by the rules |
+| 5 | Note where AI tools are used, for the disclosure at the end | Everyone | 🔄 | Written up at submission (S4) |
 
 ## Team Harmonization (Kali, Justino, Mateus)
 
@@ -49,6 +49,6 @@ Full criteria: [blocks/02-historical-calendar.md](blocks/02-historical-calendar.
 | S1 | Project page fields drafted in English | | ⬜ |
 | S2 | Demo: 30 s video (English subtitles if not English) or ≤ 7 slides | | ⬜ |
 | S3 | References field lists every data source, library and tool | | ⬜ |
-| S4 | AI-use description written | | ⬜ |
+| S4 | AI-use disclosure: submission form + `resources.md` AI section | | ⬜ |
 | S5 | All links tested in a private window | | ⬜ |
 | S6 | Submitted and confirmation saved | | ⬜ |

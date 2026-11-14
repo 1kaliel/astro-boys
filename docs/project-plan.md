@@ -1,7 +1,7 @@
 # Project plan (v1)
 
 > Working plan for a 6-person team in two teams (Harmonization, Dashboard). Hackathon: Sat Nov 14 09:00 → Sun Nov 15 23:59 local (~39 h).
-> Source: [plan v1 (Portuguese original)](plan/plan-v1-original-pt.md). This is the structured English version; when they disagree, this file plus the diary win.
+> Plan v1, drafted by the team. This file plus the diary are the source of truth.
 
 **Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/). Our summary: [challenge/brief.md](challenge/brief.md).
 

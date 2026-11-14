@@ -8,8 +8,7 @@
 | **Sun Nov 15, 2026, 23:59** | **Submission closes. Hard deadline.** (≈ H39) |
 | Check with Local Lead | Local judging and awards |
 
-> ⚠️ **Local Event timezone not confirmed yet.** UTC times below assume **Brasília time (UTC−3)**: H0 = Sat 12:00 UTC,
-> deadline = Mon Nov 16, 02:59 UTC. Update if our Local Event is elsewhere.
+**Local Event timezone: Brasília time (UTC−3), confirmed.** H0 = Sat 12:00 UTC; deadline = Mon Nov 16, 02:59 UTC.
 
 Plan v1 assumed 48 hours. The real window is **about 39 hours**, so the schedule below is compressed.
 We aim to **submit by Sun 22:30 local**, keeping 1.5 hours of margin.
