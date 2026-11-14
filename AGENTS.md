@@ -75,6 +75,17 @@ Or edit `docs/diary/YYYY-MM-DD.md` by hand using the format in [docs/diary/READM
 - A change that affects metrics means regenerating the results in `artifacts/`.
 - A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
 
+## Cloud and code rules
+
+- **Google Cloud is primary, local is the fallback** ([ADR 0004](docs/decisions/0004-gcp-primary-local-fallback.md)).
+  Write pipeline code that runs identically on a laptop and on the VM: paths come from `astro_fire.storage.uri()`,
+  never hard-coded `gs://` or local paths. No BigQuery-only or other cloud-only processing.
+- **Python + DuckDB + partitioned Parquet**, managed with `uv`. Add dependencies with `uv add`; commit `uv.lock`.
+- Every pipeline run writes a manifest to `manifests/`.
+- **Never create, change or delete cloud resources or IAM** without Kali. Infra scripts are dry runs unless `APPLY=1`.
+- **No service-account keys**, ever. Use `gcloud auth application-default login` locally.
+- Before committing: `make check` (secrets, .env, data files) and `make test`. CI runs the same.
+
 ## Scientific guardrails
 
 Full list in [docs/project-plan.md](docs/project-plan.md#scientific-guardrails). The non-negotiables:
@@ -88,27 +99,25 @@ Full list in [docs/project-plan.md](docs/project-plan.md#scientific-guardrails).
 ## Where things live
 
 ```
-docs/project-plan.md              the plan: goal, scope, architecture, guardrails, definition of done
-docs/blocks/                      per-block tasks and acceptance criteria (01 harmonization, 02 calendar, 03 anomalies/prediction)
-docs/timeline.md                  event dates, schedule, checkpoints
-docs/tasks.md                     task board, first-hour decisions, workstream status
-docs/team.md                      six roles, backups, support pairs
-docs/risks.md                     risks and contingency plans
-docs/methodology.md               methods as decided (living document)
-docs/data-dictionary.md           every field in the harmonized dataset
-docs/model-card.md                prediction PoC: target, data, baseline, results, limits
+src/astro_fire/                   pipeline package (config, storage layout, manifests, CLI `astro-fire`)
+tests/                            pytest; tests/fixtures holds tiny real FIRMS samples
+scripts/                          log.sh, firms_download.py, sync_data.sh, check_repo_hygiene.sh
+infra/gcp/                        Google Cloud setup scripts (dry run unless APPLY=1) + VM bootstrap
+deploy/cloudrun/                  dashboard deployment contract, deploy script, rollback
+app/                              Dashboard team's app (their stack)
+notebooks/                        exploration
+data/                             local mirror of the bucket: raw/ interim/ processed/ artifacts/ manifests/ (git-ignored)
+artifacts/                        small curated figures/metrics for the demo (committed)
+presentation/                     script, slides, final media
+docs/project-plan.md              goal, scope, architecture, guardrails, definition of done
+docs/blocks/                      per-block tasks and acceptance criteria
+docs/cloud/                       cloud architecture, storage layout, VM runbook, IAM, budget, fallback
 docs/challenge/                   brief, official requirements, suggested tools
 docs/data-access.md               how to get FIRMS MODIS + VIIRS history
+docs/timeline.md · docs/tasks.md · docs/team.md · docs/risks.md
+docs/methodology.md · docs/data-dictionary.md · docs/model-card.md
 docs/resources.md                 everything we use, with credits
-docs/diary/                       daily timestamped log
-docs/decisions/                   ADRs for big decisions
-data/                             raw/ (immutable), interim/, processed/ (git-ignored except docs)
-notebooks/                        exploration and experiments
-src/                              pipeline, analysis and app code
-scripts/                          helpers (log.sh, data downloads)
-tests/                            data checks and tests for critical functions
-artifacts/                        metrics, figures, backup screenshots
-presentation/                     script, slides, final media
+docs/diary/ · docs/decisions/     timestamped diary and ADRs
 ```
 
 ## Current status

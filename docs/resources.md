@@ -16,7 +16,14 @@ At least one NASA data source is required for global judging.
 
 | Tool | Purpose | License |
 |------|---------|---------|
-| | | |
+| [DuckDB](https://duckdb.org/) | Pipeline query engine (CSV → Parquet, out-of-core) | MIT |
+| [uv](https://docs.astral.sh/uv/) | Python env and locked dependencies | Apache-2.0 / MIT |
+| [Python](https://www.python.org/) 3.12 | Pipeline language | PSF |
+| [gcsfs](https://github.com/fsspec/gcsfs) | Optional `gs://` access | BSD-3-Clause |
+| [pytest](https://pytest.org/), [Ruff](https://docs.astral.sh/ruff/) | Tests, lint | MIT |
+| [gitleaks](https://github.com/gitleaks/gitleaks) | CI secret scan | MIT |
+| Google Cloud (Cloud Storage, Compute Engine, Cloud Run, Artifact Registry) | Shared data, pipeline VM, dashboard hosting | Commercial service |
+| GitHub, GitHub Actions | Code hosting, CI | Commercial service |
 
 ## AI usage
 

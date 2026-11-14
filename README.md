@@ -34,7 +34,9 @@ Full plan: [docs/project-plan.md](docs/project-plan.md).
 | [docs/methodology.md](docs/methodology.md) · [docs/data-dictionary.md](docs/data-dictionary.md) · [docs/model-card.md](docs/model-card.md) | Science docs |
 | [docs/diary/](docs/diary/) · [docs/decisions/](docs/decisions/) | Timestamped diary and decision records |
 | `data/` | Raw, interim and processed data (not committed). See [data/README.md](data/README.md) |
-| `notebooks/` · `src/` · `scripts/` · `tests/` | Code |
+| `src/astro_fire/` · `tests/` · `scripts/` · `notebooks/` | Pipeline code (Python + DuckDB), tests, helpers |
+| [docs/cloud/](docs/cloud/README.md) · `infra/gcp/` · `deploy/cloudrun/` | Google Cloud setup, runbooks, deploy scaffold |
+| [`app/`](app/README.md) | Dashboard (Team Dashboard's stack) |
 | `artifacts/` · `presentation/` | Metrics, figures, screenshots, slides |
 
 ## How we work
@@ -46,8 +48,15 @@ Full plan: [docs/project-plan.md](docs/project-plan.md).
 
 ## Getting started
 
+Requires [uv](https://docs.astral.sh/uv/) (it installs the right Python by itself).
+
 ```bash
-cp .env.example .env   # then fill in your keys (FIRMS MAP_KEY, etc.)
+cp .env.example .env     # local defaults work as-is; add FIRMS_MAP_KEY when you have one
+make setup               # uv sync: locked Python 3.12 env with DuckDB
+make smoke               # sample FIRMS rows -> DuckDB -> partitioned Parquet -> manifest
+make ci                  # lint, tests, repo hygiene, smoke (same as GitHub CI)
 ```
 
-_Environment and run instructions go here once the tech stack is chosen._
+Runs locally by default (`data/`). In the cloud, the same commands run on the pipeline VM against the shared
+bucket: see [docs/cloud/](docs/cloud/README.md). The dashboard lives in [`app/`](app/README.md) and deploys to
+Cloud Run via [`deploy/cloudrun/`](deploy/cloudrun/README.md).

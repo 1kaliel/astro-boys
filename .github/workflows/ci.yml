@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: No secrets, .env, credentials or data files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check_repo_hygiene.sh
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  tests:
+    name: Lint, tests, smoke run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.12"
+          enable-cache: true
+      - run: uv sync --frozen --group dev
+      - run: uv run ruff check src tests
+      - run: uv run pytest
+      - run: uv run astro-fire smoke
+      - name: Shell scripts parse
+        run: for f in scripts/*.sh infra/gcp/*.sh infra/gcp/vm/*.sh deploy/cloudrun/*.sh; do bash -n "$f"; done

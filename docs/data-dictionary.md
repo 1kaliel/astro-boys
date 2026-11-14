@@ -4,6 +4,8 @@ Owner: Team Harmonization. This is the **data contract** with Team Dashboard: ag
 
 ## Conventions
 
+- Storage and partitioning: [cloud/storage-layout.md](cloud/storage-layout.md) (Parquet, Hive partitions, versioned folders).
+
 - Coordinates: WGS84 (EPSG:4326), decimal degrees.
 - Times: UTC, ISO 8601. If a local date is derived, the column name says so (`date_local`).
 - Missing values: empty / null, never sentinel numbers like `-999`.

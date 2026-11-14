@@ -21,10 +21,12 @@ Not part of the default stack. Using any of them needs a `DECISION` entry.
 |----------|----------|--------------|--------|
 | Planetary Computer (STAC) | Microsoft (Global Offer) | Land cover / biome layers for context | Not planned |
 | Meteomatics Weather API | Meteomatics (Global Offer) | Weather features for a prediction stretch goal | Not planned; the brief doesn't ask for prediction |
-| Google Cloud / Azure credits | Global Offers | Hosting or processing | Only if local fails; credits are never a requirement |
+| Google Cloud credits | Global Offer | Hosting and processing | **Adopted** as the primary environment (ADR 0004); check eligibility before relying on credits |
+| Azure credits | Global Offer | Hosting or processing | Not used |
 
 ## Deviations (approved)
 
 | Instead of / in addition to | We use | Why | Diary entry |
 |-----------------------------|--------|-----|-------------|
-| | | | |
+| In addition to FIRMS (challenge lists no compute or hosting) | Google Cloud: Cloud Storage, Compute Engine, Cloud Run | Shared data, a 16 GB machine for global files, public dashboard URL. Local fallback kept | 2026-11-14 DECISION, [ADR 0004](../decisions/0004-gcp-primary-local-fallback.md) |
+| | Python, DuckDB, uv, Parquet | Open-source pipeline tools; DuckDB handles data larger than RAM | Same |

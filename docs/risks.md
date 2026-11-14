@@ -16,4 +16,8 @@ Review at every checkpoint (H8, H14, H26, H30). When a risk fires, log a `BLOCKE
 | Cloud trial needs a card / isn't eligible | Signup blocked | Use a free static host or run locally; credits are never a requirement | Dashboard |
 | Deadline missed | Anything unfinished at Sun 19:00 | Feature freeze is Sun 15:00; submit by 22:30; deadline is 23:59 local | Submission owner |
 | Not eligible for global judging | Member not on same Local Event; demo over 30 s / 7 slides; non-English materials | Check [challenge/official-requirements.md](challenge/official-requirements.md) early | Submission owner |
+| Cloud setup slips | Project/billing/VM not ready by Sat 15:00 | Work locally on a pilot area; same code ([fallback](cloud/fallback-and-rollback.md)) | Kali |
+| Cloud overspend | Budget alert at 50/90% | Stop the VM; idle auto-shutdown + 12 h cap; Cloud Run max 3 instances | Kali |
+| Leaked credential | gitleaks / hygiene check fails | No SA keys by design; rotate the leaked key, purge history | Everyone |
+| Laptop runs out of memory | DuckDB errors or swap | Lower `DUCKDB_MEMORY_LIMIT`; smaller area; use the VM | Harmonization |
 | AI-use rules | AI-made code or data not acknowledged | Record AI use as it happens in [resources.md](resources.md#ai-usage) | Everyone |

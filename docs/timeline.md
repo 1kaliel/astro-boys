@@ -33,6 +33,12 @@ Both teams work in parallel. Dashboard builds against a sample file until the ha
 | H37–H37.5 | Sun 22:00–22:30 | Final check against [official-requirements.md](challenge/official-requirements.md) | | **Submitted**, confirmation saved |
 | H37.5–H39 | Sun 22:30–23:59 | Margin only | | |
 
+## Cloud cut-off
+
+If the Google Cloud project, bucket and VM aren't working by **Sat 15:00 local**, the Harmonization team
+processes a pilot area locally and moves to the cloud later ([fallback](cloud/fallback-and-rollback.md)). The
+cloud must never block the pipeline.
+
 ## Checkpoint rules
 
 - **H8:** harmonization failing → shrink area and/or period. Never move on with data lacking provenance.
@@ -44,6 +50,8 @@ Both teams work in parallel. Dashboard builds against a sample file until the ha
 
 | Milestone | Target (local) | Status |
 |-----------|----------------|--------|
+| Repo + tooling scaffold (cloud-ready, local fallback) | Sat 12:00 | ✅ |
+| GCP project, budget, bucket, VM ready (or decide to stay local) | Sat 15:00 | ⬜ |
 | Roles, stack, data contract v0 | Sat 11:00 | ⬜ |
 | Sample data shared with Dashboard | Sat 14:00 | ⬜ |
 | Harmonized dataset v0 | Sat 17:00 | ⬜ |

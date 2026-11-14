@@ -15,6 +15,25 @@ A task is done only when its deliverable exists, someone else can reproduce it, 
 | 4 | Agree the data contract: harmonized dataset schema (`data-dictionary.md`) | 1 per team | ⬜ | Unblocks Dashboard |
 | 5 | Note where AI tools are used, for the disclosure at the end | Everyone | 🔄 | Written up at submission (S4) |
 
+## Cloud setup (Kali) — Google Cloud primary, local fallback
+
+Order and commands: [cloud/README.md](cloud/README.md#setup-order-kali-when-ready-each-step-asks-before-changing-anything).
+Every step is a dry run first; nothing exists in Google Cloud yet.
+
+| # | Task | Owner | Status | Notes |
+|---|------|-------|--------|-------|
+| C0 | Repo scaffold: pipeline package, config, smoke test, infra scripts, runbooks, CI | Kali | ✅ | ADR 0004 |
+| C1 | Install gcloud CLI; `gcloud auth login` + `application-default login` | Kali | ⬜ | Not installed on the coordinator machine |
+| C2 | Create/pick GCP project; link billing; check credit eligibility | Kali | ⬜ | Blocks C4+ |
+| C3 | Budget alert (50/90/100% actual + 100% forecast) | Kali | ⬜ | [budget-and-cost.md](cloud/budget-and-cost.md) |
+| C4 | Decide region/zone, bucket name; fill `infra/gcp/gcp.env`; run preflight | Kali | ⬜ | |
+| C5 | Enable APIs, create bucket, service accounts | Kali | ⬜ | 05, 10, 20 scripts |
+| C6 | Create VM; bootstrap; smoke test on VM | Kali / Harmonization | ⬜ | 30 script + vm/bootstrap.sh |
+| C7 | Collect teammates' Google accounts; grant team access | Kali | ⬜ | 25 script, after C6 and C8 |
+| C8 | Artifact Registry repo for the dashboard | Kali | ⬜ | 40 script; when Dashboard is ready to deploy |
+| C9 | Upload raw zips from the team Drive to `raw/firms/global/` | Harmonization | ⬜ | `sync_data.sh push raw firms`; ask Kali first |
+| C10 | Confirm CI passes on GitHub (first push) | Kali | ⬜ | gitleaks + tests + hygiene |
+
 ## Team Harmonization (Kali, Justino, Mateus)
 
 | # | Task | Owner | Status | Notes |

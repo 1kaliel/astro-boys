@@ -5,7 +5,7 @@
 1. Pick a task from [docs/tasks.md](docs/tasks.md) or a GitHub issue and put your name on it.
 2. Branch from `main`: `feat/<thing>`, `fix/<thing>`, `docs/<thing>`, `data/<thing>`.
 3. Commit with [Conventional Commits](https://www.conventionalcommits.org/): `feat: add map layer`.
-4. Log it: `./scripts/log.sh done "..."`, plus any decisions you made along the way.
+4. Run `make check` and `make test`, then log it: `./scripts/log.sh done "..."`, plus any decisions you made.
 5. Open a PR, fill in the template, get one teammate to review, merge.
 
 ## Rules

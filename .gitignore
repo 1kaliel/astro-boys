@@ -1,18 +1,30 @@
-# Secrets
+# Secrets and credentials (never commit)
 .env
 .env.*
 !.env.example
+*.env
+!*.env.example
 *.pem
+*.p12
 .netrc
+*-key.json
+*key*.json
+service-account*.json
+credentials*.json
+application_default_credentials.json
 
 # Data (keep folder structure and docs only)
 data/raw/*
 data/interim/*
 data/processed/*
+data/artifacts/*
+data/manifests/*
 !data/raw/.gitkeep
 !data/raw/SOURCES.md
 !data/interim/.gitkeep
 !data/processed/.gitkeep
+!data/artifacts/.gitkeep
+!data/manifests/.gitkeep
 *.parquet
 *.geoparquet
 *.gpkg
@@ -20,6 +32,10 @@ data/processed/*
 *.zip
 
 # Python
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
 __pycache__/
 *.py[cod]
 .venv/
