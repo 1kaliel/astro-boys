@@ -1,23 +1,26 @@
 # Risks and contingency plans
 
-Review at every checkpoint (H8, H14, H26, H30). When a risk fires, log a `BLOCKER` in the diary.
+Review at every checkpoint (Sat 23:00, Sun 02:00, Sun 11:00, Sun 15:00). When a risk fires, log a `BLOCKER`.
+Cut rules per checkpoint: [timeline.md](timeline.md#checkpoint-rules-decide-on-the-spot-log-it).
 
 | Risk | Warning sign | Response | Owner |
 |------|--------------|----------|-------|
-| FIRMS download or API unavailable | Repeated failures in the first hours | Use a pre-downloaded sample, record its period, continue offline | Harmonization |
-| FIRMS archive request slow to arrive | Not delivered within an hour or two | Use the fast paths in [data-access.md](data-access.md); shrink area/period | Harmonization |
-| Strong disagreement between sensors | Unstable ratios, low agreement | Show sensors separately; limit aggregated comparisons | Harmonization |
-| Geographic scope too large | Pipeline doesn't finish by H4 | Shrink region and/or period immediately | Harmonization |
-| Weak prediction | Doesn't beat baseline at H26 (stretch goal) | Turn into exploratory analysis; no predictive claim | Harmonization |
-| Unstable app | Network/publishing failure | Run locally; use backup video and screenshots | Dashboard |
-| Missing official requirement | Doubt near the feature freeze (H30) | Submission owner rechecks the official guides | Submission owner |
-| Temporal leakage | Unrealistically good metrics | Redo chronological split; audit features | Harmonization |
-| Sensor coverage gaps | Trend jumps when a sensor starts or ends | Mark sensor periods on every time chart; avoid cross-sensor trend claims | Harmonization |
-| Cloud trial needs a card / isn't eligible | Signup blocked | Use a free static host or run locally; credits are never a requirement | Dashboard |
-| Deadline missed | Anything unfinished at Sun 19:00 | Feature freeze is Sun 15:00; submit by 22:30; deadline is 23:59 local | Submission owner |
-| Not eligible for global judging | Member not on same Local Event; demo over 30 s / 7 slides; non-English materials | Check [challenge/official-requirements.md](challenge/official-requirements.md) early | Submission owner |
-| Cloud setup slips | Project/billing/VM not ready by Sat 15:00 | Work locally on a pilot area; same code ([fallback](cloud/fallback-and-rollback.md)) | Kali |
-| Cloud overspend | Budget alert at 50/90% | Stop the VM; idle auto-shutdown + 12 h cap; Cloud Run max 3 instances | Kali |
-| Leaked credential | gitleaks / hygiene check fails | No SA keys by design; rotate the leaked key, purge history | Everyone |
-| Laptop runs out of memory | DuckDB errors or swap | Lower `DUCKDB_MEMORY_LIMIT`; smaller area; use the VM | Harmonization |
-| AI-use rules | AI-made code or data not acknowledged | Record AI use as it happens in [resources.md](resources.md#ai-usage) | Everyone |
+| **No working app at the deadline** (nothing built at H9.5) | No calendar on screen by Sat 23:00 | Switch to the single-Python-app option; must-haves only | Dashboard |
+| **No harmonized data in time** | No `calendar/v1` by Sun 02:00 | Ship the month × day/night ratio as v1; refine in the morning | Harmonization |
+| Plan not locked; people wait | Open decisions unanswered after Sat 19:30 | Defaults in the plan apply; Kali has the final say on scope | Kali |
+| Method doesn't beat baselines | Validation table at Sun 10:00 | Ship the best baseline, say so; drop stretch work | Mateus |
+| Teams integrate too late | App still on mock data at Sun 07:00 | Contract frozen tonight; mock has identical columns; integrate at Checkpoint B | Kali + Cleber |
+| Pipeline too slow or out of memory | A stage runs over 30 minutes on the VM | Cut to the demo region; lower `DUCKDB_MEMORY_LIMIT`; process year by year | Kali |
+| No MAP_KEY or API limits | Key not received by Sun 07:00 | Calendar ends in 2025; "current month" uses the latest complete month; say so | Justino |
+| False step where satellites change | Jump at 2012, 2018 or 2026-11 in the harmonized series | One satellite per period; continuity factor for NOAA-20; chart it | Mateus |
+| Mixed MODIS collection versions across years | `version` table shows several values | Report it in QA and limitations; standard processing only for history | Justino |
+| Sensor drift / end of S-NPP | Aqua or Terra overpass shifts; S-NPP ends 2026-11-02 | Calibrate on 2012–2019 only; NOAA-20 from 2026-11 | Mateus |
+| Overclaiming | "fires", "risk", "prediction" in UI or pitch | Use the guardrail wording; limitations panel; no probability language | Everyone |
+| AGGS or other stretch work eats core time | Stretch started before Checkpoint C | Stretch only after a "go" at Sun 11:00 | Kali |
+| Cloud Run deploy fails or URL blocked | Deploy error; URL needs login | Roll back; run the container locally and record the demo; screenshots | Cleber |
+| Cloud overspend | Budget alert | Stop the VM; idle auto-shutdown and 12 h cap; Cloud Run max 3 instances | Kali |
+| Leaked credential | CI secret scan or hygiene check fails | No key files by design; rotate the key; purge history | Everyone |
+| Not eligible for global judging | Member on another Local Event; demo over 30 s / 7 slides; non-English material | Check [official-requirements.md](challenge/official-requirements.md) at the lock-in and at Sun 22:00 | Kali |
+| AI-use and originality rules | AI-made code, data or images not acknowledged; outside material not listed | AI-use statement and acknowledgments; references list; no copying from other teams | Kali, Justino |
+| Deadline missed | Anything unfinished at Sun 19:00 | Freeze is Sun 15:00; submit by 22:30; deadline 23:59 | Kali |
+| Exhaustion | Errors, rework after 02:00 | Planned rest Sun 02:00–07:00; pair on risky changes | Everyone |

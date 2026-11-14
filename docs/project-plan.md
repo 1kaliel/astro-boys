@@ -1,126 +1,137 @@
-# Project plan (v1)
+# Project plan (v2)
 
-> Working plan for a 6-person team in two teams (Harmonization, Dashboard). Hackathon: Sat Nov 14 09:00 → Sun Nov 15 23:59 local (~39 h).
-> Plan v1, drafted by the team. This file plus the diary are the source of truth.
+**Status: PROPOSED on Sat Nov 14, 18:30 local. Becomes final when the team answers the
+[open decisions](#open-decisions).** Until then the defaults below apply, so nobody waits.
 
-**Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/). Our summary: [challenge/brief.md](challenge/brief.md).
+Supersedes plan v1. Built from the team's six research documents ([ADR 0005](decisions/0005-plan-v2.md)).
+Specs: [harmonization](spec/harmonization.md) · [dashboard](spec/dashboard.md) · [data contract](data-dictionary.md).
+Schedule: [timeline.md](timeline.md) · Who does what: [tasks.md](tasks.md) · Tools: [tool-usage.md](tool-usage.md).
 
-**What we build:** a web app with a harmonized burning-activity calendar from NASA FIRMS MODIS + VIIRS hotspots,
-so users can see historical fire patterns, anomalies and critical periods for an area they choose.
+**Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/) ([our summary](challenge/brief.md)).
+**Deadline:** Sun Nov 15, 23:59 local. We submit by 22:30.
 
-## Goal
+## The problem, in one paragraph
 
-A prototype that turns historical FIRMS fire detections (MODIS + VIIRS) into comparable, useful information to explore:
+Satellites have recorded fire hotspots since 2000, but the record is split. From 2000 to 2011 there is only MODIS
+(1 km pixels); from 2012 there is also VIIRS (375 m), which sees several times more hotspots, especially small
+and night-time fires. Joining the raw counts creates a false jump in 2012, so managers can't tell real change in
+fire activity from a change of instrument. MODIS is near the end of its life and VIIRS S-NPP stopped observing
+on Nov 2, 2026, so a consistent baseline is needed now.
 
-1. where and when fire activity happened;
-2. how seasonality varies by region;
-3. which periods show abnormal activity;
-4. how the current month compares with the historical median for the selected area.
+Analogy for the pitch: counting traffic for 25 years with an old blurry camera that only saw trucks, then a
+high-definition one that also sees motorbikes. The numbers rise because the camera got better.
 
-## Minimum viable scope
+## What we deliver
 
-- A historical period from the early 2000s to the present, processed for at least one pilot area (the app lets users pick an area within it).
-- MODIS and VIIRS harmonized into a common unit of analysis.
-- A web app: select an area (draw on map or enter lat/lon) and a date range; see the burning calendar (month × year) with an accessible color ramp; download hotspots as CSV.
-- Trends and anomalies against the multi-year median/average.
-- Enough documentation to reproduce the demo.
+1. **A harmonized hotspot dataset**: monthly VIIRS-equivalent counts per 0.25° cell, early 2000s → today, with
+   origin labels and uncertainty, validated on years the model never saw.
+2. **A web app** (public URL): pick an area and period → burning calendar (year × month), this month vs the
+   historical median, anomalies, raw vs harmonized comparison, CSV download.
+3. **Evidence**: a validation table against simple baselines and the before/after-2012 chart.
+4. **Submission**: project page in English, 30-second video or 7 slides, public repo, AI-use statement.
 
-## Stretch goals (only after Checkpoint 3)
-
-- Critical-period prediction PoC with temporal validation (plan v1 Block 3.2). Not asked for by the brief.
-- Weather or land-cover context layers.
-
-## Out of scope
-
-- Global coverage with production performance.
-- Causal claims or exact prediction of individual fires.
-- An official alert or emergency-support system.
-- Replacing scientific or operational validation by competent agencies.
-
-## Architecture
+## How it works
 
 ```text
-NASA FIRMS (MODIS + VIIRS)
-          │
-          ▼
-Collection, cleaning, provenance          ── Block 1
-          │
-          ▼
-Spatio-temporal harmonization + overlap validation
-          │
-          ├────────────────────┐
-          ▼                    ▼
-Historical calendar      Weather / environment
-and visualizations       (optional in the PoC)
-  ── Block 2                   │
-          │                    │
-          └─────────┬──────────┘
-                    ▼
-       Anomalies + critical periods     ── Block 3
-                    │
-                    ▼
-     App, documentation, presentation
+FIRMS yearly zips (MODIS Terra/Aqua, VIIRS S-NPP, NOAA-20) + FIRMS API (2026)
+   │  ingest: extract countries, normalize, QA, grid cells                 [VM / local, DuckDB]
+   ▼
+hotspots (native, Parquet) ──────────────────────────────► CSV download, L3 drill-down
+   │  aggregate: cell × month × day/night × satellite
+   ▼
+cell_month_counts
+   │  calibrate on 2012–2019 (Aqua × S-NPP): factor F, background B, pooled toward the region
+   │  validate on 2020–2021 against baselines (global ratio, OLS, month-only)
+   ▼
+calendar/v1: VIIRS-equivalent series + interval + origin + anomalies ──► Cloud Storage
+   ▼
+Web app on Cloud Run: map · calendar · median comparison · trends · downloads
 ```
 
-## The three blocks
+Method in one sentence: for each place and month, we measure in the years both satellites flew together how
+much more VIIRS sees than MODIS, and how much small fire VIIRS sees where MODIS sees nothing; where data is
+thin we lean on the regional average in proportion to the evidence; then we rebuild the MODIS-only years in the
+VIIRS scale, with an error margin, and check it by predicting years the model didn't see.
 
-| Block | Goal | Time budget | Detail |
-|-------|------|-------------|--------|
-| 1. Harmonization | Comparable MODIS/VIIRS dataset with provenance | Team Harmonization, H0–H8 | [blocks/01-harmonization.md](blocks/01-harmonization.md) |
-| 2. Web app and calendar | Area + date selection, burning calendar, trends, downloads | Team Dashboard, H0–H14 | [blocks/02-historical-calendar.md](blocks/02-historical-calendar.md) |
-| 3. Anomalies (core) and prediction (stretch) | Anomalies vs historical median; prediction only if time allows | Both, H8–H26 | [blocks/03-anomalies-prediction.md](blocks/03-anomalies-prediction.md) |
+## Scope
 
-Blocks run in parallel: Dashboard builds on a sample file while Harmonization produces the real data. Schedule and checkpoints (H8, H14, H26, freeze H30): [timeline.md](timeline.md).
+| Tier | Harmonization | Dashboard |
+|------|---------------|-----------|
+| **Must** (by Sun 11:00) | Brazil; 2003 → 2025; L2 monthly counts; F + B harmonization; `calendar/v1`; validation table with baselines; before/after chart | Area + date selection; calendar heatmap with estimated months marked; this month vs median; map; CSV download; limitations panel; deployed on Cloud Run |
+| **Should** (by Sun 15:00) | Bootstrap intervals; 2026 via API with partial-month handling; anomalies (robust z); NOAA-20 continuity factor; Terra-only 2000-11 → 2002-06; sensitivity to confidence filter | Raw vs harmonized toggle and trend; uncertainty display; day/night toggle; anomaly mode; seasonal profile; chart downloads |
+| **Stretch** (only after Checkpoint C) | More countries / South America; matched-event sample (Aqua × NOAA-20, ±5 min) as a validation appendix; FRP-equivalent; comparison with INPE BDQueimadas | AGGS drill-down (L3, neighbors); AGGS priority index; biome / municipality filters |
+| **Out** | Prediction or early warning; weather data; Level 3 fire masks; synthetic VIIRS points | Image upload; fire-spread inference |
 
-## Hand-off contracts between blocks
+Where the team's proposals landed:
 
-| From | To | What must be handed over |
-|------|----|--------------------------|
-| First-hour decisions | Block 1 | Region, period, spatial and temporal unit defined |
-| Block 1 | Block 2 | Versioned dataset, data dictionary, stable metrics |
-| Block 1 | Block 3 | Leak-free historical series; coverage and limitations documented |
-| Weather / environment data | Block 3 | Aligned variables, verified units, reproducible queries |
-| Blocks 2 and 3 | Presentation | Stable URLs/artifacts, pre-selected examples, offline mode |
+| Proposal | In plan v2 as |
+|----------|---------------|
+| Poisson ratio with shrinkage + background term | The harmonization method |
+| OLS transfer function | Baseline in the validation table; the VIIRS → MODIS direction is a display option |
+| Belize 2020 audit (event-level matching, per-event models) | Its filters, guardrails, origin labels and "no fixed multiplier" finding are adopted; event matching itself is stretch |
+| Platform-wise active-cell metric, median anomalies, partial months | `n_active_days` as secondary metric; anomaly and partial-month rules adopted |
+| AGGS adaptive 4×4 grid | The grid of the whole system (L1/L2/L3 IDs); drill-down and priority index are stretch |
 
 ## Scientific guardrails
 
-These apply to everyone, including AI coding agents:
+For everyone, including AI coding agents:
 
-- MODIS (~1 km) and VIIRS (375 m) are **different instruments**. Never treat raw counts as equivalent.
-- Every processed row keeps `sensor`, `product` and time reference. Provenance is never dropped.
-- An active-fire detection is **not** burned area, a fire count, or impact.
-- Train/validation/test splits are **chronological**. No future information in features.
-- Any model is compared to a simple baseline (seasonal climatology or persistence).
-- Language in the app and pitch: "risk", "probability", "critical period". Never promise a fire will happen.
-- The map must not suggest more spatial precision than the data has.
+- MODIS and VIIRS are different instruments. Never treat raw counts as equivalent; never use a single fixed multiplier.
+- Never sum satellites raw (Terra + Aqua, S-NPP + NOAA-20) into one series.
+- Never compare brightness temperatures or confidence values across sensors.
+- A detection is not a fire, not a fire count, not burned area. Say "hotspots" or "fire activity".
+- Estimates are per cell and month. No synthetic VIIRS points; nothing finer than L2 for estimates.
+- Every value keeps its origin; every estimate has an interval; estimated months are marked in the UI.
+- Calibration and test years never mix. The method must beat simple baselines out of sample, or we ship the baseline.
+- No missing value becomes a zero. No detection ≠ no fire.
+- Index and z-score thresholds are product choices, never presented as NASA thresholds or probabilities.
+- Numbers quoted from elsewhere (other teams, blogs) are hypotheses until we reproduce them or cite a primary source.
 
 ## Definition of done
 
-- [ ] The demo answers one clear, relevant question.
-- [ ] The data pipeline is reproducible and keeps provenance.
-- [ ] MODIS and VIIRS are not naively compared as identical sensors.
-- [ ] Map, calendar, trends and filters work with real data.
-- [ ] Anomalies use a documented seasonal baseline.
-- [ ] The prediction stretch goal, if shown, uses a temporal test split and a baseline.
-- [ ] Limitations and uncertainty appear in both the app and the presentation.
-- [ ] Sources, credits and licenses are recorded in [resources.md](resources.md).
-- [ ] Official requirements verified by one person and reviewed by another ([challenge/official-requirements.md](challenge/official-requirements.md)).
-- [ ] Offline demo, screenshots and a copy of all final artifacts exist.
-- [ ] At least two timed rehearsals done.
-- [ ] Demo is a ≤ 30 s video or ≤ 7 slides, in English (or with English subtitles).
-- [ ] AI use is acknowledged as the rules require.
-- [ ] Submission sent and confirmation saved by Sun 22:30 local (deadline 23:59).
+- [ ] Public URL opens in a private window and answers: which months burn most here, and how does this month compare?
+- [ ] The harmonized series shows no artificial step at 2012; the raw toggle shows the step.
+- [ ] Validation table: final method vs baselines on 2020–2021, in the app and the repo.
+- [ ] Estimated months are labeled, with intervals.
+- [ ] Pipeline reproducible from the repo: commands, manifests, checksums of raw inputs.
+- [ ] Limitations visible in the app and the project page.
+- [ ] Sources, tools and credits in [resources.md](resources.md); NASA FIRMS cited with its disclaimer link.
+- [ ] AI use described in the submission; AI-generated code and data acknowledged; watermarks on AI images.
+- [ ] Everything linked from the submission is in English.
+- [ ] Demo is ≤ 30 s video (English subtitles) or ≤ 7 slides.
+- [ ] Offline fallback: container runs locally from `data/`; screenshots saved.
+- [ ] Submitted by Sun 22:30; confirmation saved.
 
 ## Pitch outline
 
-1. **Problem:** fire histories from different sensors can't be compared without care.
-2. **Method:** we harmonize space, time, quality and provenance, and validate on the overlap period.
-3. **Experience:** map, timeline, regional calendar and trends make patterns explorable.
-4. **Insight:** anomalies against the historical median highlight unusual months and critical periods.
-5. **Impact:** helps ask better questions and prioritize analysis, without replacing official alerts or experts.
-6. **Transparency:** we show uncertainty, sensor differences, limitations and next validation steps.
+1. **Problem:** 25 years of fire records, two incompatible instruments, a false jump in 2012.
+2. **Method:** per place and month, learn the MODIS → VIIRS relation where both exist; pool with the region
+   where data is thin; rebuild the past with error margins.
+3. **Proof:** predicted unseen years; beat the simple baselines; the 2012 step is gone.
+4. **Product:** pick any area, see its burning calendar and how this month compares with history; download the data.
+5. **Honesty:** estimates are labeled, uncertainty is shown, limits are stated.
+6. **Why now:** S-NPP just ended; MODIS is next. The baseline has to be in the VIIRS scale.
+
+## Open decisions
+
+Defaults apply until the team says otherwise. Answers get logged as `DECISION` entries.
+
+| # | Decision | Default in this plan | Who decides |
+|---|----------|----------------------|-------------|
+| Q1 | Dashboard stack | Team's choice tonight; option C (single Python app) if no one is fluent in a frontend framework | Dashboard |
+| Q2 | Grid | Hierarchical 4×4 degree grid (1° / 0.25° / 0.0625°), AGGS IDs; H3 res 5 is the alternative | Both |
+| Q3 | Direction and reference | MODIS → VIIRS-equivalent, S-NPP scale | Harmonization |
+| Q4 | Method and years | F + B with pooling; calibrate 2012–2019, test 2020–2021; OLS as baseline | Harmonization |
+| Q5 | Primary metric | Hotspot count; active days as secondary | Both |
+| Q6 | Extent and demo region | Process all of Brazil; tell the story on one region (MATOPIBA proposed) | All |
+| Q7 | Start of the series | 2003 in the MVP (Aqua); Terra-only 2000-11 → 2002-06 as should-have | Harmonization |
+| Q8 | AGGS scope | Grid now; drill-down and priority index are stretch; meaning of the 0–9 and H/M/L scales to be defined by its authors | AGGS authors |
+| Q9 | Prediction / early warning | Out | All |
+| Q10 | Names on tasks; submission owner; demo lead; video or slides | Proposed in [tasks.md](tasks.md) | All |
+| Q11 | FIRMS MAP_KEY for 2026 data | Justino requests it | Harmonization |
+| Q12 | Local Event registration and local judging time | To confirm | Kali |
 
 ## Disclaimer
 
-This prototype is exploratory. Fire detections and risk estimates carry uncertainty and must not be used on their
-own for emergency, public-safety or resource-allocation decisions.
+This prototype is exploratory. Hotspot detections and derived estimates carry uncertainty and must not be used on
+their own for emergency, public-safety or resource-allocation decisions.

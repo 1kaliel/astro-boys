@@ -2,49 +2,50 @@
 
 Six people in two teams. Max team size for Space Apps is 6; everyone must be registered on the same Local Event.
 
-## Team Harmonization (Part 1 of the challenge)
+> **Roles below are a proposal** (open decision Q10 in [project-plan.md](project-plan.md#open-decisions)).
+> Confirm or swap at the lock-in. Tasks per person: [tasks.md](tasks.md).
 
-Turns raw FIRMS MODIS + VIIRS hotspots into one harmonized, documented dataset and the analytics the app needs.
-Detail: [blocks/01-harmonization.md](blocks/01-harmonization.md).
+## Team Harmonization
 
-| Name | GitHub | Focus |
-|------|--------|-------|
-| Kali | [1kaliel](https://github.com/1kaliel) | |
-| Justino | [Gabriel-S-Justino](https://github.com/Gabriel-S-Justino) | |
-| Mateus | [Mateus-Ed-Dev](https://github.com/Mateus-Ed-Dev) | |
+Turns raw FIRMS hotspots into the harmonized dataset. Spec: [spec/harmonization.md](spec/harmonization.md).
 
-## Team Dashboard (Part 2 of the challenge)
+| Name | GitHub | Proposed role | Backup |
+|------|--------|---------------|--------|
+| Kali | [1kaliel](https://github.com/1kaliel) | Pipeline and cloud: ingest, aggregate, harmonize, export; data contract; scope owner | Justino |
+| Justino | [Gabriel-S-Justino](https://github.com/Gabriel-S-Justino) | Data and QA: provenance, QA report, 2026 API pull, continuity check, credits, methodology text | Mateus |
+| Mateus | [Mateus-Ed-Dev](https://github.com/Mateus-Ed-Dev) | Method and validation: factors, pooling, baselines, cross-validation, bootstrap, charts | Kali |
 
-Builds the web app: area and date selection, burning calendar, trends, anomalies, CSV and chart downloads.
-Detail: [blocks/02-historical-calendar.md](blocks/02-historical-calendar.md).
+## Team Dashboard
 
-| Name | GitHub | Focus |
-|------|--------|-------|
-| Cleber | [Clbrfrancaa](https://github.com/Clbrfrancaa) | |
-| Guilherme | [Guilherme-Martins-Dev](https://github.com/Guilherme-Martins-Dev) | |
-| Jean | [JeanGust4](https://github.com/JeanGust4) | |
+Builds the web app. Spec: [spec/dashboard.md](spec/dashboard.md). The stack is this team's choice.
 
-Each team plans its own work in detail. Fill in the Focus column when roles are set.
+| Name | GitHub | Proposed role | Backup |
+|------|--------|---------------|--------|
+| Cleber | [Clbrfrancaa](https://github.com/Clbrfrancaa) | Data access / backend, CSV export, container, Cloud Run deploy | Guilherme |
+| Guilherme | [Guilherme-Martins-Dev](https://github.com/Guilherme-Martins-Dev) | Map, area selection, shared state, AGGS drill-down (stretch) | Jean |
+| Jean | [JeanGust4](https://github.com/JeanGust4) | Calendar heatmap, charts, anomaly view, accessibility, UI text | Cleber |
 
-## Shared responsibilities (assign a name)
+## Shared responsibilities
 
-| Responsibility | Owner |
-|----------------|-------|
-| Final say on scope; submission page | |
-| Official requirements check (second reviewer: another team) | |
-| Demo (30 s video or 7 slides) lead | |
-| Data contract between teams (schema of the harmonized dataset) | One from each team |
-| Credits and AI-use record ([resources.md](resources.md)) | |
+| Responsibility | Proposed owner |
+|----------------|----------------|
+| Final say on scope; submission page; AI-use statement | Kali |
+| Data contract (one per team) | Kali + Cleber |
+| Demo (30 s video or 7 slides) lead | To name at the lock-in |
+| Official requirements check; second reviewer from the other team | Kali; reviewer to name |
+| References and credits ([resources.md](resources.md)) | Justino |
 
 ## The hand-off between teams
 
-The two teams meet at the **data contract**: the schema of the harmonized dataset and the aggregates the app
-reads. Agree on it early, write it in [data-dictionary.md](data-dictionary.md), and let Dashboard build against
-a small sample file until the real data is ready.
+The teams meet at the **data contract**: [data-dictionary.md](data-dictionary.md). Dashboard builds against a
+mock with the same columns until `calendar/v1` exists (Checkpoint B).
 
 ## Working agreements
 
-- Each work session starts with a quick check-in: done, open decisions, blockers, next priorities.
+- Check-in at every checkpoint (Sat 23:00, Sun 02:00, Sun 11:00, Sun 15:00): done, blockers, next.
 - Stuck for more than 30 minutes? Log a `BLOCKER` and tell the team.
 - A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
-- Decisions are logged in the diary by whoever makes them.
+- Decisions are logged in the diary by whoever makes them. Scope cuts at checkpoints follow [timeline.md](timeline.md).
+- Rest is planned (Sun 02:00–07:00). Long jobs run in `tmux` on the VM.
+- Anything taken from outside the team (code, text, images, numbers) is listed in [resources.md](resources.md).
+  We don't copy other teams' solutions.
