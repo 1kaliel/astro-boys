@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download NASA FIRMS active-fire history (MODIS + VIIRS) into data/raw/firms/.
+r"""Download NASA FIRMS active-fire history (MODIS + VIIRS) into data/raw/firms/.
 
 Three modes (stdlib only, no installs needed):
 
@@ -13,7 +13,8 @@ Examples:
   python3 scripts/firms_download.py country --country Brazil --years 2012-2025 --dry-run
   python3 scripts/firms_download.py country --country Brazil --years 2000-2025
   python3 scripts/firms_download.py country --country all --years 2012-2025 --sensors viirs-snpp
-  python3 scripts/firms_download.py api --source VIIRS_NOAA21_SP --bbox -74,-34,-34,6 --start 2024-01-17 --end 2025-12-31
+  python3 scripts/firms_download.py api --source VIIRS_NOAA21_SP --bbox -74,-34,-34,6 \
+      --start 2024-01-17 --end 2025-12-31
   python3 scripts/firms_download.py availability
 
 Every completed download is logged as a row in data/raw/SOURCES.md. Raw files are never modified.
@@ -43,7 +44,7 @@ SOURCES_LOG = RAW / "SOURCES.md"
 
 
 def now_utc():
-    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M")
+    return dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M")
 
 
 def who():
@@ -198,7 +199,8 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     c = sub.add_parser("country", help="yearly per-country CSVs (no key)")
-    c.add_argument("--country", required=True, help="as in FIRMS file names, e.g. Brazil; 'all' for global zips")
+    c.add_argument("--country", required=True,
+                   help="as in FIRMS file names, e.g. Brazil; 'all' for global zips")
     c.add_argument("--years", required=True, help="e.g. 2000-2025 or 2012,2020")
     c.add_argument("--sensors", nargs="+", choices=list(COUNTRY_SENSORS), default=list(COUNTRY_SENSORS))
     c.add_argument("--dry-run", action="store_true", help="list files and sizes only")

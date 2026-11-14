@@ -4,7 +4,7 @@
 help:
 	@echo "make setup   install the locked Python env (uv sync --group dev)"
 	@echo "make test    run pytest"
-	@echo "make lint    run ruff"
+	@echo "make lint    run ruff (src, tests, scripts)"
 	@echo "make check   repo hygiene: no secrets, .env, credentials or data files"
 	@echo "make smoke   CSV -> DuckDB -> partitioned Parquet -> manifest, on sample rows"
 	@echo "make info    print resolved settings and storage layout"
@@ -17,7 +17,7 @@ test:
 	uv run pytest
 
 lint:
-	uv run ruff check src tests
+	uv run ruff check src tests scripts
 
 check:
 	./scripts/check_repo_hygiene.sh
