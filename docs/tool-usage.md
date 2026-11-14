@@ -127,7 +127,22 @@ uv run astro-fire info                          # where data is read from / writ
 uv run astro-fire --data-root data smoke        # force local storage
 ```
 
-Pipeline stages to come (`ingest`, `aggregate`, `calibrate`, `harmonize`, `validate`, `export`) are listed in
+Stages that exist:
+
+```bash
+uv run astro-fire mock-calendar     # SYNTHETIC calendar table for building the app (data-dictionary.md, section 5)
+uv run astro-fire calibrate         # processed/cell_month_counts/v1 → processed/factors/v1 + report + manifest
+uv run astro-fire calibrate --counts path/to/cell_month_counts --years 2012-2019 --k 20 --m 2   # overrides
+```
+
+`calibrate` reads the monthly counts (`cell_l2, year, month, daynight, satellite, n_hotspots`; satellites named
+`Aqua` and `SNPP`), chooses the pooling weights by leave-one-year-out cross-validation unless `--k`/`--m` are
+given, and writes `artifacts/<run_id>/metrics/calibration.json` with the scores and the regional ratios. It
+stops with a message if a calibration year is missing for a satellite, if keys are duplicated, or if the years
+include the test years (2020–2021). A month with no detections at all for one satellite is treated as a data
+gap and left out, never counted as zero.
+
+Stages to come (`ingest`, `aggregate`, `harmonize`, `validate`, `export`) are listed in
 [spec/harmonization.md](spec/harmonization.md#10-pipeline-commands-to-build).
 
 DuckDB, for quick looks (also works in a notebook with `import duckdb`):

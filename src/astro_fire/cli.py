@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from astro_fire import __version__, mock, smoke, storage
+from astro_fire import __version__, calibrate, mock, smoke, storage
 from astro_fire.config import get_settings
 
 
@@ -19,6 +19,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("info", help="print resolved settings (no secrets) and the storage layout")
     s = sub.add_parser("smoke", help="CSV → DuckDB → partitioned Parquet → manifest, on sample rows")
     s.add_argument("inputs", nargs="*", help="FIRMS CSV files (default: tests/fixtures samples)")
+    c = sub.add_parser("calibrate", help="cell_month_counts → factors F and B (weights by cross-validation)")
+    c.add_argument("--years", default=f"{calibrate.CALIBRATION_YEARS[0]}-{calibrate.CALIBRATION_YEARS[-1]}",
+                   help="calibration years, e.g. 2012-2019 (default) or 2012,2013")
+    c.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
+    c.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
+    c.add_argument("--counts", help="folder with cell_month_counts Parquet "
+                                    "(default: processed/cell_month_counts/<dataset version>)")
     m = sub.add_parser("mock-calendar", help="write a SYNTHETIC calendar table for dashboard development")
     m.add_argument("--bbox", default=",".join(str(v) for v in mock.DEFAULT_BBOX),
                    help="west,south,east,north in degrees; write it as --bbox=-47,-11,-44,-8")
@@ -33,6 +40,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "smoke":
         result = smoke.run(settings, args.inputs or None)
+        print(json.dumps(result, indent=2))
+        return 0 if result["status"] == "ok" else 1
+    if args.cmd == "calibrate":
+        try:
+            result = calibrate.run(settings, years=calibrate.parse_years(args.years), k=args.k, m=args.m,
+                                   counts_location=args.counts)
+        except calibrate.CalibrationError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "ok" else 1
     if args.cmd == "mock-calendar":
