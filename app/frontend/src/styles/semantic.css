@@ -1,0 +1,62 @@
+/*
+ * Layer 2: semantic tokens. Purpose-based aliases of the primitives. Light is the default;
+ * dark is declared twice on purpose: the media query follows the OS setting, and the
+ * data-theme scope lets an explicit toggle win both ways.
+ */
+:root {
+  color-scheme: light;
+
+  --color-page: var(--neutral-50);
+  --color-surface: var(--neutral-25);
+  --color-surface-raised: var(--neutral-0);
+
+  --color-text-primary: var(--neutral-1000);
+  --color-text-secondary: var(--neutral-700);
+  --color-text-muted: var(--neutral-500); /* axis labels and captions only, not body text */
+
+  --color-border: rgb(11 11 11 / 0.1);
+  --color-border-strong: var(--neutral-300);
+
+  --color-accent: var(--blue-500); /* links and the page title */
+  --color-ring: var(--blue-450);
+
+  --color-status-good: var(--status-good);
+  --color-status-warning: var(--status-warning);
+  --color-status-serious: var(--status-serious);
+  --color-status-critical: var(--status-critical);
+
+  --spacing-component: var(--space-3);
+  --spacing-section: var(--space-6);
+  --spacing-page-x: var(--space-4);
+  --spacing-page-y: var(--space-6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --color-page: var(--neutral-950);
+    --color-surface: var(--neutral-900);
+    --color-surface-raised: var(--neutral-900);
+    --color-text-primary: var(--neutral-100);
+    --color-text-secondary: var(--neutral-300);
+    --color-text-muted: var(--neutral-500);
+    --color-border: rgb(255 255 255 / 0.1);
+    --color-border-strong: var(--neutral-800);
+    --color-accent: var(--blue-300);
+    --color-ring: var(--blue-400);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-page: var(--neutral-950);
+  --color-surface: var(--neutral-900);
+  --color-surface-raised: var(--neutral-900);
+  --color-text-primary: var(--neutral-100);
+  --color-text-secondary: var(--neutral-300);
+  --color-text-muted: var(--neutral-500);
+  --color-border: rgb(255 255 255 / 0.1);
+  --color-border-strong: var(--neutral-800);
+  --color-accent: var(--blue-300);
+  --color-ring: var(--blue-400);
+}

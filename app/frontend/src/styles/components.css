@@ -1,0 +1,117 @@
+/*
+ * Layer 3: component tokens, then the component rules that use them.
+ * Components reference semantic and viz tokens only, never primitives or raw values.
+ */
+:root {
+  --card-bg: var(--color-surface);
+  --card-border: var(--color-border);
+  --card-radius: var(--radius-lg);
+  --card-padding: var(--space-4);
+  --card-shadow: var(--shadow-sm);
+
+  --button-bg: var(--color-surface-raised);
+  --button-fg: var(--color-text-primary);
+  --button-border: var(--color-border-strong);
+  --button-radius: var(--radius-md);
+  --button-padding: var(--space-2) var(--space-3);
+
+  --input-bg: var(--color-surface-raised);
+  --input-border: var(--color-border-strong);
+  --input-radius: var(--radius-md);
+  --input-padding: var(--space-2) var(--space-3);
+
+  --legend-swatch-size: var(--size-swatch);
+  --legend-gap: var(--space-3);
+
+  --tooltip-bg: var(--color-surface-raised);
+  --tooltip-fg: var(--color-text-primary);
+  --tooltip-border: var(--color-border-strong);
+  --tooltip-shadow: var(--shadow-md);
+
+  --badge-bg: var(--color-surface);
+  --badge-fg: var(--color-text-secondary);
+  --badge-border: var(--color-border-strong);
+
+  --banner-bg: var(--color-surface);
+  --banner-border: var(--color-border-strong);
+
+  --stat-value-size: var(--font-size-hero);
+  --stat-label-size: var(--font-size-sm);
+
+  --heatmap-cell-min: var(--size-target-min);
+  --heatmap-gap: var(--size-px-2); /* surface gap between cells */
+  --page-max-width: var(--size-container);
+  --panel-min-height: var(--size-panel-min);
+  --map-cell-stroke: var(--viz-cell-outline);
+  --map-selection-stroke: var(--viz-selection);
+}
+
+/* Page layout */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-section);
+  min-height: 100vh;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-page-y) var(--spacing-page-x);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-tight);
+  color: var(--color-accent);
+}
+
+.subtitle,
+.status {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.placeholder {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: var(--panel-min-height);
+  padding: var(--card-padding);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.footer {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.footer p {
+  margin: var(--space-1) 0;
+}
+
+/* Building blocks for the next steps */
+.card {
+  padding: var(--card-padding);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--badge-border);
+  border-radius: var(--radius-full);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}

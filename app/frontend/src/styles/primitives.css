@@ -1,0 +1,96 @@
+/*
+ * Layer 1: primitive tokens. Raw values only. Components never use these directly;
+ * they go through semantic.css and viz.css.
+ *
+ * Sources: the dataviz reference palette (documented steps) and the orange diverging arm,
+ * which is derived to match the lightness of blue 300-600 (see docs/design-system.md).
+ */
+:root {
+  /* Warm neutrals */
+  --neutral-0: #ffffff;
+  --neutral-25: #fcfcfb; /* light chart surface */
+  --neutral-50: #f9f9f7; /* light page plane */
+  --neutral-100: #f0efec; /* light diverging midpoint; dark primary ink */
+  --neutral-200: #e1e0d9; /* light gridline */
+  --neutral-300: #c3c2b7; /* light baseline; dark secondary ink */
+  --neutral-500: #898781; /* muted ink (axis labels), both modes */
+  --neutral-700: #52514e; /* light secondary ink */
+  --neutral-800: #383835; /* dark baseline; dark diverging midpoint */
+  --neutral-850: #2c2c2a; /* dark gridline */
+  --neutral-900: #1a1a19; /* dark chart surface */
+  --neutral-950: #0d0d0d; /* dark page plane */
+  --neutral-1000: #0b0b0b; /* light primary ink */
+
+  /* Blue: sequential ramp and negative diverging arm (documented steps) */
+  --blue-100: #cde2fb;
+  --blue-200: #9ec5f4;
+  --blue-300: #6da7ec;
+  --blue-350: #5598e7;
+  --blue-400: #3987e5;
+  --blue-450: #2a78d6;
+  --blue-500: #256abf;
+  --blue-600: #184f95;
+  --blue-700: #0d366b;
+
+  /* Orange: positive diverging arm, derived at the OKLCH lightness of blue 300-600 */
+  --orange-300: #ff743d;
+  --orange-400: #e15000;
+  --orange-500: #b43f00;
+  --orange-600: #8a2e00;
+
+  /* Categorical series (documented slots 1-3, light and dark steps) */
+  --series-blue-light: #2a78d6;
+  --series-orange-light: #eb6834;
+  --series-aqua-light: #1baf7a;
+  --series-blue-dark: #3987e5;
+  --series-orange-dark: #d95926;
+  --series-aqua-dark: #199e70;
+
+  /* Status (reserved meaning, always shown with an icon and a label) */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  /* Spacing, 4px base */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* Typography: system sans everywhere, including the hero figure */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-hero: 3rem;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+
+  /* Sizes */
+  --size-px-2: 2px;
+  --size-swatch: 12px;
+  --size-target-min: 24px; /* minimum cell and hit-target size */
+  --size-panel-min: 320px;
+  --size-container: 1200px;
+
+  /* Shape and motion */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.12);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+}
