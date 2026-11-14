@@ -13,6 +13,9 @@ REPO_DIR="${REPO_DIR:-$HOME/astro-boys}"
 UV_VERSION="${UV_VERSION:-0.12.12}"          # same uv version the repo was set up with
 IDLE_MINUTES="${IDLE_MINUTES:-30}"
 MEM_LIMIT="${DUCKDB_MEMORY_LIMIT:-10GB}"     # ~60% of a 16 GB VM
+GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
+GCS_BUCKET="${GCS_BUCKET:-}"
+GCS_PREFIX="${GCS_PREFIX:-astro}"
 
 echo "== System packages"
 sudo apt-get update -qq
@@ -36,12 +39,24 @@ echo "== Python environment (locked)"
 uv sync --frozen --extra gcs
 
 if [[ ! -f .env ]]; then
-  echo "== Writing .env for the cloud profile (edit GCS_BUCKET / FIRMS_MAP_KEY afterwards)"
+  echo "== Writing .env for the cloud profile"
   sed -e "s|^ASTRO_PROFILE=.*|ASTRO_PROFILE=cloud|" \
       -e "s|^DUCKDB_MEMORY_LIMIT=.*|DUCKDB_MEMORY_LIMIT=$MEM_LIMIT|" \
       -e "s|^DUCKDB_TEMP_DIR=.*|DUCKDB_TEMP_DIR=$HOME/duckdb_tmp|" \
       .env.example > .env
   chmod 600 .env
+fi
+
+# Non-secret cloud identifiers can be supplied on the command line. FIRMS_MAP_KEY is intentionally
+# untouched: the data-upload collaborator owns that separate step.
+if [[ -n "$GCP_PROJECT_ID" ]]; then
+  sed -i "s|^GCP_PROJECT_ID=.*|GCP_PROJECT_ID=$GCP_PROJECT_ID|" .env
+fi
+if [[ -n "$GCS_BUCKET" ]]; then
+  sed -i \
+    -e "s|^GCS_BUCKET=.*|GCS_BUCKET=$GCS_BUCKET|" \
+    -e "s|^ASTRO_DATA_ROOT=.*|ASTRO_DATA_ROOT=gs://$GCS_BUCKET/$GCS_PREFIX|" \
+    .env
 fi
 
 echo "== Smoke test (local disk on the VM)"

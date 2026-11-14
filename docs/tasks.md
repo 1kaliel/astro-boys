@@ -18,21 +18,22 @@ A task is done only when its deliverable exists, someone else can reproduce it, 
 ## Cloud setup (Kali) — Google Cloud primary, local fallback
 
 Order and commands: [cloud/README.md](cloud/README.md#setup-order-kali-when-ready-each-step-asks-before-changing-anything).
-Every step is a dry run first; nothing exists in Google Cloud yet.
+Every script remains a dry run by default. The live foundation was provisioned on Nov 14; see the status below.
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | C0 | Repo scaffold: pipeline package, config, smoke test, infra scripts, runbooks, CI | Kali | ✅ | ADR 0004 |
-| C1 | Install gcloud CLI; `gcloud auth login` + `application-default login` | Kali | ⬜ | Not installed on the coordinator machine |
-| C2 | Create/pick GCP project; link billing; check credit eligibility | Kali | ⬜ | Blocks C4+ |
-| C3 | Budget alert (50/90/100% actual + 100% forecast) | Kali | ⬜ | [budget-and-cost.md](cloud/budget-and-cost.md) |
-| C4 | Decide region/zone, bucket name; fill `infra/gcp/gcp.env`; run preflight | Kali | ⬜ | |
-| C5 | Enable APIs, create bucket, service accounts | Kali | ⬜ | 05, 10, 20 scripts |
-| C6 | Create VM; bootstrap; smoke test on VM | Kali / Harmonization | ⬜ | 30 script + vm/bootstrap.sh |
-| C7 | Collect teammates' Google accounts; grant team access | Kali | ⬜ | 25 script, after C6 and C8 |
-| C8 | Artifact Registry repo for the dashboard | Kali | ⬜ | 40 script; when Dashboard is ready to deploy |
-| C9 | Upload raw zips from the team Drive to `raw/firms/global/` | Harmonization | ⬜ | `sync_data.sh push raw firms`; ask Kali first |
-| C10 | Confirm CI passes on GitHub (first push) | Kali | ⬜ | gitleaks + tests + hygiene |
+| C1 | Install gcloud CLI; `gcloud auth login` + `application-default login` | Kali | ✅ | gcloud 593.0.0; project and ADC configured |
+| C2 | Create/pick GCP project; link billing; check credit eligibility | Kali | ✅ | `astro-boys`; billing enabled; credit confirmed by owner |
+| C3 | Budget alert (50/80/90/100% actual + 100% forecast) | Kali | ✅ | BRL 250/month gross usage; [budget-and-cost.md](cloud/budget-and-cost.md) |
+| C4 | Decide region/zone, bucket name; fill `infra/gcp/gcp.env`; run preflight | Kali | ✅ | `us-central1` / `us-central1-a` |
+| C5 | Enable APIs, create bucket, service accounts | Kali | ✅ | Private bucket + least-privilege runtime identities |
+| C6 | Create VM; bootstrap; smoke test on VM | Kali / Harmonization | ✅ | 30 rows passed; VM is stopped |
+| C7 | Collect teammates' Google accounts; grant team access | Kali | ✅ | Team owner confirmed access was already configured; unchanged |
+| C8 | Artifact Registry repo for the dashboard | Kali | ✅ | Empty Docker repo `astro` ready in `us-central1` |
+| C9 | Upload raw zips from the team Drive to `raw/firms/global/` | Collaborator | 🔄 | Deliberately delegated; no FIRMS data uploaded during cloud setup |
+| C10 | Confirm CI passes on GitHub (first push) | Kali | ✅ | Two successful CI runs on `main` |
+| C11 | Deploy dashboard container to Cloud Run | Dashboard / Kali | ⛔ | Cloud base is ready; waits for a runnable app container/Dockerfile |
 
 ## Team Harmonization (Kali, Justino, Mateus)
 
