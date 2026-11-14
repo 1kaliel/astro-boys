@@ -140,6 +140,22 @@ Why this form:
   6.22 by night, with a daily interquartile range of 2.50–6.75.
 - It is four sums per key, one `GROUP BY` in DuckDB, so it scales from one state to a continent.
 
+### Implementation choices (method owner, Sat Nov 14)
+
+Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced in `tests/test_calibration.py`.
+
+- **Calibration universe:** L2 cells with at least one filtered Aqua or S-NPP detection in the calibration
+  years. Inside it, a cell-month with no row counts as zero detections. Cells outside it get no background
+  estimate (nothing is invented over ocean or land that never showed activity); if Aqua detects there in the
+  past, the regional ratio `R` is used.
+- **January 2012 is left out** of calibration: S-NPP data starts on 2012-01-20, so that month is partial.
+- **Pooling region:** the whole pilot extent, per month of year and day/night. Pooling to the parent L1 cell
+  first is a candidate compared in validation, because the extent mixes Cerrado and Caatinga fire regimes.
+- **`K` and `M` are chosen separately** (`K` only acts on months with Aqua > 0, `M` on months with Aqua = 0),
+  each by the lowest leave-one-year-out mean absolute error at cell-month level; ties go to more pooling.
+- When the region has no Aqua detections at all for a month and period, there is no factor and the estimate
+  is null, never zero.
+
 ### Series assembly
 
 | Period | Value | `origin` |

@@ -30,7 +30,7 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 | H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ⬜ | Parquet + manifest |
 | H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
 | H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ⬜ | **Checkpoint A** |
-| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ⬜ | Notebook or script + test |
+| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ✅ | `src/astro_fire/calibration.py` + `tests/test_calibration.py` (synthetic sample; real data comes with H4) |
 | H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ⬜ | Parquet + manifest |
 | H7 | `harmonize` → `calendar/v1` (no intervals yet) pushed to the bucket | Mateus | Sun 02:00 | ⬜ | **Checkpoint B** |
 | H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ⬜ | `artifacts/figures/` |
