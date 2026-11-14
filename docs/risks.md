@@ -19,7 +19,7 @@ Cut rules per checkpoint: [timeline.md](timeline.md#checkpoint-rules-decide-on-t
 | AGGS or other stretch work eats core time | Stretch started before Checkpoint C | Stretch only after a "go" at Sun 11:00 | Kali |
 | Cloud Run deploy fails or URL blocked | Deploy error; URL needs login | Roll back; run the container locally and record the demo; screenshots | Guilherme, Cleber |
 | Cloud overspend | Budget alert | Stop the VM; idle auto-shutdown and 12 h cap; Cloud Run max 3 instances | Kali |
-| Pipeline owner lacks cloud access | Mateus can't start or SSH into the VM | Kali checks his IAM roles ([iam-and-access.md](cloud/iam-and-access.md)); meanwhile run locally on the Brazil CSVs | Kali |
+| Pipeline owner loses cloud access | Mateus can't start or SSH into the VM (access confirmed Sat Nov 14) | Kali checks his IAM roles ([iam-and-access.md](cloud/iam-and-access.md)); meanwhile run locally on the Brazil CSVs | Kali |
 | Leaked credential | CI secret scan or hygiene check fails | No key files by design; rotate the key; purge history | Everyone |
 | Not eligible for global judging | Member on another Local Event; demo over 30 s / 7 slides; non-English material | Check [official-requirements.md](challenge/official-requirements.md) at the lock-in and at Sun 22:00 | Kali |
 | AI-use and originality rules | AI-made code, data or images not acknowledged; outside material not listed | AI-use statement and acknowledgments; references list; no copying from other teams | Kali, Justino |

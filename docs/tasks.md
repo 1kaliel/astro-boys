@@ -17,7 +17,7 @@ Plan: [project-plan.md](project-plan.md) · Schedule and checkpoints: [timeline.
 | L2 | Dashboard stack chosen and logged | Dashboard | 🔄 | Option A chosen: FastAPI + SPA. Frontend framework still to name |
 | L3 | Data contract v1 frozen ([data-dictionary.md](data-dictionary.md)) | Mateus + Guilherme | ⬜ | One reviewer per team |
 | L4 | Names confirmed on every task; submission owner and demo lead named | All | 🔄 | Roles confirmed; demo lead and video-vs-slides still open |
-| L5 | All 6 registered on the **same Local Event** and on the team's Members tab | Kali | ⬜ | Eligibility rule; Q12 |
+| L5 | All 6 registered on the **same Local Event** and on the team's Members tab | Kali | ✅ | Confirmed by Kali, Sat Nov 14 |
 | L6 | Existing prototype scripts (harmonization pipeline, step-by-step example) brought into the repo, in English | Kali | ⬜ | Reuse before rewriting |
 
 ## Team Harmonization

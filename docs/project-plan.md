@@ -130,7 +130,7 @@ contract, and logs the choice as a `DECISION`. Defaults apply until the owner sa
 | Q9 | Prediction / early warning | Default: out | Kali |
 | Q10 | Names on tasks | ✅ Confirmed ([team.md](team.md)). Demo lead and video-vs-slides still to confirm | Team |
 | Q11 | FIRMS MAP_KEY for 2026 data | ✅ Key obtained. Justino stores it in `.env` on the VM and locally; never in git or in docs | Justino |
-| Q12 | Local Event registration (all 6, same event) and local judging time | To confirm | Kali |
+| Q12 | Local Event registration (all 6, same event) | ✅ Confirmed. Local judging time: check with the Local Lead | Kali |
 | Q13 | Outside material (other teams' code, text, numbers) | ✅ None used. Anything added later goes in [resources.md](resources.md) | Everyone |
 
 ## Disclaimer
