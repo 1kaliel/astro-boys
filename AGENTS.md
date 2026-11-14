@@ -90,11 +90,13 @@ Or edit `docs/diary/YYYY-MM-DD.md` by hand using the format in [docs/diary/READM
 
 Full list in [docs/project-plan.md](docs/project-plan.md#scientific-guardrails). The non-negotiables:
 
-- MODIS and VIIRS are different instruments. Never treat raw counts as equivalent.
-- Every processed row keeps `sensor`, `product` and its time reference.
-- An active-fire detection is not burned area, a fire count, or impact.
-- Model splits are chronological; no future information in features; always compare to a baseline.
-- Say "risk", "probability", "critical period". Never promise a fire will happen.
+- MODIS and VIIRS are different instruments. Never treat raw counts as equivalent; no single fixed multiplier.
+- Never sum satellites raw into one series; never compare brightness temperatures or confidence across sensors.
+- Every processed row keeps sensor, satellite, product version and its time reference.
+- A detection is not a fire, a fire count, or burned area. Say "hotspots" or "fire activity".
+- Estimates are per cell and month, labeled with their origin and an interval. No synthetic VIIRS points.
+- Calibration and test years never mix; the method must beat simple baselines out of sample.
+- No prediction, risk or probability claims. Missing is never zero; no detection is not "no fire".
 
 ## Where things live
 
@@ -109,13 +111,15 @@ notebooks/                        exploration
 data/                             local mirror of the bucket: raw/ interim/ processed/ artifacts/ manifests/ (git-ignored)
 artifacts/                        small curated figures/metrics for the demo (committed)
 presentation/                     script, slides, final media
-docs/project-plan.md              goal, scope, architecture, guardrails, definition of done
-docs/blocks/                      per-block tasks and acceptance criteria
+docs/project-plan.md              plan v2: deliverables, scope tiers, guardrails, open decisions
+docs/spec/                        specs: harmonization method, dashboard
+docs/tool-usage.md                how to use FIRMS, the pipeline, the VM and the bucket
 docs/cloud/                       cloud architecture, storage layout, VM runbook, IAM, budget, fallback
 docs/challenge/                   brief, official requirements, suggested tools
 docs/data-access.md               how to get FIRMS MODIS + VIIRS history
 docs/timeline.md · docs/tasks.md · docs/team.md · docs/risks.md
-docs/methodology.md · docs/data-dictionary.md · docs/model-card.md
+docs/data-dictionary.md           data contract between the teams (schemas)
+docs/methodology.md               what was actually done, with results
 docs/resources.md                 everything we use, with credits
 docs/diary/ · docs/decisions/     timestamped diary and ADRs
 ```

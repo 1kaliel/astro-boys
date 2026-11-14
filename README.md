@@ -24,14 +24,15 @@ Full plan: [docs/project-plan.md](docs/project-plan.md).
 | Path | What's there |
 |------|--------------|
 | [docs/project-plan.md](docs/project-plan.md) | Goal, scope, architecture, guardrails, definition of done |
-| [docs/blocks/](docs/blocks/) | The three work blocks with tasks and acceptance criteria |
+| [docs/spec/](docs/spec/) | Specs: [harmonization method](docs/spec/harmonization.md), [dashboard](docs/spec/dashboard.md) |
+| [docs/tool-usage.md](docs/tool-usage.md) | How to use FIRMS, the pipeline, the VM and the bucket |
 | [docs/challenge/](docs/challenge/) | Challenge brief, official requirements, suggested tools |
 | [docs/data-access.md](docs/data-access.md) | How we get FIRMS MODIS + VIIRS history fast |
 | [docs/timeline.md](docs/timeline.md) | Event dates, schedule and checkpoints |
 | [docs/tasks.md](docs/tasks.md) | Task board per team |
 | [docs/team.md](docs/team.md) | Team Harmonization and Team Dashboard |
 | [docs/risks.md](docs/risks.md) | Risks and contingency plans |
-| [docs/methodology.md](docs/methodology.md) · [docs/data-dictionary.md](docs/data-dictionary.md) · [docs/model-card.md](docs/model-card.md) | Science docs |
+| [docs/data-dictionary.md](docs/data-dictionary.md) · [docs/methodology.md](docs/methodology.md) | Data contract; methods and results |
 | [docs/diary/](docs/diary/) · [docs/decisions/](docs/decisions/) | Timestamped diary and decision records |
 | `data/` | Raw, interim and processed data (not committed). See [data/README.md](data/README.md) |
 | `src/astro_fire/` · `tests/` · `scripts/` · `notebooks/` | Pipeline code (Python + DuckDB), tests, helpers |

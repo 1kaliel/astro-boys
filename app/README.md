@@ -4,7 +4,7 @@
 
 ## What it must do (from the challenge brief)
 
-See [docs/blocks/02-historical-calendar.md](../docs/blocks/02-historical-calendar.md) for the full task list.
+Full spec: [docs/spec/dashboard.md](../docs/spec/dashboard.md). Tasks and owners: [docs/tasks.md](../docs/tasks.md).
 
 - Select an area (draw on a map, or enter lat/lon) and a date range.
 - Burning calendar: hotspot counts by month × year, early 2000s → present, with an accessible color ramp.

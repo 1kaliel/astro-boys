@@ -3,19 +3,81 @@
 Status: ⬜ not started · 🔄 in progress · ✅ done · ⛔ blocked / needs a decision
 
 A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
-**The hackathon is running now** (Sat Nov 14 09:00 → Sun Nov 15 23:59 local). See [timeline.md](timeline.md).
+Plan: [project-plan.md](project-plan.md) · Schedule and checkpoints: [timeline.md](timeline.md).
 
-## Shared (everyone)
+> Owners confirmed by the team on Sat Nov 14 ([team.md](team.md)). **The owner of a task decides its specifics**
+> (within the guardrails and the data contract) and logs the choice as a `DECISION`.
+> Jean is the floater: ask him when a task needs a second pair of hands.
+
+## Lock-in (Sat 18:30–19:30, everyone)
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 1 | Confirm all 6 are registered on the **same Local Event** and listed on the team's Members tab | | ⬜ | Eligibility rule |
-| 2 | Confirm the Local Event timezone; fix UTC times in `timeline.md` | Kali | ✅ | Brasília (UTC−3) |
-| 3 | Name the submission owner and the demo lead (`team.md`) | | ⬜ | |
-| 4 | Agree the data contract: harmonized dataset schema (`data-dictionary.md`) | 1 per team | ⬜ | Unblocks Dashboard |
-| 5 | Note where AI tools are used, for the disclosure at the end | Everyone | 🔄 | Written up at submission (S4) |
+| L1 | Answer the [open decisions](project-plan.md#open-decisions) Q1–Q12; log each as `DECISION` | Kali + Jean (logs) | ⬜ | Defaults apply if unanswered |
+| L2 | Dashboard stack chosen and logged | Dashboard | 🔄 | Option A chosen: FastAPI + SPA. Frontend framework still to name |
+| L3 | Data contract v1 frozen ([data-dictionary.md](data-dictionary.md)) | Mateus + Guilherme | ⬜ | One reviewer per team |
+| L4 | Names confirmed on every task; submission owner and demo lead named | All | 🔄 | Roles confirmed; demo lead and video-vs-slides still open |
+| L5 | All 6 registered on the **same Local Event** and on the team's Members tab | Kali | ✅ | Confirmed by Kali, Sat Nov 14 |
+| L6 | Existing prototype scripts (harmonization pipeline, step-by-step example) brought into the repo, in English | Kali | ⬜ | Reuse before rewriting |
 
-## Cloud setup (Kali) — Google Cloud primary, local fallback
+## Team Harmonization
+
+Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a sample and on the VM on Brazil.
+
+| # | Task | Owner | Due (local) | Status | Deliverable |
+|---|------|-------|-------------|--------|-------------|
+| H1 | Mock `calendar` sample with the v1 columns | Mateus | Sat 19:30 | ⬜ | Small Parquet/JSON for Dashboard |
+| H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ⬜ | Parquet + manifest |
+| H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
+| H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ⬜ | **Checkpoint A** |
+| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ⬜ | Notebook or script + test |
+| H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ⬜ | Parquet + manifest |
+| H7 | `harmonize` → `calendar/v1` (no intervals yet) pushed to the bucket | Mateus | Sun 02:00 | ⬜ | **Checkpoint B** |
+| H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ⬜ | `artifacts/figures/` |
+| H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ⬜ | `raw/firms/api/…` |
+| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | ⬜ | `validation.json` + table |
+| H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | ⬜ | **Checkpoint C** |
+| H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Kali | Sun 15:00 | ⬜ | Only if H10–H11 are done |
+| H13 | Methodology and limitations text ([methodology.md](methodology.md)); reproducibility run from a clean clone | Justino + Jean | Sun 18:00 | ⬜ | |
+
+## Team Dashboard
+
+Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to real data at Checkpoint B.
+
+| # | Task | Owner | Due (local) | Status | Deliverable |
+|---|------|-------|-------------|--------|-------------|
+| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ⬜ | Runs with `docker run` |
+| D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Guilherme + Cleber | Sat 23:00 | ⬜ | Function or endpoint + test |
+| D3 | Map with L2 cells; rectangle draw and lat/lon bounds → list of cells | Guilherme | Sat 23:00 | ⬜ | **Checkpoint A** |
+| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ⬜ | **Checkpoint A** |
+| D5 | This month vs historical median card; date-range selector | Cleber | Sun 02:00 | ⬜ | |
+| D6 | CSV download of native hotspots for area + dates | Guilherme + Cleber | Sun 02:00 | ⬜ | **Checkpoint B** |
+| D7 | Map ↔ calendar linked by one shared state | Guilherme | Sun 02:00 | ⬜ | |
+| D8 | First Cloud Run deploy ([runbook](../deploy/cloudrun/README.md)); Kali approves the deploy | Guilherme + Cleber; Kali approves | Sun 09:00 | ⬜ | Public URL |
+| D9 | Should-haves: raw vs harmonized toggle + trend; uncertainty; day/night; anomaly mode; seasonal profile | Cleber + Guilherme | Sun 15:00 | ⬜ | **Checkpoint C** = must-haves live |
+| D10 | "How to read / limitations / sources" panel; all text in English | Jean | Sun 13:00 | ⬜ | |
+| D11 | Stretch (only if "go" at Checkpoint C): AGGS drill-down to L3 with neighbors | Guilherme | Sun 15:00 | ⬜ | |
+| D12 | Final deploy, offline fallback (local container), screenshots in `artifacts/screenshots/` | Guilherme + Cleber; Jean screenshots | Sun 18:00 | ⬜ | |
+
+## Submission
+
+| # | Task | Owner | Due (local) | Status |
+|---|------|-------|-------------|--------|
+| S1 | Project page fields drafted in English (summary, description, NASA data, references) | Kali + Jean | Sun 20:00 | ⬜ |
+| S2 | Demo: ≤ 30 s video (English subtitles) or ≤ 7 slides; storyboard by Sun 13:00 | Jean (proposed) | Sun 21:00 | ⬜ |
+| S3 | References list: every data source, library, tool; FIRMS citation and disclaimer link | Justino | Sun 20:00 | ⬜ |
+| S4 | AI-use statement for the form + acknowledgment in the repo ([resources.md](resources.md#ai-usage)) | Kali | Sun 20:00 | ⬜ |
+| S5 | All links tested in a private window; repo public and in English | Second reviewer (other team) | Sun 22:00 | ⬜ |
+| S6 | Submitted; confirmation saved | Kali | Sun 22:30 | ⬜ |
+
+## Done earlier
+
+| Task | Owner | Notes |
+|------|-------|-------|
+| Local Event timezone confirmed | Kali | Brasília (UTC−3) |
+| MODIS 2000–2025, VIIRS S-NPP 2012–2025, NOAA-20 2018–2025 pulled and uploaded | Justino, collaborator | 48 zips, checksummed, in the bucket |
+
+## Cloud setup (done) — Google Cloud primary, local fallback
 
 Order and commands: [cloud/README.md](cloud/README.md#setup-order-kali-when-ready-each-step-asks-before-changing-anything).
 Every script remains a dry run by default. The live foundation was provisioned on Nov 14; see the status below.
@@ -34,43 +96,3 @@ Every script remains a dry run by default. The live foundation was provisioned o
 | C9 | Upload raw zips from the team Drive to `raw/firms/global/` | Collaborator | ✅ | 48 ZIPs verified in GCS: MODIS 26, S-NPP 14, NOAA-20 8 |
 | C10 | Confirm CI passes on GitHub (first push) | Kali | ✅ | Two successful CI runs on `main` |
 | C11 | Deploy dashboard container to Cloud Run | Dashboard / Kali | ⛔ | Cloud base is ready; waits for a runnable app container/Dockerfile |
-
-## Team Harmonization (Kali, Justino, Mateus)
-
-| # | Task | Owner | Status | Notes |
-|---|------|-------|--------|-------|
-| H1 | Get a FIRMS MAP_KEY; put it in `.env` | | ⬜ | Free, by email |
-| H2 | Pick the pilot area and period for development (data is global) | | ⬜ | Log as `DECISION` |
-| H3 | Pull MODIS + VIIRS history | Justino | ✅ | MODIS 2000–2025 + NOAA-20 2018–2025, global, in team Drive |
-| H3b | Pull 2026 so far via API NRT (needs H1) | | ⬜ | Needed for current month vs median |
-| H3c | Add VIIRS S-NPP 2012–2025 | Collaborator | ✅ | 14 global ZIPs uploaded and checksummed |
-| H4 | Share a small sample file with Dashboard | | ⬜ | By Sat 14:00 |
-| H5 | Overlap comparison and harmonization method v0 | | ⬜ | Checkpoint Sat 17:00 |
-| H6 | Monthly aggregates, historical median, anomalies | | ⬜ | |
-| H7 | Validation report + methodology doc | | ⬜ | |
-
-Full criteria: [blocks/01-harmonization.md](blocks/01-harmonization.md).
-
-## Team Dashboard (Cleber, Guilherme, Jean)
-
-| # | Task | Owner | Status | Notes |
-|---|------|-------|--------|-------|
-| D1 | Pick the stack (framework, map library, hosting); log as `DECISION` | | ⬜ | |
-| D2 | App skeleton: map, AOI drawing or lat/lon input, date range | | ⬜ | |
-| D3 | Burning calendar (month × year) with an accessible color ramp | | ⬜ | Core of the brief |
-| D4 | Trends; current month vs historical median; anomalies | | ⬜ | |
-| D5 | CSV download of hotspots; download of charts/analytics | | ⬜ | |
-| D6 | Deploy to a public link; offline fallback; screenshots | | ⬜ | Before Sun 19:00 |
-
-Full criteria: [blocks/02-historical-calendar.md](blocks/02-historical-calendar.md).
-
-## Submission
-
-| # | Task | Owner | Status |
-|---|------|-------|--------|
-| S1 | Project page fields drafted in English | | ⬜ |
-| S2 | Demo: 30 s video (English subtitles if not English) or ≤ 7 slides | | ⬜ |
-| S3 | References field lists every data source, library and tool | | ⬜ |
-| S4 | AI-use disclosure: submission form + `resources.md` AI section | | ⬜ |
-| S5 | All links tested in a private window | | ⬜ |
-| S6 | Submitted and confirmation saved | | ⬜ |
