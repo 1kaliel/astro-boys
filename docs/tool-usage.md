@@ -127,7 +127,8 @@ uv run astro-fire info                          # where data is read from / writ
 uv run astro-fire --data-root data smoke        # force local storage
 ```
 
-Pipeline stages to come (`ingest`, `aggregate`, `calibrate`, `harmonize`, `validate`, `export`) are listed in
+Run `ingest` and `aggregate` using the [historical Northeast batch runbook](historical-batch.md).
+The remaining pipeline stages are listed in
 [spec/harmonization.md](spec/harmonization.md#10-pipeline-commands-to-build).
 
 DuckDB, for quick looks (also works in a notebook with `import duckdb`):
