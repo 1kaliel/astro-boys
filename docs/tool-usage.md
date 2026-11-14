@@ -142,7 +142,20 @@ stops with a message if a calibration year is missing for a satellite, if keys a
 include the test years (2020–2021). A month with no detections at all for one satellite is treated as a data
 gap and left out, never counted as zero.
 
-Stages to come (`ingest`, `aggregate`, `harmonize`, `validate`, `export`) are listed in
+`validate` refits the factors on the calibration years and scores six methods on the held-out years
+(2020–2021) against what S-NPP observed: raw Aqua, one global ratio, a global OLS line, a ratio per month and
+day/night, `F`, and `F + B`.
+
+```bash
+uv run astro-fire validate          # prints the table; writes artifacts/<run_id>/metrics/validation.json
+                                    # and artifacts/<run_id>/reports/validation.md
+```
+
+The JSON holds every method at two levels (cell-month, and regional monthly totals) split by day/night, year,
+season and Aqua = 0 vs Aqua > 0, plus a `verdict`: whether `F + B` beats every baseline at both levels, and
+which method ships if it does not.
+
+Stages to come (`ingest`, `aggregate`, `harmonize`, `export`) are listed in
 [spec/harmonization.md](spec/harmonization.md#10-pipeline-commands-to-build).
 
 DuckDB, for quick looks (also works in a notebook with `import duckdb`):
