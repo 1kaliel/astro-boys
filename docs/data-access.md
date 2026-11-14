@@ -16,12 +16,12 @@ The team pulled the **global yearly zips** on Sat Nov 14 (09:00–10:05 local) i
 Global coverage means the app can serve **any area a user draws**, not just one region.
 **MODIS and NOAA-20 overlap for 8 years (2018–2025)**: enough to calibrate the harmonization.
 
-### Gaps
+### Coverage status and gaps
 
 | Gap | Why it matters | How to fill | Priority |
 |-----|----------------|-------------|----------|
 | **2026 (Jan → today)** | The brief compares the **current month with the historical median**; yearly files stop at 2025 | Area API, NRT sources (`VIIRS_NOAA20_NRT`, `MODIS_NRT`), needs MAP_KEY | **High** |
-| VIIRS S-NPP 2012–2025 | Longest VIIRS record; adds 2012–2017 overlap with MODIS. New observations ended 2026-11-02 | `country --country all --sensors viirs-snpp` (~5.0 GB) | Optional |
+| VIIRS S-NPP 2012–2025 | Longest VIIRS record; adds 2012–2017 overlap with MODIS. New observations ended 2026-11-02 | **Uploaded:** 14 global ZIPs in `raw/firms/global/viirs-snpp/` | **Complete** |
 | VIIRS NOAA-21 | Third VIIRS satellite, 2023/24 onwards | Area API, `VIIRS_NOAA21_SP` / `_NRT` | Low |
 
 ## TL;DR: the fast path

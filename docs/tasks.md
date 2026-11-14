@@ -31,7 +31,7 @@ Every script remains a dry run by default. The live foundation was provisioned o
 | C6 | Create VM; bootstrap; smoke test on VM | Kali / Harmonization | ✅ | 30 rows passed; VM is stopped |
 | C7 | Collect teammates' Google accounts; grant team access | Kali | ✅ | Team owner confirmed access was already configured; unchanged |
 | C8 | Artifact Registry repo for the dashboard | Kali | ✅ | Empty Docker repo `astro` ready in `us-central1` |
-| C9 | Upload raw zips from the team Drive to `raw/firms/global/` | Collaborator | 🔄 | Deliberately delegated; no FIRMS data uploaded during cloud setup |
+| C9 | Upload raw zips from the team Drive to `raw/firms/global/` | Collaborator | ✅ | 48 ZIPs verified in GCS: MODIS 26, S-NPP 14, NOAA-20 8 |
 | C10 | Confirm CI passes on GitHub (first push) | Kali | ✅ | Two successful CI runs on `main` |
 | C11 | Deploy dashboard container to Cloud Run | Dashboard / Kali | ⛔ | Cloud base is ready; waits for a runnable app container/Dockerfile |
 
@@ -43,7 +43,7 @@ Every script remains a dry run by default. The live foundation was provisioned o
 | H2 | Pick the pilot area and period for development (data is global) | | ⬜ | Log as `DECISION` |
 | H3 | Pull MODIS + VIIRS history | Justino | ✅ | MODIS 2000–2025 + NOAA-20 2018–2025, global, in team Drive |
 | H3b | Pull 2026 so far via API NRT (needs H1) | | ⬜ | Needed for current month vs median |
-| H3c | Decide whether to add VIIRS S-NPP 2012–2025 (~5 GB) | | ⬜ | Optional |
+| H3c | Add VIIRS S-NPP 2012–2025 | Collaborator | ✅ | 14 global ZIPs uploaded and checksummed |
 | H4 | Share a small sample file with Dashboard | | ⬜ | By Sat 14:00 |
 | H5 | Overlap comparison and harmonization method v0 | | ⬜ | Checkpoint Sat 17:00 |
 | H6 | Monthly aggregates, historical median, anomalies | | ⬜ | |

@@ -14,7 +14,8 @@
 A budget **alerts**; it does **not** stop spending. The hard limits come from the safety nets below.
 
 Live state (2026-11-14): the processing VM is stopped, the Artifact Registry is empty, no Cloud Run service is
-deployed, and the bucket is empty. Disk storage for the stopped 100 GB VM can still incur a small charge.
+deployed, and the bucket holds 9.08 GiB of immutable FIRMS source archives. Bucket and stopped-VM disk storage
+can still incur small charges.
 
 ## What costs money here
 

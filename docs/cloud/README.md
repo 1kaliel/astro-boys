@@ -38,7 +38,8 @@ Laptop (fallback / dev): uv + Python + DuckDB on data/ (small samples or a pilot
 - Artifact Registry repository `astro` is ready and empty.
 - Cloud Run is enabled but no service is deployed; deployment waits for the Dashboard team to supply a runnable
   container/Dockerfile.
-- No FIRMS data was uploaded. That step is assigned to the data collaborator.
+- FIRMS raw archive is present: 48 immutable ZIPs (MODIS 2000–2025, VIIRS S-NPP 2012–2025 and NOAA-20
+  2018–2025), 9.08 GiB total, with a matching 48-entry SHA-256 manifest.
 
 ## Docs
 
