@@ -1,7 +1,7 @@
 # Methodology
 
 Living document. Fill in as decisions are made; each choice links to its diary entry.
-Owners: Person 3 (harmonization), Person 5 (anomalies, validation), Person 6 (prediction).
+Owner: Team Harmonization. This feeds the project page's detailed description.
 
 ## Study area and period
 

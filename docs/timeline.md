@@ -1,68 +1,55 @@
 # Timeline
 
-All times **UTC**. `H0` = hackathon start.
+## Event dates (official)
 
-## Event dates
+| When (Local Event time) | What |
+|-------------------------|------|
+| **Sat Nov 14, 2026, 09:00** | Hackathon starts, project submission opens (**H0**) |
+| **Sun Nov 15, 2026, 23:59** | **Submission closes. Hard deadline.** (≈ H39) |
+| Check with Local Lead | Local judging and awards |
 
-To fill in from the official event page (see [challenge/official-requirements.md](challenge/official-requirements.md)).
+> ⚠️ **Local Event timezone not confirmed yet.** UTC times below assume **Brasília time (UTC−3)**: H0 = Sat 12:00 UTC,
+> deadline = Mon Nov 16, 02:59 UTC. Update if our Local Event is elsewhere.
 
-| When (UTC) | What |
-|------------|------|
-| TBD | Hackathon starts (H0) |
-| TBD | Submission deadline |
-| TBD | Judging / results |
+Plan v1 assumed 48 hours. The real window is **about 39 hours**, so the schedule below is compressed.
+We aim to **submit by Sun 22:30 local**, keeping 1.5 hours of margin.
 
-## Before H0 (preparation)
+## Schedule (local time)
 
-| Task | Owner | Status |
-|------|-------|--------|
-| Confirm the official challenge and copy its brief | Person 1 | ⬜ |
-| Request a FIRMS MAP_KEY (free) | Person 2 | ⬜ |
-| Check how long a FIRMS archive download request takes to arrive | Person 2 | ⬜ |
-| Shortlist 2–3 candidate pilot regions | Team | ⬜ |
-| Check Meteomatics / Planetary Computer access terms | Person 6 | ⬜ |
-| Agree on the tech stack (Python env, app framework) | Persons 4 + 6 | ⬜ |
+Both teams work in parallel. Dashboard builds against a sample file until the harmonized data is ready.
 
-> Check the official rules on what may be prepared before H0.
-
-## 48-hour schedule
-
-Workstreams run in parallel. Times are relative to H0.
-
-| Window | Focus | Required output |
-|--------|-------|-----------------|
-| H0–H1 | Alignment and decisions | Region, period, scope, roles and open requirements logged |
-| H1–H3 | Data collection and technical skeleton | MODIS/VIIRS samples, project structure, first empty map |
-| H3–H6 | Harmonization | Dataset v0, first comparison, resolution decision |
-| **H6** | **Checkpoint 1** | Block 1 meets minimum criteria, or scope is reduced |
-| H6–H10 | Calendar + anomalies in parallel | Map with data, timeline, seasonal baseline |
-| H10–H14 | Navigable prototype | Calendar, trend and filters integrated |
-| **H14** | **Checkpoint 2** | Block 2 demo works without editing code |
-| H14–H20 | PoC preparation | Target, baseline, features and temporal split defined |
-| H20–H28 | Modelling and integration | First model evaluated; anomalies in the app |
-| **H28** | **Checkpoint 3** | Keep, simplify or drop prediction from the main demo |
-| H28–H38 | Scientific refinement | Baseline comparison, error analysis, model card |
-| **H38** | **Feature freeze** | No new features except critical fixes |
-| H38–H43 | Stabilization | Tests, performance, offline mode, sources, docs |
-| H43–H46 | Story and presentation | Slides/script, video if required, timed rehearsal |
-| H46–H47 | Submission review | Official checklist, links, permissions, credits |
-| H47–H48 | Safety margin | Submit, save confirmation, back up all artifacts |
+| Window | Local time | Harmonization team | Dashboard team | Required output |
+|--------|------------|--------------------|----------------|-----------------|
+| H0–H2 | Sat 09:00–11:00 | Align; get FIRMS key; start data pull | Align; pick stack | Roles, data contract v0, stack logged |
+| H2–H5 | Sat 11:00–14:00 | Raw MODIS + VIIRS in `data/raw/`, cleaning | App skeleton: map + AOI + date range | Sample file shared with Dashboard |
+| H5–H8 | Sat 14:00–17:00 | Overlap comparison; harmonization method v0 | Calendar view on sample data | Dataset v0 |
+| **H8** | **Sat 17:00** | **Checkpoint 1** | | Harmonized v0 meets minimum criteria, or scope cut |
+| H8–H14 | Sat 17:00–23:00 | Monthly aggregates, historical median, anomalies | Calendar, trends, anomalies on real data | End-to-end demo on real data |
+| **H14** | **Sat 23:00** | **Checkpoint 2** | | App runs end to end without editing code |
+| H14–H24 | Sat 23:00–Sun 09:00 | Validation report, sensitivity, methodology doc (rest in shifts) | CSV / chart downloads, accessibility, polish | |
+| **H26** | **Sun 11:00** | **Checkpoint 3** | | Go / no-go on stretch goals |
+| **H30** | **Sun 15:00** | **Feature freeze** | | No new features, only fixes |
+| H30–H34 | Sun 15:00–19:00 | Docs, credits, reproducibility check | Deploy, offline fallback, screenshots | Public link works in a private window |
+| H34–H37 | Sun 19:00–22:00 | Project page text | Demo video (≤ 30 s) or slides (≤ 7) | Demo + page drafted, in English |
+| H37–H37.5 | Sun 22:00–22:30 | Final check against [official-requirements.md](challenge/official-requirements.md) | | **Submitted**, confirmation saved |
+| H37.5–H39 | Sun 22:30–23:59 | Margin only | | |
 
 ## Checkpoint rules
 
-- **H6:** harmonization failing → shrink region/period. Never move on with data lacking provenance.
-- **H14:** prototype not navigable → freeze new visualizations.
-- **H28:** prediction only enters the main story if it beats or clearly adds to the baseline.
-- **H38:** feature freeze. Reliability, docs and rehearsal only.
+- **H8:** harmonization failing → shrink area and/or period. Never move on with data lacking provenance.
+- **H14:** app not working end to end → freeze new views; finish what exists.
+- **H26:** stretch goals (prediction, extra layers) only continue if the core calendar is solid.
+- **H30:** feature freeze. Reliability, docs, demo.
 
 ## Milestone tracker
 
-| Milestone | Target | Status |
-|-----------|--------|--------|
-| First-hour decisions closed | H1 | ⬜ |
-| Block 1 accepted | H6 | ⬜ |
-| Block 2 demo navigable | H14 | ⬜ |
-| Prediction go / no-go | H28 | ⬜ |
-| Feature freeze | H38 | ⬜ |
-| Two timed rehearsals | H46 | ⬜ |
-| Submission confirmed | H48 | ⬜ |
+| Milestone | Target (local) | Status |
+|-----------|----------------|--------|
+| Roles, stack, data contract v0 | Sat 11:00 | ⬜ |
+| Sample data shared with Dashboard | Sat 14:00 | ⬜ |
+| Harmonized dataset v0 | Sat 17:00 | ⬜ |
+| End-to-end demo on real data | Sat 23:00 | ⬜ |
+| Stretch go / no-go | Sun 11:00 | ⬜ |
+| Feature freeze | Sun 15:00 | ⬜ |
+| Public link + demo ready | Sun 22:00 | ⬜ |
+| Submission confirmed | Sun 22:30 | ⬜ |

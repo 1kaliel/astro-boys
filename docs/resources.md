@@ -9,8 +9,8 @@ Before submitting, check each product's documentation for its required citation 
 |--------|--------------|-----|--------------------|----------|
 | | | | | |
 
-Planned (not used yet): NASA FIRMS MODIS + VIIRS active fire, Microsoft Planetary Computer, Meteomatics Weather API.
-See [challenge/suggested-tools.md](challenge/suggested-tools.md).
+Planned: NASA FIRMS MODIS + VIIRS active fire (the challenge's listed resource). See [data-access.md](data-access.md).
+At least one NASA data source is required for global judging.
 
 ## Tools and libraries used
 
@@ -20,7 +20,9 @@ See [challenge/suggested-tools.md](challenge/suggested-tools.md).
 
 ## AI usage
 
-Where AI tools were used, in case the submission asks.
+**Required by the rules.** The submission must say how AI tools were used, and AI-generated code and data must be
+acknowledged in descriptive text and metadata (images/video need a visible watermark). Record each use here as it
+happens. See [challenge/official-requirements.md](challenge/official-requirements.md#ai-super-intelligence-rules).
 
 | What | Tool | Notes |
 |------|------|-------|

@@ -1,50 +1,50 @@
 # Team
 
-Six people. Roles are primary, not exclusive. Every workstream has a backup so nobody is a single point of failure.
+Six people in two teams. Max team size for Space Apps is 6; everyone must be registered on the same Local Event.
 
-| # | Role | Name | GitHub | Backup | Timezone |
-|---|------|------|--------|--------|----------|
-| 1 | Coordination, product and submission | | | Person 5 | |
-| 2 | FIRMS data and provenance | | | Person 3 | |
-| 3 | Geoprocessing and harmonization | | | Person 2 | |
-| 4 | App and visualization | | | Person 6 | |
-| 5 | Anomalies, statistics and validation | | | Person 1 | |
-| 6 | Prediction, infrastructure and integration | | | Person 4 | |
+## Team Harmonization (Part 1 of the challenge)
 
-Known so far: **Lucas** (GitHub `1kaliel`), role not yet assigned.
+Turns raw FIRMS MODIS + VIIRS hotspots into one harmonized, documented dataset and the analytics the app needs.
+Detail: [blocks/01-harmonization.md](blocks/01-harmonization.md).
 
-## Responsibilities
+| Name | GitHub | Focus |
+|------|--------|-------|
+| Kali | [1kaliel](https://github.com/1kaliel) | |
+| Justino | [Gabriel-S-Justino](https://github.com/Gabriel-S-Justino) | |
+| Mateus | [Mateus-Ed-Dev](https://github.com/Mateus-Ed-Dev) | |
 
-**1. Coordination, product and submission.** Owns scope, decisions, time and risks. Keeps the task board and
-diary current. Confirms official requirements, licenses, credits and the submission form. Owns the story, script
-and final delivery. Has the final say on scope.
+## Team Dashboard (Part 2 of the challenge)
 
-**2. FIRMS data and provenance.** Downloads MODIS/VIIRS and preserves raw data. Maintains the data dictionary,
-metadata, licenses and sources. Implements cleaning and quality checks.
+Builds the web app: area and date selection, burning calendar, trends, anomalies, CSV and chart downloads.
+Detail: [blocks/02-historical-calendar.md](blocks/02-historical-calendar.md).
 
-**3. Geoprocessing and harmonization.** Defines the grid / aggregation and sensor comparison. Runs validation on
-the overlap period. Produces the harmonized dataset and metrics.
+| Name | GitHub | Focus |
+|------|--------|-------|
+| Cleber | [Clbrfrancaa](https://github.com/Clbrfrancaa) | |
+| Guilherme | [Guilherme-Martins-Dev](https://github.com/Guilherme-Martins-Dev) | |
+| Jean | [JeanGust4](https://github.com/JeanGust4) | |
 
-**4. App and visualization.** Builds map, filters, timeline and calendar. Integrates analysis results. Prepares
-the demo experience and offline mode.
+Each team plans its own work in detail. Fill in the Focus column when roles are set.
 
-**5. Anomalies, statistics and validation.** Builds the seasonal baseline and anomaly detection. Reviews metrics,
-biases and scientific claims. Maintains the limitations report.
+## Shared responsibilities (assign a name)
 
-**6. Prediction, infrastructure and integration.** Integrates Meteomatics or another chosen source. Builds the
-baseline, model and temporal evaluation. Handles running, publishing and basic monitoring.
+| Responsibility | Owner |
+|----------------|-------|
+| Final say on scope; submission page | |
+| Official requirements check (second reviewer: another team) | |
+| Demo (30 s video or 7 slides) lead | |
+| Data contract between teams (schema of the harmonized dataset) | One from each team |
+| Credits and AI-use record ([resources.md](resources.md)) | |
 
-## Support pairs
+## The hand-off between teams
 
-| Pair | Shared responsibility |
-|------|----------------------|
-| 2 + 3 | Data integrity and harmonization |
-| 4 + 6 | App integration and publishing |
-| 1 + 5 | Story, acceptance criteria and scientific rigor |
+The two teams meet at the **data contract**: the schema of the harmonized dataset and the aggregates the app
+reads. Agree on it early, write it in [data-dictionary.md](data-dictionary.md), and let Dashboard build against
+a small sample file until the real data is ready.
 
 ## Working agreements
 
 - Each work session starts with a quick check-in: done, open decisions, blockers, next priorities.
 - Stuck for more than 30 minutes? Log a `BLOCKER` and tell the team.
 - A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
-- Decisions: Person 1 has the final say on scope; everything else by quick consensus, logged in the diary.
+- Decisions are logged in the diary by whoever makes them.

@@ -1,6 +1,9 @@
 # Block 3: Anomalies and critical-period prediction
 
-**Budget:** 24 hours (H14–H38; baseline work starts at H6) · **Leads:** Person 5 (anomalies, stats) + Person 6 (prediction, infra) · **Checkpoint:** H28
+**Teams:** both · **Window:** H8–H26 · **Checkpoint:** H26 (Sun 11:00 local)
+
+> **3.1 anomalies is core** (the brief asks for comparisons with the historical median and multi-year averages).
+> **3.2 prediction is a stretch goal**: the brief does not ask for it. Start only if the calendar is solid at H14.
 
 ## Goal
 
@@ -24,7 +27,7 @@ The result is **experimental** and must not be presented as an operational alert
 - [ ] Show anomalies on the map and/or calendar.
 - [ ] Manually review positive and negative examples.
 
-## 3.2 Critical-period prediction
+## 3.2 Critical-period prediction (stretch)
 
 - [ ] Define the target **before** training, e.g. "next week above the regional 90th percentile of activity".
 - [ ] Define forecast horizon and geographic unit.
@@ -70,7 +73,7 @@ humidity (if available and consistent); land cover / vegetation (from a suitable
 - Document biases: coverage, clouds, resolution, overpass time, sensor differences.
 - Get review from someone with remote-sensing, fire-science or land-management experience before any real use.
 
-## H28 checkpoint
+## H26 checkpoint
 
 The prediction goes into the main story **only if it beats the baseline or adds clear value**. Otherwise it
 becomes an exploratory analysis with no predictive claim.

@@ -3,49 +3,52 @@
 Status: ⬜ not started · 🔄 in progress · ✅ done · ⛔ blocked / needs a decision
 
 A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
+**The hackathon is running now** (Sat Nov 14 09:00 → Sun Nov 15 23:59 local). See [timeline.md](timeline.md).
 
-## Now (before the hackathon)
+## Shared (everyone)
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 1 | Fill in the 6-person roster and assign roles (`docs/team.md`) | Lucas | ⬜ | |
-| 2 | Confirm the official challenge matching the fire theme; copy its brief | Person 1 | ⬜ | `docs/challenge/` |
-| 3 | List the challenge's suggested tools and data (`docs/challenge/suggested-tools.md`) | Person 1 | ⬜ | After #2 |
-| 4 | Verify official requirements (`docs/challenge/official-requirements.md`) | Person 1 | ⬜ | Second person reviews |
-| 5 | Fill in event dates (`docs/timeline.md`) | Person 1 | ⬜ | |
-| 6 | Request a FIRMS MAP_KEY and test one API call | Person 2 | ⬜ | |
-| 7 | Check FIRMS archive download turnaround and sensor date ranges | Person 2 | ⬜ | |
-| 8 | Shortlist 2–3 pilot regions with enough fire activity | Team | ⬜ | |
-| 9 | Propose tech stack (Python env, app framework, map library) | Persons 4 + 6 | ⬜ | Decide at H0–H1 |
+| 1 | Confirm all 6 are registered on the **same Local Event** and listed on the team's Members tab | | ⬜ | Eligibility rule |
+| 2 | Confirm the Local Event timezone; fix UTC times in `timeline.md` | | ⬜ | |
+| 3 | Name the submission owner and the demo lead (`team.md`) | | ⬜ | |
+| 4 | Agree the data contract: harmonized dataset schema (`data-dictionary.md`) | 1 per team | ⬜ | Unblocks Dashboard |
+| 5 | Keep the AI-use record current (`resources.md`) | Everyone | 🔄 | Required by the rules |
 
-## First-hour decisions (H0–H1)
+## Team Harmonization (Kali, Justino, Mateus)
 
-Each one is logged as a `DECISION` in the diary when closed.
+| # | Task | Owner | Status | Notes |
+|---|------|-------|--------|-------|
+| H1 | Get a FIRMS MAP_KEY; put it in `.env` | | ⬜ | Free, by email |
+| H2 | Pick the area and period for the data pull | | ⬜ | Log as `DECISION` |
+| H3 | Pull MODIS + VIIRS history (see `data-access.md`); log in `data/raw/SOURCES.md` | | ⬜ | |
+| H4 | Share a small sample file with Dashboard | | ⬜ | By Sat 14:00 |
+| H5 | Overlap comparison and harmonization method v0 | | ⬜ | Checkpoint Sat 17:00 |
+| H6 | Monthly aggregates, historical median, anomalies | | ⬜ | |
+| H7 | Validation report + methodology doc | | ⬜ | |
 
-| Decision | Options | Owner | Status | Value |
-|----------|---------|-------|--------|-------|
-| Pilot region | | Team | ⬜ | |
-| Historical period | Must include MODIS/VIIRS overlap | Team | ⬜ | |
-| Main territorial unit | Biome, municipality, regular grid, other | Person 3 | ⬜ | |
-| Grid cell size (if grid) | | Person 3 | ⬜ | |
-| Main time unit | Day, week, month | Person 3 + 5 | ⬜ | |
-| Main infrastructure (only one) | Local, Google Cloud, Azure | Person 6 | ⬜ | |
-| Person with final say on scope | | Team | ⬜ | Default: Person 1 |
-| Official submission and judging requirements | | Person 1 | ⬜ | |
-| FIRMS access and credentials confirmed | | Person 2 | ⬜ | |
-| Current terms of each Global Offer we'll use | | Person 1 | ⬜ | Before activating |
+Full criteria: [blocks/01-harmonization.md](blocks/01-harmonization.md).
 
-Pilot region criteria: enough fire activity, data available, narrative relevance, small enough to process within the hackathon.
+## Team Dashboard (Cleber, Guilherme, Jean)
 
-## Workstream status
+| # | Task | Owner | Status | Notes |
+|---|------|-------|--------|-------|
+| D1 | Pick the stack (framework, map library, hosting); log as `DECISION` | | ⬜ | |
+| D2 | App skeleton: map, AOI drawing or lat/lon input, date range | | ⬜ | |
+| D3 | Burning calendar (month × year) with an accessible color ramp | | ⬜ | Core of the brief |
+| D4 | Trends; current month vs historical median; anomalies | | ⬜ | |
+| D5 | CSV download of hotspots; download of charts/analytics | | ⬜ | |
+| D6 | Deploy to a public link; offline fallback; screenshots | | ⬜ | Before Sun 19:00 |
 
-| Workstream | Owner | Status | Next milestone | Blocker |
-|------------|-------|--------|----------------|---------|
-| Coordination / submission | Person 1 | ⬜ | First-hour decisions (H1) | |
-| FIRMS data | Person 2 | ⬜ | Raw samples (H3) | |
-| Harmonization | Person 3 | ⬜ | Dataset v0 (H6) | |
-| App / visualization | Person 4 | ⬜ | Empty map (H3) | |
-| Anomalies / validation | Person 5 | ⬜ | Seasonal baseline (H10) | |
-| Prediction / infrastructure | Person 6 | ⬜ | Target + baseline (H20) | |
+Full criteria: [blocks/02-historical-calendar.md](blocks/02-historical-calendar.md).
 
-Detailed per-block tasks: [blocks/01](blocks/01-harmonization.md) · [blocks/02](blocks/02-historical-calendar.md) · [blocks/03](blocks/03-anomalies-prediction.md)
+## Submission
+
+| # | Task | Owner | Status |
+|---|------|-------|--------|
+| S1 | Project page fields drafted in English | | ⬜ |
+| S2 | Demo: 30 s video (English subtitles if not English) or ≤ 7 slides | | ⬜ |
+| S3 | References field lists every data source, library and tool | | ⬜ |
+| S4 | AI-use description written | | ⬜ |
+| S5 | All links tested in a private window | | ⬜ |
+| S6 | Submitted and confirmation saved | | ⬜ |

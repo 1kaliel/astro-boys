@@ -1,6 +1,6 @@
 # Model card: critical-period PoC
 
-Owner: Person 6, reviewed by Person 5. Fill in before the H28 checkpoint.
+Stretch goal: only filled in if prediction goes ahead at the H26 checkpoint (Sun 11:00 local).
 
 ## Status
 

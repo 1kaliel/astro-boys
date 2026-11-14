@@ -12,6 +12,13 @@ Rules for anyone working in this repo: team members and AI coding agents alike.
   suggested option doesn't work.
 - Every resource we actually use is credited in [docs/resources.md](docs/resources.md).
 
+## Rule: English, and acknowledge AI use
+
+- The submission page and **every linked material, this repo included,** must be in English.
+- AI tools are allowed, but AI-generated code and data must be acknowledged in descriptive text and metadata,
+  and AI must not be used to come up with the solution idea. Record AI use in
+  [docs/resources.md](docs/resources.md#ai-usage). Details: [docs/challenge/official-requirements.md](docs/challenge/official-requirements.md#ai-super-intelligence-rules).
+
 ## The Diary Rule (non-negotiable)
 
 **Everything that matters gets written in the diary, with a timestamp, when it happens.**
@@ -83,14 +90,15 @@ Full list in [docs/project-plan.md](docs/project-plan.md#scientific-guardrails).
 ```
 docs/project-plan.md              the plan: goal, scope, architecture, guardrails, definition of done
 docs/blocks/                      per-block tasks and acceptance criteria (01 harmonization, 02 calendar, 03 anomalies/prediction)
-docs/timeline.md                  event dates, 48-hour schedule, checkpoints
+docs/timeline.md                  event dates, schedule, checkpoints
 docs/tasks.md                     task board, first-hour decisions, workstream status
 docs/team.md                      six roles, backups, support pairs
 docs/risks.md                     risks and contingency plans
 docs/methodology.md               methods as decided (living document)
 docs/data-dictionary.md           every field in the harmonized dataset
 docs/model-card.md                prediction PoC: target, data, baseline, results, limits
-docs/challenge/                   challenge selection, official requirements, suggested tools
+docs/challenge/                   brief, official requirements, suggested tools
+docs/data-access.md               how to get FIRMS MODIS + VIIRS history
 docs/resources.md                 everything we use, with credits
 docs/diary/                       daily timestamped log
 docs/decisions/                   ADRs for big decisions
@@ -106,5 +114,6 @@ presentation/                     script, slides, final media
 
 ## Current status
 
-**Working theme:** NASA FIRMS MODIS/VIIRS fire harmonization, historical fire calendar and critical periods (plan v1, [ADR 0002](docs/decisions/0002-adopt-plan-v1-fire-theme.md)).
-**Official challenge:** not yet confirmed. Update this line once it is.
+**Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/), see [docs/challenge/brief.md](docs/challenge/brief.md).
+**Deadline:** Sun Nov 15, 2026, 23:59 local event time. Submission requirements: [docs/challenge/official-requirements.md](docs/challenge/official-requirements.md).
+**Teams:** Harmonization (FIRMS data → harmonized dataset) and Dashboard (web app). See [docs/team.md](docs/team.md).

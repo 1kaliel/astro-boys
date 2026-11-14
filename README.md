@@ -2,9 +2,8 @@
 
 Our team's project for the **NASA International Space Apps Challenge**.
 
-> **Working theme:** harmonizing NASA FIRMS **MODIS** and **VIIRS** active-fire detections into a comparable
-> history, exploring it through a map, timeline and regional fire calendar, and flagging critical periods.
-> **Official challenge:** to be confirmed. See [docs/challenge/selection.md](docs/challenge/selection.md).
+> **Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/)
+> **Hackathon:** Sat Nov 14 09:00 → Sun Nov 15 23:59 (local event time), 2026
 
 ## The project
 
@@ -12,7 +11,8 @@ Fire records from different satellite sensors can't be compared naively. We:
 
 1. **Harmonize** MODIS and VIIRS detections in space and time, keeping provenance, and validate them on the period both sensors cover.
 2. **Explore** the history through a map, timeline and regional seasonality calendar.
-3. **Flag** anomalous periods against a seasonal baseline, and test a proof of concept for estimating critical periods.
+3. **Flag** anomalies and critical periods by comparing each month with the historical median for the selected area.
+4. **Download** the hotspots and analytics for any area and date range as CSV.
 
 Full plan: [docs/project-plan.md](docs/project-plan.md).
 
@@ -25,9 +25,11 @@ Full plan: [docs/project-plan.md](docs/project-plan.md).
 |------|--------------|
 | [docs/project-plan.md](docs/project-plan.md) | Goal, scope, architecture, guardrails, definition of done |
 | [docs/blocks/](docs/blocks/) | The three work blocks with tasks and acceptance criteria |
-| [docs/timeline.md](docs/timeline.md) | 48-hour schedule and checkpoints |
-| [docs/tasks.md](docs/tasks.md) | Task board and first-hour decisions |
-| [docs/team.md](docs/team.md) | Roles, backups, support pairs |
+| [docs/challenge/](docs/challenge/) | Challenge brief, official requirements, suggested tools |
+| [docs/data-access.md](docs/data-access.md) | How we get FIRMS MODIS + VIIRS history fast |
+| [docs/timeline.md](docs/timeline.md) | Event dates, schedule and checkpoints |
+| [docs/tasks.md](docs/tasks.md) | Task board per team |
+| [docs/team.md](docs/team.md) | Team Harmonization and Team Dashboard |
 | [docs/risks.md](docs/risks.md) | Risks and contingency plans |
 | [docs/methodology.md](docs/methodology.md) · [docs/data-dictionary.md](docs/data-dictionary.md) · [docs/model-card.md](docs/model-card.md) | Science docs |
 | [docs/diary/](docs/diary/) · [docs/decisions/](docs/decisions/) | Timestamped diary and decision records |

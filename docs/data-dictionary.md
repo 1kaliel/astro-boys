@@ -1,6 +1,6 @@
 # Data dictionary
 
-Owner: Person 2. Every field in the harmonized dataset is documented here before Block 2 uses it.
+Owner: Team Harmonization. This is the **data contract** with Team Dashboard: agree the schema early, then only change it with a diary `DECISION` and a heads-up to Dashboard.
 
 ## Conventions
 

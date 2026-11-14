@@ -1,6 +1,6 @@
 # Block 1: Data harmonization
 
-**Budget:** 6 hours (H0–H6) · **Leads:** Person 2 (FIRMS data) + Person 3 (geoprocessing) · **Checkpoint:** H6
+**Team:** Harmonization (Kali, Justino, Mateus) · **Window:** H0–H8 (Sat 09:00–17:00 local) · **Checkpoint:** H8
 
 ## Goal
 
@@ -9,8 +9,8 @@ not mistaken for real changes in fire activity.
 
 ## Depends on
 
-- Pilot region and period decided (see [../tasks.md](../tasks.md), first-hour decisions).
-- FIRMS access and the chosen products (MAP_KEY for the API; archive download for long history).
+- Area and period for the data pull decided (task H2 in [../tasks.md](../tasks.md)).
+- FIRMS access and the chosen products. How: [../data-access.md](../data-access.md).
 - Region / municipality / biome boundaries, if used.
 - Reproducible processing environment; space for raw and processed data.
 
@@ -63,6 +63,6 @@ not mistaken for real changes in fire activity.
 - [ ] The docs state that an active detection ≠ burned area, number of fires, or impact.
 - [ ] The dataset feeds Block 2 with no hidden manual steps.
 
-## H6 checkpoint
+## H8 checkpoint
 
 If harmonization isn't meeting the criteria: **shrink the region and/or period**. Never move on with data that lacks provenance.
