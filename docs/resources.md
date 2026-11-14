@@ -43,4 +43,4 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 
 | What | Tool | Notes |
 |------|------|-------|
-| Calendar v1 mock generator, synthetic fixture values, and usage notes | Codex | Dashboard development only. See [calendar mock](calendar-mock.md). |
+| | | |
