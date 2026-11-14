@@ -62,24 +62,49 @@ Or edit `docs/diary/YYYY-MM-DD.md` by hand using the format in [docs/diary/READM
 - Branches: `feat/<thing>`, `fix/<thing>`, `docs/<thing>`, `data/<thing>`. Once building starts, no direct pushes to `main`; open a PR.
 - Commits: [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `data:`, `chore:`.
 - Never commit secrets (API keys, Earthdata credentials). Use `.env` (git-ignored) and document variables in `.env.example`.
-- Large datasets stay out of git: download scripts go in `scripts/`, files in `data/raw/` (git-ignored).
+- Large datasets stay out of git: download scripts go in `scripts/`, files in `data/` (git-ignored). See [data/README.md](data/README.md).
+- Raw data is immutable. Every download is logged in `data/raw/SOURCES.md`. Processed datasets are versioned.
+- Every figure used in the app or presentation states its source, period and unit.
+- A change that affects metrics means regenerating the results in `artifacts/`.
+- A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
+
+## Scientific guardrails
+
+Full list in [docs/project-plan.md](docs/project-plan.md#scientific-guardrails). The non-negotiables:
+
+- MODIS and VIIRS are different instruments. Never treat raw counts as equivalent.
+- Every processed row keeps `sensor`, `product` and its time reference.
+- An active-fire detection is not burned area, a fire count, or impact.
+- Model splits are chronological; no future information in features; always compare to a baseline.
+- Say "risk", "probability", "critical period". Never promise a fire will happen.
 
 ## Where things live
 
 ```
+docs/project-plan.md              the plan: goal, scope, architecture, guardrails, definition of done
+docs/blocks/                      per-block tasks and acceptance criteria (01 harmonization, 02 calendar, 03 anomalies/prediction)
+docs/timeline.md                  event dates, 48-hour schedule, checkpoints
+docs/tasks.md                     task board, first-hour decisions, workstream status
+docs/team.md                      six roles, backups, support pairs
+docs/risks.md                     risks and contingency plans
+docs/methodology.md               methods as decided (living document)
+docs/data-dictionary.md           every field in the harmonized dataset
+docs/model-card.md                prediction PoC: target, data, baseline, results, limits
+docs/challenge/                   challenge selection, official requirements, suggested tools
+docs/resources.md                 everything we use, with credits
 docs/diary/                       daily timestamped log
 docs/decisions/                   ADRs for big decisions
-docs/tasks.md                     task board (owner, status)
-docs/timeline.md                  event schedule and our milestones
-docs/team.md                      who's who
-docs/challenge/selection.md       picking the challenge
-docs/challenge/suggested-tools.md the challenge's recommended tools and data (our default stack)
-docs/resources.md                 everything we use, with credits
+docs/plan/                        original plan documents
+data/                             raw/ (immutable), interim/, processed/ (git-ignored except docs)
+notebooks/                        exploration and experiments
+src/                              pipeline, analysis and app code
 scripts/                          helpers (log.sh, data downloads)
-src/                              project code (structure decided after the challenge is picked)
-data/                             local data (raw/ and processed/ are git-ignored)
+tests/                            data checks and tests for critical functions
+artifacts/                        metrics, figures, backup screenshots
+presentation/                     script, slides, final media
 ```
 
 ## Current status
 
-**Challenge: NOT YET CHOSEN.** Update this line once decided.
+**Working theme:** NASA FIRMS MODIS/VIIRS fire harmonization, historical fire calendar and critical periods (plan v1, [ADR 0002](docs/decisions/0002-adopt-plan-v1-fire-theme.md)).
+**Official challenge:** not yet confirmed. Update this line once it is.

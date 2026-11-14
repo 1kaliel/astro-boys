@@ -5,11 +5,19 @@
 *.pem
 .netrc
 
-# Data (keep folder structure only)
+# Data (keep folder structure and docs only)
 data/raw/*
+data/interim/*
 data/processed/*
 !data/raw/.gitkeep
+!data/raw/SOURCES.md
+!data/interim/.gitkeep
 !data/processed/.gitkeep
+*.parquet
+*.geoparquet
+*.gpkg
+*.shp
+*.zip
 
 # Python
 __pycache__/

@@ -1,16 +1,27 @@
 # Challenge selection
 
-**Status:** not yet chosen.
+**Working theme (plan v1):** harmonizing NASA FIRMS MODIS/VIIRS fire detections, a historical fire calendar,
+and critical-period identification. See [../project-plan.md](../project-plan.md).
 
-## Process
+**Official challenge:** ⛔ not yet confirmed. The theme must be matched to an official Space Apps challenge
+before H0, and that challenge's brief, judging criteria and suggested resources take priority over the plan.
 
-1. Add candidate challenges below.
-2. Score each 1–5 per criterion (higher is better).
-3. Discuss the top 2–3, decide, log it (`./scripts/log.sh decision ...`) and write an ADR.
-4. Copy the chosen challenge's brief to `docs/challenge/brief.md` and its recommended resources to
-   [suggested-tools.md](suggested-tools.md).
+## Next steps
 
-## Criteria
+1. Find the official challenge(s) the fire theme fits. Record name and link below.
+2. Copy the full brief to `brief.md` in this folder.
+3. Copy its recommended resources to [suggested-tools.md](suggested-tools.md).
+4. Check the plan still fits the brief; log any change as a `DECISION`.
+5. Write an ADR confirming the challenge.
+
+## Candidates
+
+| # | Official challenge | Link | Fits the fire theme? | Notes |
+|---|--------------------|------|----------------------|-------|
+| 1 | | | | |
+| 2 | | | | |
+
+## Criteria (if comparing several)
 
 | Criterion        | Question                                                              |
 |------------------|-----------------------------------------------------------------------|
@@ -18,13 +29,4 @@
 | **Tools / data** | Are the suggested tools and data accessible, documented, manageable?   |
 | **Skills fit**   | Can our team build this with the skills we have?                       |
 | **Demo-ability** | Can we show something impressive in a short video and pitch?           |
-| **Scope**        | Can a credible MVP be done within the hackathon window?                |
-| **Fun**          | Will we enjoy working on it at 3am?                                    |
-
-## Candidates
-
-| # | Challenge | Link | Impact | Tools/data | Skills | Demo | Scope | Fun | **Total** | Notes |
-|---|-----------|------|:------:|:----------:|:------:|:----:|:-----:|:---:|:---------:|-------|
-| 1 |           |      |        |            |        |      |       |     |           |       |
-| 2 |           |      |        |            |        |      |       |     |           |       |
-| 3 |           |      |        |            |        |      |       |     |           |       |
+| **Scope**        | Can a credible MVP be done within 48 hours?                            |
