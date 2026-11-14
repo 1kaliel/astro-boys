@@ -1,7 +1,7 @@
 # Project plan (v2)
 
-**Status: PROPOSED on Sat Nov 14, 18:30 local. Becomes final when the team answers the
-[open decisions](#open-decisions).** Until then the defaults below apply, so nobody waits.
+**Status: LOCKED IN on Sat Nov 14 (roles, stack, pilot region).** Remaining specifics are decided by each
+task's owner and logged; the defaults in [open decisions](#open-decisions) apply until then.
 
 Supersedes plan v1. Built from the team's six research documents ([ADR 0005](decisions/0005-plan-v2.md)).
 Specs: [harmonization](spec/harmonization.md) · [dashboard](spec/dashboard.md) · [data contract](data-dictionary.md).
@@ -23,7 +23,7 @@ high-definition one that also sees motorbikes. The numbers rise because the came
 
 ## What we deliver
 
-1. **A harmonized hotspot dataset**: monthly VIIRS-equivalent counts per 0.25° cell, early 2000s → today, with
+1. **A harmonized hotspot dataset**: monthly VIIRS-equivalent counts per 0.25° cell for Northeast Brazil, early 2000s → today, with
    origin labels and uncertainty, validated on years the model never saw.
 2. **A web app** (public URL): pick an area and period → burning calendar (year × month), this month vs the
    historical median, anomalies, raw vs harmonized comparison, CSV download.
@@ -57,9 +57,9 @@ VIIRS scale, with an error margin, and check it by predicting years the model di
 
 | Tier | Harmonization | Dashboard |
 |------|---------------|-----------|
-| **Must** (by Sun 11:00) | Brazil; 2003 → 2025; L2 monthly counts; F + B harmonization; `calendar/v1`; validation table with baselines; before/after chart | Area + date selection; calendar heatmap with estimated months marked; this month vs median; map; CSV download; limitations panel; deployed on Cloud Run |
+| **Must** (by Sun 11:00) | **Northeast Brazil (pilot)**; 2003 → 2025; L2 monthly counts; F + B harmonization; `calendar/v1`; validation table with baselines; before/after chart | Area + date selection; calendar heatmap with estimated months marked; this month vs median; map; CSV download; limitations panel; deployed on Cloud Run |
 | **Should** (by Sun 15:00) | Bootstrap intervals; 2026 via API with partial-month handling; anomalies (robust z); NOAA-20 continuity factor; Terra-only 2000-11 → 2002-06; sensitivity to confidence filter | Raw vs harmonized toggle and trend; uncertainty display; day/night toggle; anomaly mode; seasonal profile; chart downloads |
-| **Stretch** (only after Checkpoint C) | More countries / South America; matched-event sample (Aqua × NOAA-20, ±5 min) as a validation appendix; FRP-equivalent; comparison with INPE BDQueimadas | AGGS drill-down (L3, neighbors); AGGS priority index; biome / municipality filters |
+| **Stretch** (only after Checkpoint C) | All of Brazil, then more countries; matched-event sample (Aqua × NOAA-20, ±5 min) as a validation appendix; FRP-equivalent; comparison with INPE BDQueimadas | AGGS drill-down (L3, neighbors); AGGS priority index; biome / municipality filters |
 | **Out** | Prediction or early warning; weather data; Level 3 fire masks; synthetic VIIRS points | Image upload; fire-spread inference |
 
 Where the team's proposals landed:
@@ -114,22 +114,24 @@ For everyone, including AI coding agents:
 
 ## Open decisions
 
-Defaults apply until the team says otherwise. Answers get logged as `DECISION` entries.
+**Rule (team, Sat Nov 14): the owner of a task decides its specifics**, within the guardrails and the data
+contract, and logs the choice as a `DECISION`. Defaults apply until the owner says otherwise.
 
-| # | Decision | Default in this plan | Who decides |
-|---|----------|----------------------|-------------|
-| Q1 | Dashboard stack | Team's choice tonight; option C (single Python app) if no one is fluent in a frontend framework | Dashboard |
-| Q2 | Grid | Hierarchical 4×4 degree grid (1° / 0.25° / 0.0625°), AGGS IDs; H3 res 5 is the alternative | Both |
-| Q3 | Direction and reference | MODIS → VIIRS-equivalent, S-NPP scale | Harmonization |
-| Q4 | Method and years | F + B with pooling; calibrate 2012–2019, test 2020–2021; OLS as baseline | Harmonization |
-| Q5 | Primary metric | Hotspot count; active days as secondary | Both |
-| Q6 | Extent and demo region | Process all of Brazil; tell the story on one region (MATOPIBA proposed) | All |
-| Q7 | Start of the series | 2003 in the MVP (Aqua); Terra-only 2000-11 → 2002-06 as should-have | Harmonization |
-| Q8 | AGGS scope | Grid now; drill-down and priority index are stretch; meaning of the 0–9 and H/M/L scales to be defined by its authors | AGGS authors |
-| Q9 | Prediction / early warning | Out | All |
-| Q10 | Names on tasks; submission owner; demo lead; video or slides | Proposed in [tasks.md](tasks.md) | All |
-| Q11 | FIRMS MAP_KEY for 2026 data | Justino requests it | Harmonization |
-| Q12 | Local Event registration and local judging time | To confirm | Kali |
+| # | Decision | Status | Owner |
+|---|----------|--------|-------|
+| Q1 | Dashboard stack | ✅ **FastAPI backend + single-page frontend.** Frontend framework (Angular or React) still to name | Guilherme, Cleber |
+| Q2 | Grid | Default: hierarchical 4×4 degree grid (1° / 0.25° / 0.0625°), AGGS IDs. H3 res 5 is the alternative | Mateus (pipeline) with Guilherme (map) |
+| Q3 | Direction and reference | Default: MODIS → VIIRS-equivalent, S-NPP scale | Kali |
+| Q4 | Method and years | Default: F + B with pooling; calibrate 2012–2019, test 2020–2021; OLS as baseline | Kali |
+| Q5 | Primary metric | Default: hotspot count; active days as secondary | Kali |
+| Q6 | Extent and demo region | ✅ **Northeast Brazil only, as the pilot.** Brazil-wide is stretch | Team |
+| Q7 | Start of the series | Default: 2003 in the MVP (Aqua); Terra-only 2000-11 → 2002-06 as should-have | Kali |
+| Q8 | AGGS scope | Default: grid now; drill-down and priority index are stretch | Guilherme |
+| Q9 | Prediction / early warning | Default: out | Kali |
+| Q10 | Names on tasks | ✅ Confirmed ([team.md](team.md)). Demo lead and video-vs-slides still to confirm | Team |
+| Q11 | FIRMS MAP_KEY for 2026 data | ✅ Key obtained. Justino stores it in `.env` on the VM and locally; never in git or in docs | Justino |
+| Q12 | Local Event registration (all 6, same event) and local judging time | To confirm | Kali |
+| Q13 | Outside material (other teams' code, text, numbers) | ✅ None used. Anything added later goes in [resources.md](resources.md) | Everyone |
 
 ## Disclaimer
 

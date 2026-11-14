@@ -1,7 +1,7 @@
 # Spec: harmonization (Team Harmonization)
 
-**Status: PROPOSED (plan v2), pending team lock-in.** Open choices are marked ❓ and listed in
-[../project-plan.md](../project-plan.md#open-decisions). Once locked, changes need a diary `DECISION`.
+**Status: plan v2, locked in for roles and extent.** Choices marked ❓ are defaults that their task owner may
+change with a diary `DECISION` ([open decisions](../project-plan.md#open-decisions)). Method owner: Kali. Pipeline owner: Mateus.
 
 Consolidates the team's research: the Belize 2020 sensor audit, the transfer-function proposals (OLS and
 Poisson ratio with shrinkage), the platform-wise activity metric, and the AGGS grid proposal.
@@ -30,7 +30,12 @@ mean a change in fire activity, not a change of satellite.
 | FIRMS area API (`_SP`, `_NRT`) | S-NPP, NOAA-20 | 2026 | Current year and current month (needs MAP_KEY) |
 
 Each zip holds one CSV per country at `{sensor}/{YYYY}/{sensor}_{YYYY}_{Country}.csv` (verified). The pipeline
-extracts only the configured countries (`ASTRO_COUNTRIES`, default `Brazil` ❓ Q6).
+extracts only the configured countries (`ASTRO_COUNTRIES=Brazil`) and clips to the pilot extent.
+
+**Pilot extent: Northeast Brazil** (Maranhão, Piauí, Ceará, Rio Grande do Norte, Paraíba, Pernambuco, Alagoas,
+Sergipe, Bahia). MVP clip: bounding box west −48.8, south −18.4, east −34.7, north −1.0 (approximate; it includes
+slivers of neighboring states and ocean). State boundaries from IBGE are a should-have. The pooling "region" is
+this extent. Brazil-wide processing is stretch: only the clip changes.
 
 Known data facts to respect:
 
@@ -56,6 +61,7 @@ Raw files are never edited. The normalized table adds derived columns and keeps 
 | Satellite | `Terra`, `Aqua`, `SNPP` (FIRMS `N`), `N20`, `N21` |
 | Confidence class | `confidence_class`: MODIS 0–29 `l`, 30–79 `n`, 80–100 `h`; VIIRS as given. Used for filtering only |
 | Main filter | `passes_main_filter` = `type == 0` AND (MODIS `confidence >= 30` OR VIIRS `confidence in (n, h)`) |
+| Clip | Keep rows inside the pilot extent; the same clip for every sensor |
 | Grid | `cell_l1`, `cell_l2`, `cell_l3` (section 4) |
 | Diagnostics | `delta_t_k` = hot band − reference band, per sensor. Diagnostic only, never a classifier |
 | QA | Coordinates in range, valid timestamps, exact duplicates dropped and counted, `version` tabulated |

@@ -5,19 +5,20 @@ Status: ⬜ not started · 🔄 in progress · ✅ done · ⛔ blocked / needs a
 A task is done only when its deliverable exists, someone else can reproduce it, and it meets its acceptance criteria.
 Plan: [project-plan.md](project-plan.md) · Schedule and checkpoints: [timeline.md](timeline.md).
 
-> **Names below are a proposal** (open decision Q10). Swap freely at the lock-in, then update this file.
-> Every task has one owner; pair up when stuck for more than 30 minutes.
+> Owners confirmed by the team on Sat Nov 14 ([team.md](team.md)). **The owner of a task decides its specifics**
+> (within the guardrails and the data contract) and logs the choice as a `DECISION`.
+> Jean is the floater: ask him when a task needs a second pair of hands.
 
 ## Lock-in (Sat 18:30–19:30, everyone)
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| L1 | Answer the [open decisions](project-plan.md#open-decisions) Q1–Q12; log each as `DECISION` | Kali (collects) | ⬜ | Defaults apply if unanswered |
-| L2 | Dashboard stack chosen and logged | Dashboard | ⬜ | Q1; blocks D1 |
-| L3 | Data contract v1 frozen ([data-dictionary.md](data-dictionary.md)) | Kali + Cleber | ⬜ | One reviewer per team |
-| L4 | Names confirmed on every task; submission owner and demo lead named | All | ⬜ | Q10 |
+| L1 | Answer the [open decisions](project-plan.md#open-decisions) Q1–Q12; log each as `DECISION` | Kali + Jean (logs) | ⬜ | Defaults apply if unanswered |
+| L2 | Dashboard stack chosen and logged | Dashboard | 🔄 | Option A chosen: FastAPI + SPA. Frontend framework still to name |
+| L3 | Data contract v1 frozen ([data-dictionary.md](data-dictionary.md)) | Mateus + Guilherme | ⬜ | One reviewer per team |
+| L4 | Names confirmed on every task; submission owner and demo lead named | All | 🔄 | Roles confirmed; demo lead and video-vs-slides still open |
 | L5 | All 6 registered on the **same Local Event** and on the team's Members tab | Kali | ⬜ | Eligibility rule; Q12 |
-| L6 | Existing prototype scripts (harmonization pipeline, step-by-step example) brought into the repo, in English | Their author | ⬜ | Reuse before rewriting |
+| L6 | Existing prototype scripts (harmonization pipeline, step-by-step example) brought into the repo, in English | Kali | ⬜ | Reuse before rewriting |
 
 ## Team Harmonization
 
@@ -25,19 +26,19 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
-| H1 | Mock `calendar` sample with the v1 columns | Kali | Sat 19:30 | ⬜ | Small Parquet/JSON for Dashboard |
-| H2 | `ingest`: zips → Brazil CSVs → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Kali | Sat 22:00 | ⬜ | Parquet + manifest |
+| H1 | Mock `calendar` sample with the v1 columns | Mateus | Sat 19:30 | ⬜ | Small Parquet/JSON for Dashboard |
+| H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ⬜ | Parquet + manifest |
 | H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
-| H4 | `aggregate` → `cell_month_counts/v1` | Kali | Sat 23:00 | ⬜ | **Checkpoint A** |
-| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Mateus | Sat 23:00 | ⬜ | Notebook or script + test |
-| H6 | `calibrate` on Brazil 2012–2019 → `factors/v1` | Mateus | Sun 01:00 | ⬜ | Parquet + manifest |
-| H7 | `harmonize` → `calendar/v1` (no intervals yet) pushed to the bucket | Kali | Sun 02:00 | ⬜ | **Checkpoint B** |
-| H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Mateus | Sun 02:00 | ⬜ | `artifacts/figures/` |
-| H9 | FIRMS MAP_KEY; pull 2026 for Brazil (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ⬜ | `raw/firms/api/…` |
-| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Mateus | Sun 10:00 | ⬜ | `validation.json` + table |
-| H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Justino | Sun 11:00 | ⬜ | **Checkpoint C** |
-| H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Mateus | Sun 15:00 | ⬜ | Only if H10–H11 are done |
-| H13 | Methodology and limitations text ([methodology.md](methodology.md)); reproducibility run from a clean clone | Justino | Sun 18:00 | ⬜ | |
+| H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ⬜ | **Checkpoint A** |
+| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ⬜ | Notebook or script + test |
+| H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ⬜ | Parquet + manifest |
+| H7 | `harmonize` → `calendar/v1` (no intervals yet) pushed to the bucket | Mateus | Sun 02:00 | ⬜ | **Checkpoint B** |
+| H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ⬜ | `artifacts/figures/` |
+| H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ⬜ | `raw/firms/api/…` |
+| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | ⬜ | `validation.json` + table |
+| H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | ⬜ | **Checkpoint C** |
+| H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Kali | Sun 15:00 | ⬜ | Only if H10–H11 are done |
+| H13 | Methodology and limitations text ([methodology.md](methodology.md)); reproducibility run from a clean clone | Justino + Jean | Sun 18:00 | ⬜ | |
 
 ## Team Dashboard
 
@@ -45,25 +46,25 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
-| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Cleber | Sat 21:00 | ⬜ | Runs with `docker run` |
-| D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Cleber | Sat 23:00 | ⬜ | Function or endpoint + test |
+| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ⬜ | Runs with `docker run` |
+| D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Guilherme + Cleber | Sat 23:00 | ⬜ | Function or endpoint + test |
 | D3 | Map with L2 cells; rectangle draw and lat/lon bounds → list of cells | Guilherme | Sat 23:00 | ⬜ | **Checkpoint A** |
-| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Jean | Sat 23:00 | ⬜ | **Checkpoint A** |
-| D5 | This month vs historical median card; date-range selector | Jean | Sun 02:00 | ⬜ | |
-| D6 | CSV download of native hotspots for area + dates | Cleber | Sun 02:00 | ⬜ | **Checkpoint B** |
+| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ⬜ | **Checkpoint A** |
+| D5 | This month vs historical median card; date-range selector | Cleber | Sun 02:00 | ⬜ | |
+| D6 | CSV download of native hotspots for area + dates | Guilherme + Cleber | Sun 02:00 | ⬜ | **Checkpoint B** |
 | D7 | Map ↔ calendar linked by one shared state | Guilherme | Sun 02:00 | ⬜ | |
-| D8 | First Cloud Run deploy ([runbook](../deploy/cloudrun/README.md)); Kali approves the deploy | Cleber + Kali | Sun 09:00 | ⬜ | Public URL |
-| D9 | Should-haves: raw vs harmonized toggle + trend; uncertainty; day/night; anomaly mode; seasonal profile | Jean + Guilherme | Sun 15:00 | ⬜ | **Checkpoint C** = must-haves live |
+| D8 | First Cloud Run deploy ([runbook](../deploy/cloudrun/README.md)); Kali approves the deploy | Guilherme + Cleber; Kali approves | Sun 09:00 | ⬜ | Public URL |
+| D9 | Should-haves: raw vs harmonized toggle + trend; uncertainty; day/night; anomaly mode; seasonal profile | Cleber + Guilherme | Sun 15:00 | ⬜ | **Checkpoint C** = must-haves live |
 | D10 | "How to read / limitations / sources" panel; all text in English | Jean | Sun 13:00 | ⬜ | |
 | D11 | Stretch (only if "go" at Checkpoint C): AGGS drill-down to L3 with neighbors | Guilherme | Sun 15:00 | ⬜ | |
-| D12 | Final deploy, offline fallback (local container), screenshots in `artifacts/screenshots/` | Cleber | Sun 18:00 | ⬜ | |
+| D12 | Final deploy, offline fallback (local container), screenshots in `artifacts/screenshots/` | Guilherme + Cleber; Jean screenshots | Sun 18:00 | ⬜ | |
 
 ## Submission
 
 | # | Task | Owner | Due (local) | Status |
 |---|------|-------|-------------|--------|
-| S1 | Project page fields drafted in English (summary, description, NASA data, references) | Kali | Sun 20:00 | ⬜ |
-| S2 | Demo: ≤ 30 s video (English subtitles) or ≤ 7 slides; storyboard by Sun 13:00 | Demo lead (Q10) | Sun 21:00 | ⬜ |
+| S1 | Project page fields drafted in English (summary, description, NASA data, references) | Kali + Jean | Sun 20:00 | ⬜ |
+| S2 | Demo: ≤ 30 s video (English subtitles) or ≤ 7 slides; storyboard by Sun 13:00 | Jean (proposed) | Sun 21:00 | ⬜ |
 | S3 | References list: every data source, library, tool; FIRMS citation and disclaimer link | Justino | Sun 20:00 | ⬜ |
 | S4 | AI-use statement for the form + acknowledgment in the repo ([resources.md](resources.md#ai-usage)) | Kali | Sun 20:00 | ⬜ |
 | S5 | All links tested in a private window; repo public and in English | Second reviewer (other team) | Sun 22:00 | ⬜ |

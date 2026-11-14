@@ -1,6 +1,8 @@
 # Spec: web app and burning calendar (Team Dashboard)
 
-**Status: PROPOSED (plan v2), pending team lock-in.** The stack is the Dashboard team's choice ❓ Q1.
+**Status: plan v2, locked in.** Stack: **option A, FastAPI backend + single-page frontend** (team decision,
+Sat Nov 14); the frontend framework is the owners' call. Owners: Guilherme (map, backend) and Cleber (calendar,
+charts, backend); Jean floats. The default map view is the pilot extent, Northeast Brazil.
 Data comes from [`calendar/v1`](../data-dictionary.md#1-processedcalendarv1--the-dashboards-main-table).
 
 ## 1. Who it's for and what it answers
@@ -79,9 +81,9 @@ Image upload / georeferencing, fire-spread inference, prediction or alerts.
 - Never show an index or z-score as a probability of fire.
 - Show sensor, period, unit and source on every chart. AI-generated images need a visible watermark.
 
-## 5. Architecture options ❓ Q1
+## 5. Architecture: option A chosen
 
-The Dashboard team picks one and logs it as a `DECISION`. All fit the Cloud Run container contract
+Options B and C stay documented as fallbacks for Checkpoint A. All fit the Cloud Run container contract
 ([deploy/cloudrun/README.md](../../deploy/cloudrun/README.md)).
 
 | Option | Shape | For | Against |
@@ -90,8 +92,8 @@ The Dashboard team picks one and logs it as a `DECISION`. All fit the Cloud Run 
 | B. Static + in-browser | Pre-exported JSON/Parquet per L1 tile; Leaflet + Plotly; served by a tiny static container | Fewest moving parts; works offline | CSV of native hotspots needs pre-cut files; big extents get heavy |
 | C. Single Python app | Streamlit or Dash + DuckDB | Fastest to a working demo with one language | Less control over the UI; drawing tools are more limited |
 
-If nobody on the team is fluent in a frontend framework, C is the safe choice; A gives the best result if the
-team already knows it. Whatever is chosen, **freeze it tonight**.
+With option A, serve the built frontend from the same FastAPI container (one image, one Cloud Run service) so
+there is a single deploy. If no calendar is on screen at Checkpoint A (Sat 23:00), fall back to option C.
 
 ## 6. Functional contract with the data
 

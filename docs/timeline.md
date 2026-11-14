@@ -23,8 +23,8 @@ We **submit by Sun 22:30**, keeping 1.5 hours of margin.
 |--------|---------------|-----------|-----------------|
 | Sat 18:30–19:30 | **Lock-in:** answer the open decisions; freeze data contract v1 | **Lock-in:** choose the stack | Decisions logged; names on tasks |
 | Sat 19:30 | Mock `calendar` sample delivered | | Dashboard unblocked |
-| Sat 19:30–23:00 | `ingest` + `aggregate` on the VM (Brazil); calibration prototype on a sample | App skeleton: map + calendar heatmap on the mock | |
-| **Sat 23:00** | **Checkpoint A** | | `cell_month_counts` for Brazil exists; app shows a calendar locally |
+| Sat 19:30–23:00 | `ingest` + `aggregate` on the VM (Northeast Brazil); calibration prototype on a sample | App skeleton: map + calendar heatmap on the mock | |
+| **Sat 23:00** | **Checkpoint A** | | `cell_month_counts` for the Northeast exists; app shows a calendar locally |
 | Sat 23:00–Sun 02:00 | `calibrate` + `harmonize` → `calendar/v1`; before/after chart | Area selection, median comparison, CSV download | |
 | **Sun 02:00** | **Checkpoint B** | | `calendar/v1` in the bucket; app reads real data locally |
 | Sun 02:00–07:00 | Rest. One person per team reachable; long jobs run in `tmux` on the VM | Rest | |
@@ -41,7 +41,7 @@ We **submit by Sun 22:30**, keeping 1.5 hours of margin.
 
 | Checkpoint | If it fails | Then |
 |------------|-------------|------|
-| **A** Sat 23:00 | No Brazil counts table | Cut the extent to the demo region; if the VM is the problem, run per-country CSVs locally |
+| **A** Sat 23:00 | No Northeast counts table | Cut to one state and fewer years; if the VM is the problem, run the Brazil CSVs locally |
 | | App shows nothing | Switch to the single-Python-app option now |
 | **B** Sun 02:00 | No `calendar/v1` | Ship the month × day/night ratio (no cell term) as v1; keep working on F + B in the morning |
 | **C** Sun 11:00 | Not deployed | Deploy whatever runs, even with fewer features; if Cloud Run fails, record the demo from the local container |
@@ -54,7 +54,8 @@ We **submit by Sun 22:30**, keeping 1.5 hours of margin.
 |-----------|----------------|--------|
 | Repo, tooling, CI | Sat 12:00 | ✅ |
 | Google Cloud foundation + raw data in the bucket | Sat 16:50 | ✅ |
-| Plan v2 locked; stack chosen; data contract v1 frozen | Sat 19:30 | ⬜ |
+| Plan v2 locked: roles, stack (FastAPI + SPA), pilot extent (Northeast) | Sat 18:15 | ✅ |
+| Data contract v1 frozen; frontend framework named | Sat 19:30 | ⬜ |
 | Mock sample to Dashboard | Sat 19:30 | ⬜ |
 | Checkpoint A: counts table + app skeleton | Sat 23:00 | ⬜ |
 | Checkpoint B: `calendar/v1` + app on real data | Sun 02:00 | ⬜ |

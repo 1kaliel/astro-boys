@@ -1,7 +1,7 @@
 # Data dictionary and data contract
 
 Owner: Team Harmonization. **This is the contract with Team Dashboard.**
-Status: **v1 PROPOSED**, pending lock-in. After lock-in, a change needs a diary `DECISION` and a heads-up to Dashboard.
+Status: **v1**. Contract owners: Mateus (pipeline) and Guilherme (backend). A change needs a diary `DECISION` and a heads-up to the other side.
 
 Method behind the fields: [spec/harmonization.md](spec/harmonization.md). Storage: [cloud/storage-layout.md](cloud/storage-layout.md).
 
