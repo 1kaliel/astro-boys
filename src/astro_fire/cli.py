@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from astro_fire import __version__, smoke, storage
+from astro_fire import __version__, mock, smoke, storage
 from astro_fire.config import get_settings
 
 
@@ -19,6 +19,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("info", help="print resolved settings (no secrets) and the storage layout")
     s = sub.add_parser("smoke", help="CSV → DuckDB → partitioned Parquet → manifest, on sample rows")
     s.add_argument("inputs", nargs="*", help="FIRMS CSV files (default: tests/fixtures samples)")
+    m = sub.add_parser("mock-calendar", help="write a SYNTHETIC calendar table for dashboard development")
+    m.add_argument("--bbox", default=",".join(str(v) for v in mock.DEFAULT_BBOX),
+                   help="west,south,east,north in degrees; write it as --bbox=-47,-11,-44,-8")
 
     args = p.parse_args(argv)
     settings = get_settings(astro_data_root=args.data_root)
@@ -30,6 +33,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "smoke":
         result = smoke.run(settings, args.inputs or None)
+        print(json.dumps(result, indent=2))
+        return 0 if result["status"] == "ok" else 1
+    if args.cmd == "mock-calendar":
+        try:
+            west, south, east, north = (float(v) for v in args.bbox.split(","))
+        except ValueError:
+            p.error("--bbox needs four numbers: west,south,east,north")
+        result = mock.run(settings, (west, south, east, north))
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "ok" else 1
     return 2

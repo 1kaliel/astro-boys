@@ -26,7 +26,7 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
-| H1 | Mock `calendar` sample with the v1 columns | Mateus | Sat 19:30 | ⬜ | Small Parquet/JSON for Dashboard |
+| H1 | Mock `calendar` sample with the v1 columns | Mateus (delivered by Kali) | Sat 19:30 | ✅ | `uv run astro-fire mock-calendar` → `data/processed/calendar/mock/` ([how](data-dictionary.md#5-sample-for-app-development)); synthetic numbers |
 | H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ⬜ | Parquet + manifest |
 | H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
 | H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ⬜ | **Checkpoint A** |

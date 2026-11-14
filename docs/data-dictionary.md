@@ -107,7 +107,20 @@ Per `cell_l2 × month × period`: `f`, `b`, `sum_aqua_pos`, `sum_viirs_pos`, `n_
 
 `uv run astro-fire export --sample` writes a small `calendar` extract with this schema (one L1 cell, all years),
 committed under `app/` by the Dashboard team if they want fixtures (max 100 KB) or read from the bucket.
-Until the real pipeline runs, a **mock with the same columns** is provided so the app can be built in parallel.
+Until the real pipeline runs, a **mock with the same columns** lets the app be built in parallel:
+
+```bash
+uv run astro-fire mock-calendar                              # 144 cells (lon -47..-44, lat -11..-8), ~94k rows, 1 MB
+uv run astro-fire mock-calendar --bbox=-48.8,-18.4,-34.7,-1.0   # whole pilot extent, ~2.6M rows, 16 MB
+```
+
+It writes `data/processed/calendar/mock/year=YYYY/*.parquet` (git-ignored) with exactly the columns of section 1,
+2003-01 → 2026-11, the last month partial. Read it with
+`read_parquet('data/processed/calendar/mock/**/*.parquet', hive_partitioning = true)`.
+
+**The mock's numbers are synthetic** (a seeded formula, `model_version = 'MOCK'`). They are for building screens
+only and must never appear in a figure, the demo or the submission. Switching to real data means pointing the
+app at `processed/calendar/v1/` instead; the schema is the same.
 
 ## API shape (if the app has a backend)
 
