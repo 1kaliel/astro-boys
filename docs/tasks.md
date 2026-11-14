@@ -20,8 +20,10 @@ A task is done only when its deliverable exists, someone else can reproduce it, 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | H1 | Get a FIRMS MAP_KEY; put it in `.env` | | ⬜ | Free, by email |
-| H2 | Pick the area and period for the data pull | | ⬜ | Log as `DECISION` |
-| H3 | Pull MODIS + VIIRS history (see `data-access.md`); log in `data/raw/SOURCES.md` | | ⬜ | |
+| H2 | Pick the pilot area and period for development (data is global) | | ⬜ | Log as `DECISION` |
+| H3 | Pull MODIS + VIIRS history | Justino | ✅ | MODIS 2000–2025 + NOAA-20 2018–2025, global, in team Drive |
+| H3b | Pull 2026 so far via API NRT (needs H1) | | ⬜ | Needed for current month vs median |
+| H3c | Decide whether to add VIIRS S-NPP 2012–2025 (~5 GB) | | ⬜ | Optional |
 | H4 | Share a small sample file with Dashboard | | ⬜ | By Sat 14:00 |
 | H5 | Overlap comparison and harmonization method v0 | | ⬜ | Checkpoint Sat 17:00 |
 | H6 | Monthly aggregates, historical median, anomalies | | ⬜ | |

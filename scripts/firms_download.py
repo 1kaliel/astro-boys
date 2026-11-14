@@ -3,7 +3,7 @@
 
 Three modes (stdlib only, no installs needed):
 
-  country       Yearly per-country CSVs. No key, no login. Fastest way to get years of history.
+  country       Yearly per-country CSVs, or global zips with --country all. No key, no login.
                 Sensors: modis (2000-), viirs-snpp (2012-), viirs-jpss1 (NOAA-20, 2018-). No NOAA-21.
   api           FIRMS area API, for what the country files lack (NOAA-21, the current year).
                 Needs FIRMS_MAP_KEY in the environment or .env. Pulls in 5-day chunks; resumable.
@@ -12,6 +12,7 @@ Three modes (stdlib only, no installs needed):
 Examples:
   python3 scripts/firms_download.py country --country Brazil --years 2012-2025 --dry-run
   python3 scripts/firms_download.py country --country Brazil --years 2000-2025
+  python3 scripts/firms_download.py country --country all --years 2012-2025 --sensors viirs-snpp
   python3 scripts/firms_download.py api --source VIIRS_NOAA21_SP --bbox -74,-34,-34,6 --start 2024-01-17 --end 2025-12-31
   python3 scripts/firms_download.py availability
 
@@ -117,9 +118,14 @@ def cmd_country(args):
         for year in years:
             if year < first:
                 continue
-            name = f"{sensor}_{year}_{args.country}.csv"
-            url = f"{BASE}/data/country/{sensor}/{year}/{name}"
-            dest = OUT / "country" / sensor / name
+            if args.country == "all":
+                name = f"{sensor}_{year}_all_countries.zip"
+                url = f"{BASE}/data/country/zips/{name}"
+                dest = OUT / "global" / sensor / name
+            else:
+                name = f"{sensor}_{year}_{args.country}.csv"
+                url = f"{BASE}/data/country/{sensor}/{year}/{name}"
+                dest = OUT / "country" / sensor / name
             size = remote_size(url)
             if size is None:
                 print(f"missing  {name} (404)")
@@ -133,11 +139,11 @@ def cmd_country(args):
                 continue
             print(f"download {name} ({size / 1e6:.0f} MB) ...", flush=True)
             dest.parent.mkdir(parents=True, exist_ok=True)
-            part = dest.with_suffix(".csv.part")
+            part = dest.with_name(dest.name + ".part")
             part.write_bytes(http_get(url))
             part.rename(dest)
             log_source(f"FIRMS country yearly ({sensor})", sensor, args.country, str(year),
-                       f"firms/country/{sensor}/{name}", f"HTTPS {url}")
+                       str(dest.relative_to(RAW)), f"HTTPS {url}")
     print(f"total listed: {total / 1e9:.2f} GB")
 
 
@@ -192,7 +198,7 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     c = sub.add_parser("country", help="yearly per-country CSVs (no key)")
-    c.add_argument("--country", required=True, help="as in FIRMS file names, e.g. Brazil")
+    c.add_argument("--country", required=True, help="as in FIRMS file names, e.g. Brazil; 'all' for global zips")
     c.add_argument("--years", required=True, help="e.g. 2000-2025 or 2012,2020")
     c.add_argument("--sensors", nargs="+", choices=list(COUNTRY_SENSORS), default=list(COUNTRY_SENSORS))
     c.add_argument("--dry-run", action="store_true", help="list files and sizes only")

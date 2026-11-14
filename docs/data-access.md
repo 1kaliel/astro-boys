@@ -3,6 +3,27 @@
 How Team Harmonization gets 20+ years of hotspots fast. Researched and tested 2026-11-14.
 Script: [`scripts/firms_download.py`](../scripts/firms_download.py) (Python stdlib, nothing to install).
 
+## What we already have (team Drive)
+
+The team pulled the **global yearly zips** on Sat Nov 14 (09:00–10:05 local) into the shared Drive folder
+`NasaSpaceApps` (link in the team chat, not in this public repo). Same files as the official FIRMS ones.
+
+| Sensor | Years | Files | Size (zipped) |
+|--------|-------|-------|---------------|
+| MODIS (Terra + Aqua) | 2000–2025 | `modis_{YYYY}_all_countries.zip` × 26 | ~2.0 GB |
+| VIIRS NOAA-20 (`viirs-jpss1`) | 2018–2025 | `viirs-jpss1_{YYYY}_all_countries.zip` × 8 | ~2.8 GB |
+
+Global coverage means the app can serve **any area a user draws**, not just one region.
+**MODIS and NOAA-20 overlap for 8 years (2018–2025)**: enough to calibrate the harmonization.
+
+### Gaps
+
+| Gap | Why it matters | How to fill | Priority |
+|-----|----------------|-------------|----------|
+| **2026 (Jan → today)** | The brief compares the **current month with the historical median**; yearly files stop at 2025 | Area API, NRT sources (`VIIRS_NOAA20_NRT`, `MODIS_NRT`), needs MAP_KEY | **High** |
+| VIIRS S-NPP 2012–2025 | Longest VIIRS record; adds 2012–2017 overlap with MODIS. New observations ended 2026-11-02 | `country --country all --sensors viirs-snpp` (~5.0 GB) | Optional |
+| VIIRS NOAA-21 | Third VIIRS satellite, 2023/24 onwards | Area API, `VIIRS_NOAA21_SP` / `_NRT` | Low |
+
 ## TL;DR: the fast path
 
 1. **Yearly per-country CSVs.** Plain HTTPS, **no key, no login**, archive (science) quality.
