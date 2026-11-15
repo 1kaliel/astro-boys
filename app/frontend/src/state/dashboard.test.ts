@@ -14,6 +14,10 @@ const base: DashboardState = {
   months: [],
   selected: { year: 2010, month: 9 },
   drillCell: null,
+  calendarView: "years",
+  day: null,
+  areaLabel: null,
+  point: null,
 };
 
 describe("month filter in the shared state", () => {
