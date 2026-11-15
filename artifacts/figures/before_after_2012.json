@@ -3,8 +3,8 @@
     "year": 2003,
     "modis_aqua_raw": 122275,
     "viirs_snpp_observed": null,
-    "harmonized": 701894.7411566011,
-    "estimated_part": 701894.7411566011,
+    "harmonized": 701894.741156601,
+    "estimated_part": 701894.741156601,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -13,8 +13,8 @@
     "year": 2004,
     "modis_aqua_raw": 120282,
     "viirs_snpp_observed": null,
-    "harmonized": 706999.14011454,
-    "estimated_part": 706999.14011454,
+    "harmonized": 706999.1401145401,
+    "estimated_part": 706999.1401145401,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -23,8 +23,8 @@
     "year": 2005,
     "modis_aqua_raw": 117439,
     "viirs_snpp_observed": null,
-    "harmonized": 719841.0065103845,
-    "estimated_part": 719841.0065103845,
+    "harmonized": 719841.0065103871,
+    "estimated_part": 719841.0065103871,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -33,8 +33,8 @@
     "year": 2006,
     "modis_aqua_raw": 76309,
     "viirs_snpp_observed": null,
-    "harmonized": 444282.7576967264,
-    "estimated_part": 444282.7576967264,
+    "harmonized": 444282.7576967283,
+    "estimated_part": 444282.7576967283,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -43,8 +43,8 @@
     "year": 2007,
     "modis_aqua_raw": 162623,
     "viirs_snpp_observed": null,
-    "harmonized": 1003457.5251622264,
-    "estimated_part": 1003457.5251622264,
+    "harmonized": 1003457.5251622272,
+    "estimated_part": 1003457.5251622272,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -53,8 +53,8 @@
     "year": 2008,
     "modis_aqua_raw": 90939,
     "viirs_snpp_observed": null,
-    "harmonized": 536998.2467745148,
-    "estimated_part": 536998.2467745148,
+    "harmonized": 536998.2467745128,
+    "estimated_part": 536998.2467745128,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -63,8 +63,8 @@
     "year": 2009,
     "modis_aqua_raw": 63233,
     "viirs_snpp_observed": null,
-    "harmonized": 376435.80268021906,
-    "estimated_part": 376435.80268021906,
+    "harmonized": 376435.80268021976,
+    "estimated_part": 376435.80268021976,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -73,8 +73,8 @@
     "year": 2010,
     "modis_aqua_raw": 128945,
     "viirs_snpp_observed": null,
-    "harmonized": 807262.6242210419,
-    "estimated_part": 807262.6242210419,
+    "harmonized": 807262.62422104,
+    "estimated_part": 807262.62422104,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -83,8 +83,8 @@
     "year": 2011,
     "modis_aqua_raw": 77919,
     "viirs_snpp_observed": null,
-    "harmonized": 466805.81896677904,
-    "estimated_part": 466805.81896677904,
+    "harmonized": 466805.81896677887,
+    "estimated_part": 466805.81896677887,
     "all_estimated": true,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -93,8 +93,8 @@
     "year": 2012,
     "modis_aqua_raw": 111216,
     "viirs_snpp_observed": 724294,
-    "harmonized": 734762.4109827436,
-    "estimated_part": 12923.410982743924,
+    "harmonized": 734762.410982745,
+    "estimated_part": 12923.410982743877,
     "all_estimated": false,
     "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
@@ -192,11 +192,11 @@
   {
     "year": 2022,
     "modis_aqua_raw": 72183,
-    "viirs_snpp_observed": 437831,
-    "harmonized": 437831.0,
+    "viirs_snpp_observed": 436605,
+    "harmonized": 458480.45732404705,
     "estimated_part": null,
     "all_estimated": false,
-    "partial_months": 2,
+    "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
   },
   {
@@ -212,11 +212,11 @@
   {
     "year": 2024,
     "modis_aqua_raw": 79123,
-    "viirs_snpp_observed": 399949,
-    "harmonized": 399949.0,
+    "viirs_snpp_observed": 398926,
+    "harmonized": 419308.2979020653,
     "estimated_part": null,
     "all_estimated": false,
-    "partial_months": 2,
+    "partial_months": 0,
     "model_version": "fb-l1-terra-rec-4"
   },
   {

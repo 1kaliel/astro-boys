@@ -95,7 +95,8 @@ def test_run_writes_both_tables_and_a_report(tmp_path):
     duckdb.connect().execute(
         f"""COPY (
             SELECT CASE WHEN (i // 60) % 5 = 0 THEN 'A' ELSE 'B' END AS satellite,
-                   (DATE '2020-07-01' + (i % 60)::INT) AS date_local
+                   (DATE '2020-07-01' + (i % 60)::INT) AS date_local,
+                   CASE WHEN (i % 60) >= 31 THEN '2.0NRT' ELSE '2' END AS version
             FROM range(60000) t(i)
             WHERE NOT ((i // 60) % 5 = 0 AND (i % 60) BETWEEN 20 AND 25)
         ) TO '{hotspots}/data.parquet' (FORMAT parquet)"""
@@ -104,3 +105,35 @@ def test_run_writes_both_tables_and_a_report(tmp_path):
     assert result["status"] == "ok" and result["gap_runs"] == 1 and result["missing_days"] == 6
     assert (tmp_path / "processed" / "coverage_monthly" / "v1" / "part-0.parquet").is_file()
     assert (tmp_path / "processed" / "coverage_daily" / "v1" / "part-0.parquet").is_file()
+    monthly = tmp_path / "processed" / "coverage_monthly" / "v1" / "part-0.parquet"
+    rows = duckdb.connect().execute(
+        f"SELECT satellite, month, days_in_month, days_observed, is_complete, is_nrt FROM '{monthly}' "
+        "ORDER BY 1, 2"
+    ).fetchall()
+    assert rows == [
+        ("A", 7, 31, 25, False, False),   # six days of outage
+        ("A", 8, 31, 29, True, True),     # the data ends on Aug 29: two days not observed yet, still >= 90%
+        ("B", 7, 31, 31, True, False),
+        ("B", 8, 31, 29, True, True),     # August rows are near-real-time
+    ]
+
+
+def test_a_month_that_has_not_finished_is_partial():
+    con = duckdb.connect()
+    con.execute(
+        "CREATE TABLE daily AS SELECT s AS satellite, (DATE '2026-10-01' + i::INT) AS date_local, "
+        "100 AS n_all, CASE WHEN i >= 31 THEN 100 ELSE 0 END AS n_nrt "
+        "FROM range(45) t(i), (VALUES ('A'), ('B')) v(s) WHERE NOT (s = 'A' AND i > 32)"
+    )
+    coverage.flag_days(con, "daily")
+    coverage.monthly(con, "coverage_daily")
+    rows = con.execute(
+        "SELECT satellite, month, days_in_month, days_observed, days_not_operating, is_complete, is_nrt "
+        "FROM coverage_monthly ORDER BY 1, 2"
+    ).fetchall()
+    assert rows == [
+        ("A", 10, 31, 31, 0, True, False),
+        ("A", 11, 30, 2, 28, False, True),    # stopped on Nov 2
+        ("B", 10, 31, 31, 0, True, False),
+        ("B", 11, 30, 14, 16, False, True),   # data up to Nov 14: the month is not finished
+    ]
