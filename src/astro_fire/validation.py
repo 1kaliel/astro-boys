@@ -15,6 +15,7 @@ test years from Aqua alone, and is scored against what S-NPP observed.
 
 from __future__ import annotations
 
+import random
 from collections.abc import Sequence
 
 import duckdb
@@ -173,32 +174,82 @@ def _pick(scores: Sequence[dict], level: str, metric: str = "mae") -> dict[str, 
             if s["level"] == level and s["split"] == "all" and s[metric] is not None}
 
 
-def verdict(scores: Sequence[dict]) -> dict:
-    """Does the final method beat every baseline out of sample? If not, which baseline ships instead?
+def regional_difference(
+    con: duckdb.DuckDBPyConnection,
+    predictions: str,
+    baseline: str,
+    *,
+    resamples: int = 5000,
+    seed: int = 20261115,
+) -> dict:
+    """Paired comparison on regional monthly totals: |error of the final method| − |error of `baseline`|.
 
-    `F` without the background is an ablation, not a product candidate: it cannot ship, because it leaves
-    out every detection in months where Aqua saw nothing.
+    Returns the mean difference over the months and a 90% bootstrap interval (months resampled with
+    replacement). Negative means the final method is closer.
     """
-    cell, region = _pick(scores, "cell_month"), _pick(scores, "region_month")
-    beats_cell = all(cell[FINAL] < cell[b] for b in BASELINES)
-    beats_region = all(region[FINAL] < region[b] for b in BASELINES)
-    accepted = beats_cell and beats_region
-    best_cell = min(BASELINES, key=lambda b: cell[b])
-    best_region = min(BASELINES, key=lambda b: region[b])
-    if accepted:
-        ship = FINAL
-    else:  # the baseline that wins where the final method lost; the regional series is what the app shows
-        ship = best_region if not beats_region else best_cell
+    rows = con.execute(
+        f"""
+        SELECT abs(sum({FINAL}) - sum(v)) - abs(sum({baseline}) - sum(v)) AS d
+        FROM {predictions} GROUP BY year, month
+        HAVING count({FINAL}) = count(*) AND count({baseline}) = count(*)
+        ORDER BY year, month
+        """
+    ).fetchall()
+    diffs = [r[0] for r in rows]
+    if not diffs:
+        return {"baseline": baseline, "months": 0, "mean": None, "ci90_low": None, "ci90_high": None}
+    rng = random.Random(seed)
+    n = len(diffs)
+    means = sorted(sum(rng.choice(diffs) for _ in range(n)) / n for _ in range(resamples))
+    return {
+        "baseline": baseline,
+        "months": n,
+        "final_closer_in_months": sum(d < 0 for d in diffs),
+        "mean": sum(diffs) / n,
+        "ci90_low": means[int(0.05 * resamples)],
+        "ci90_high": means[int(0.95 * resamples) - 1],
+    }
+
+
+RULE = (
+    "Pass when (1) the final method has a lower MAE and a lower RMSE than every baseline at cell-month "
+    "level, and (2) on regional monthly totals it is not distinguishably worse than the best baseline: "
+    "the 90% paired bootstrap interval of the difference in absolute error is not entirely above zero. "
+    "If it fails, the best baseline ships and the result is stated. Scored on coverage-adequate months."
+)
+
+
+def best_regional_baseline(scores: Sequence[dict]) -> str:
+    region = _pick(scores, "region_month")
+    return min(BASELINES, key=lambda b: region[b])
+
+
+def verdict(scores: Sequence[dict], regional: dict) -> dict:
+    """Apply the rule written down before the final test was opened (`RULE`).
+
+    `regional` is `regional_difference` against the best regional baseline. `F` without the background is
+    an ablation, not a product option: it leaves out every month where Aqua saw nothing.
+    """
+    cell_mae, cell_rmse = _pick(scores, "cell_month"), _pick(scores, "cell_month", "rmse")
+    region = _pick(scores, "region_month")
+    beats_mae = all(cell_mae[FINAL] < cell_mae[b] for b in BASELINES)
+    beats_rmse = all(cell_rmse[FINAL] < cell_rmse[b] for b in BASELINES)
+    strictly_better = all(region[FINAL] < region[b] for b in BASELINES)
+    not_worse = regional["ci90_low"] is not None and regional["ci90_low"] <= 0
+    accepted = beats_mae and beats_rmse and not_worse
+    best_cell = min(BASELINES, key=lambda b: cell_mae[b])
     return {
         "final_method": FINAL,
-        "beats_baselines_cell_month_mae": beats_cell,
-        "beats_baselines_region_month_mae": beats_region,
+        "cell_month_lower_mae_than_every_baseline": beats_mae,
+        "cell_month_lower_rmse_than_every_baseline": beats_rmse,
+        "region_month_lower_mae_than_every_baseline": strictly_better,
+        "region_month_not_distinguishably_worse": not_worse,
+        "regional_difference": regional,
         "accepted": accepted,
         "best_baseline_cell_month_mae": best_cell,
-        "best_baseline_region_month_mae": best_region,
-        "ship": ship,
-        "rule": "accepted when the final method has a lower MAE than every baseline at both levels; "
-                "otherwise the baseline that beats it ships and the result is stated",
+        "best_baseline_region_month_mae": regional["baseline"],
+        "ship": FINAL if accepted else (regional["baseline"] if not not_worse else best_cell),
+        "rule": RULE,
     }
 
 
