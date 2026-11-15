@@ -80,7 +80,13 @@ else
 fi
 
 env_args=()
-[[ -f "$SERVICE_ENV" ]] && env_args=(--env-vars-file="$SERVICE_ENV")
+if [[ -f "$SERVICE_ENV" ]]; then
+  # service.env is YAML, but gcloud reads a file named *.env as KEY=VALUE lines ("expected map-like data"):
+  # hand it over under a .yaml name.
+  ENV_YAML="$(mktemp --suffix=.yaml)"
+  cp "$SERVICE_ENV" "$ENV_YAML"
+  env_args=(--env-vars-file="$ENV_YAML")
+fi
 auth_flag=--no-allow-unauthenticated
 [[ "${RUN_ALLOW_PUBLIC:-false}" == "true" ]] && auth_flag=--allow-unauthenticated
 
