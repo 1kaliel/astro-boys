@@ -28,7 +28,7 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 |---|------|-------|-------------|--------|-------------|
 | H1 | Mock `calendar` sample with the v1 columns | Mateus (delivered by Kali) | Sat 19:30 | ✅ | `uv run astro-fire mock-calendar` → `data/processed/calendar/mock/` ([how](data-dictionary.md#6-sample-for-app-development)); synthetic numbers |
 | H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ✅ | Full 2003–2025 MVP local Parquet + manifest prepared for H3 QA; bucket publication pending |
-| H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
+| H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ✅ | `artifacts/20261115T003611Z_ingest_2e2b2e/qa.md` |
 | H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ✅ | **Checkpoint A**: full 2003–2025 local Parquet + manifest; bucket publication pending |
 | H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ✅ | `src/astro_fire/calibration.py` + `tests/test_calibration.py` (synthetic sample; real data comes with H4) |
 | H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ✅ | Real counts: 74,592 factor rows, pooling to L1, K = 50, M = 5, Terra-aware background, reconciled with λ = 0.75 ([results](methodology.md)). Published to the bucket (`fb-l1-terra-rec-4`) |
