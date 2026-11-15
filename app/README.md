@@ -108,6 +108,12 @@ Locally, pull the years you need or read the bucket after `gcloud auth applicati
 APPLY=1 ./scripts/sync_data.sh pull processed hotspots/v1/instrument=VIIRS/year=2013   # one partition, ~23 MB
 ```
 
+The daily series of the Skyline (`GET /api/hotspots/daily`, [data dictionary](../docs/data-dictionary.md)) also reads
+`coverage_daily` (which days each satellite was observing; ~200 KB) from `$ASTRO_COVERAGE_ROOT`, by default the sibling
+of the hotspots root (`.../processed/hotspots/v1` → `.../processed/coverage_daily/v1`). Days the sensor was not observing
+are returned as `missing_days` (no data, never zero); if the table cannot be read the answer says `coverage_checked:
+false` and the chart does not present days without detections as zeros.
+
 ## Map API
 
 `GET /api/cells?year=&month=&period=ALL|D|N` returns `count_harmonized` per 0.25° cell for one month (the latest month
