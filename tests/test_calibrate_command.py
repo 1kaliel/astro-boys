@@ -23,7 +23,7 @@ def write_counts(root, *, extra_sql: str = "", where: str = "true") -> str:
             SELECT 'G080134.' || lpad((c + 1)::VARCHAR, 2, '0') AS cell_l2,
                    y AS year, m AS month, p AS daynight,
                    (hash(c, y, m, p) % 1000) / 1000.0 AS u, 1 + (c % 4) AS strength
-            FROM range(16) tc(c), range(2012, 2022) ty(y), range(1, 13) tm(m), (VALUES ('D'), ('N')) tp(p)
+            FROM range(16) tc(c), range(2012, 2026) ty(y), range(1, 13) tm(m), (VALUES ('D'), ('N')) tp(p)
         ),
         sat AS (
             SELECT cell_l2, year, month, daynight, 'Aqua' AS satellite, floor(u * strength * 3)::BIGINT AS n
@@ -55,6 +55,8 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
     assert result["calibration_years"] == list(range(2012, 2020))
     assert result["excluded_months"] == [[2012, 1]] and result["data_gaps"] == 0
     assert result["k"] in calibrate.cal.WEIGHT_GRID and result["m"] in calibrate.cal.WEIGHT_GRID
+    assert result["pool"] in calibrate.cal.POOL_LEVELS
+    assert result["model_version"] == calibrate.model_version(result["pool"], result["witness"])
     assert result["cells"] == 16 and result["panel_rows"] == 16 * (8 * 12 - 1) * 2
 
     con = duckdb.connect()
@@ -67,11 +69,18 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
         f"any_value(model_version) FROM {factors}"
     ).fetchone()
     assert (rows, nulls) == (16 * 12 * 2, 0)
-    assert years == "2012,2013,2014,2015,2016,2017,2018,2019" and version == calibrate.MODEL_VERSION
+    assert years == "2012,2013,2014,2015,2016,2017,2018,2019" and version == result["model_version"]
 
     report = json.loads(open(result["report"]).read())
-    assert report["test_years_untouched"] == [2020, 2021]
-    assert len(report["leave_one_year_out"]) == 6 and len(report["region_by_month_period"]) == 24
+    assert report["held_out_years_untouched"] == [2020, 2021, 2022, 2023, 2024, 2025]
+    assert report["coverage_table_used"] is False
+    tried = len(calibrate.cal.WEIGHT_GRID) * len(calibrate.cal.POOL_LEVELS)
+    static = [s for s in report["leave_one_year_out"] if s["background"] == "static"]
+    assert len(static) == tried and len(report["region_by_month_period"]) == 24
+    assert report["weights"]["background"] in ("static", "witness")
+    assert [s["lambda"] for s in report["weights"]["reconcile_scores"]] == list(calibrate.cal.RECONCILE_GRID)
+    assert report["weights"]["reconcile_lambda"] in calibrate.cal.RECONCILE_GRID
+    assert "Poisson deviance" in report["weights"]["chosen_by"]
     assert 3 < report["panel"]["overall_ratio"] < 6
     manifest = json.loads(open(result["manifest"]).read())
     assert manifest["pipeline"] == "calibrate" and manifest["status"] == "ok"
@@ -80,15 +89,22 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
 
 def test_fixed_weights_are_used_as_given(tmp_path):
     write_counts(tmp_path)
-    result = calibrate.run(settings_for(tmp_path), k=20, m=2)
-    assert (result["k"], result["m"]) == (20, 2)
-    assert result["weights_chosen_by"] == "fixed on the command line"
+    result = calibrate.run(settings_for(tmp_path), k=20, m=2, pool="region", witness=False, reconcile=0)
+    assert (result["k"], result["m"], result["pool"], result["witness"]) == (20, 2, "region", False)
+    assert result["weights_chosen_by"].endswith("fixed on the command line: k, m, pool, witness, reconcile")
+    assert result["model_version"] == "fb-region-4" and result["reconcile_lambda"] == 0
+    with_terra = calibrate.run(settings_for(tmp_path), pool="l1", witness=True, reconcile=0.5)
+    assert with_terra["witness"] is True and with_terra["model_version"] == "fb-l1-terra-rec-4"
+    assert with_terra["reconcile_lambda"] == 0.5
+    assert with_terra["m_witness"] in calibrate.cal.WEIGHT_GRID
 
 
 def test_test_years_are_refused(tmp_path):
     write_counts(tmp_path)
-    with pytest.raises(calibrate.CalibrationError, match="test years"):
+    with pytest.raises(calibrate.CalibrationError, match="held out"):
         calibrate.run(settings_for(tmp_path), years=range(2014, 2021))
+    with pytest.raises(calibrate.CalibrationError, match="held out"):
+        calibrate.run(settings_for(tmp_path), years=[2018, 2019, 2023])
 
 
 def test_missing_satellite_year_is_an_error(tmp_path):
@@ -129,3 +145,19 @@ def test_parse_years():
     assert calibrate.parse_years("2012-2014,2016") == (2012, 2013, 2014, 2016)
     with pytest.raises(calibrate.CalibrationError):
         calibrate.parse_years("twenty")
+
+
+def test_incomplete_months_from_the_coverage_table_are_left_out(tmp_path):
+    write_counts(tmp_path)
+    out = tmp_path / "processed" / "coverage_monthly" / "v1"
+    out.mkdir(parents=True)
+    duckdb.connect().execute(
+        f"""COPY (SELECT * FROM (VALUES
+                ('Aqua', 2015, 6, false), ('SNPP', 2012, 1, false), ('Terra', 2016, 2, false),
+                ('Aqua', 2020, 8, false), ('Aqua', 2014, 3, true)
+            ) t(satellite, year, month, is_complete)) TO '{out}/part-0.parquet' (FORMAT parquet)"""
+    )
+    result = calibrate.run(settings_for(tmp_path))
+    # Terra is not part of the pair and 2020 is not a calibration year: neither is excluded here.
+    assert result["excluded_months"] == [[2012, 1], [2015, 6]]
+    assert result["coverage_table_used"] is True and result["data_gaps"] == 2

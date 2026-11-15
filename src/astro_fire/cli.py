@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from astro_fire import __version__, batch, calibrate, mock, smoke, storage, validate
+from astro_fire import __version__, batch, calibrate, coverage, mock, smoke, storage, validate
 from astro_fire.config import get_settings
 
 
@@ -24,15 +24,25 @@ def main(argv: list[str] | None = None) -> int:
                    help="calibration years, e.g. 2012-2019 (default) or 2012,2013")
     c.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
     c.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
+    c.add_argument("--pool", choices=("region", "l1"), help="fix the pooling level instead of choosing it")
+    c.add_argument("--witness", choices=("on", "off"), help="fix whether the background uses Terra")
+    c.add_argument("--reconcile", type=float, help="fix the reconciliation strength (0 to 1; 0 turns it off)")
     c.add_argument("--counts", help="folder with cell_month_counts Parquet "
                                     "(default: processed/cell_month_counts/<dataset version>)")
+    g = sub.add_parser("coverage", help="find satellite outages: days and months without data")
+    g.add_argument("--hotspots", help="folder with hotspots Parquet, local or gs:// "
+                                      "(default: processed/hotspots/<dataset version>)")
     v = sub.add_parser("validate", help="score every method on the held-out years against S-NPP")
     v.add_argument("--years", default=f"{calibrate.CALIBRATION_YEARS[0]}-{calibrate.CALIBRATION_YEARS[-1]}",
                    help="calibration years (default 2012-2019)")
-    v.add_argument("--test-years", default=",".join(str(y) for y in calibrate.TEST_YEARS),
-                   help="held-out years (default 2020,2021)")
+    v.add_argument("--test-years", help="held-out years to score (default: the development years 2020,2021)")
+    v.add_argument("--final", action="store_true",
+                   help="open the final test (2022-2023, plus 2024-2025 separately). Once, after the freeze")
     v.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
     v.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
+    v.add_argument("--pool", choices=("region", "l1"), help="fix the pooling level instead of choosing it")
+    v.add_argument("--witness", choices=("on", "off"), help="fix whether the background uses Terra")
+    v.add_argument("--reconcile", type=float, help="fix the reconciliation strength (0 to 1; 0 turns it off)")
     v.add_argument("--counts", help="folder with cell_month_counts Parquet")
     m = sub.add_parser("mock-calendar", help="write a SYNTHETIC calendar table for dashboard development")
     m.add_argument("--bbox", default=",".join(str(v) for v in mock.DEFAULT_BBOX),
@@ -43,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("aggregate", help="aggregate hotspots into monthly counts by satellite")
 
     args = p.parse_args(argv)
+    witness = {"on": True, "off": False}.get(getattr(args, "witness", None))
     settings = get_settings(astro_data_root=args.data_root)
 
     if args.cmd == "info":
@@ -57,16 +68,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "calibrate":
         try:
             result = calibrate.run(settings, years=calibrate.parse_years(args.years), k=args.k, m=args.m,
+                                   pool=args.pool, witness=witness, reconcile=args.reconcile,
                                    counts_location=args.counts)
         except calibrate.CalibrationError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "ok" else 1
+    if args.cmd == "coverage":
+        try:
+            result = coverage.run(settings, hotspots_location=args.hotspots)
+        except coverage.CoverageError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        print(json.dumps(result, indent=2))
+        return 0
     if args.cmd == "validate":
         try:
+            test_years = calibrate.parse_years(args.test_years) if args.test_years else None
             result = validate.run(settings, years=calibrate.parse_years(args.years),
-                                  test_years=calibrate.parse_years(args.test_years), k=args.k, m=args.m,
+                                  test_years=test_years, final=args.final, k=args.k, m=args.m, pool=args.pool,
+                                  witness=witness, reconcile=args.reconcile,
                                   counts_location=args.counts)
         except calibrate.CalibrationError as e:
             print(f"error: {e}", file=sys.stderr)

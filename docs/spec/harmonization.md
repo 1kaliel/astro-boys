@@ -149,12 +149,31 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
   estimate (nothing is invented over ocean or land that never showed activity); if Aqua detects there in the
   past, the regional ratio `R` is used.
 - **January 2012 is left out** of calibration: S-NPP data starts on 2012-01-20, so that month is partial.
-- **Pooling region:** the whole pilot extent, per month of year and day/night. Pooling to the parent L1 cell
-  first is a candidate compared in validation, because the extent mixes Cerrado and Caatinga fire regimes.
+- **Pooling level:** a cell leans on its 1° parent cell (L1), whose own ratio leans on the whole extent with
+  the same weight. Pooling straight to the whole extent is the alternative; the level is chosen with the
+  weights. On the Northeast, 2012–2019, the parent level wins on every leave-one-year-out score.
 - **`K` and `M` are chosen separately** (`K` only acts on months with Aqua > 0, `M` on months with Aqua = 0),
-  each by the lowest leave-one-year-out mean absolute error at cell-month level; ties go to more pooling.
+  each by the lowest leave-one-year-out **mean Poisson deviance** at cell-month level, from
+  {0, 2, 5, 10, 20, 50, 100, 200}; ties go to more pooling. Absolute error is reported but not used to
+  choose: for counts that are mostly zero it is minimized by predicting zero, so it picks `M = 0` and
+  biases regional totals low. Without pooling (weight 0) the deviance is infinite.
 - When the region has no Aqua detections at all for a month and period, there is no factor and the estimate
   is null, never zero.
+- **Terra-aware background (owner decision, Sun Nov 15).** Zero-Aqua months are split by whether Terra
+  recorded anything in the same cell, month and day/night period, and one background is fitted for each case
+  (`b_witness1`, `b_witness0`) with the same pooling formula. Terra is a witness only: it is never added to
+  Aqua and never decides which cells exist. When Terra is unknown for a month (outage, or before its
+  record), the plain `b` applies. Kept because it lowers the out-of-year deviance on 2012–2019.
+- **Reconciliation with the regional ratio (owner decision, Sun Nov 15).** After the cell estimates are
+  computed, each month and day/night period is scaled by `(1 − λ) + λ × (regional Aqua × r_total) / Σ cell
+  estimates`, with `r_total` the ratio of all S-NPP to all Aqua detections for that month of year and period
+  in the calibration years. Not applied when the region has fewer than 30 Aqua detections. λ is chosen by
+  out-of-year deviance on the calibration years and used only if it gains at least 0.5%. Consequence: the
+  estimates of a month depend on the whole pilot extent, so they must always be computed for the whole
+  extent, never for a subset of cells.
+- **Observation gaps** come from `astro-fire coverage` (region-wide daily counts per satellite; rule in
+  [methodology.md](../methodology.md#observation-gaps)). Months in which Aqua or S-NPP was not fully
+  observing are left out of calibration and of the main validation scores; they are never read as zero.
 
 ### Series assembly
 
@@ -173,7 +192,10 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
 
 ## 7. Validation
 
-Chronological only. Nothing from the test years is used to choose `K`, `M` or the method.
+Chronological only. Calibration: 2012–2019. Development set: 2020–2021 (scored while the method was built,
+so not a blind test). **Final test: 2022–2023, scored once with `astro-fire validate --final` after the
+method is frozen**; 2024–2025 is reported with it, separately. The code enforces this split. The pass rule
+is fixed before the final test is opened: see [methodology.md](../methodology.md#validation-protocol).
 
 | Method compared on 2020–2021 (Aqua → S-NPP) | Role |
 |---------------------------------------------|------|
@@ -225,6 +247,7 @@ Schemas are the data contract in [../data-dictionary.md](../data-dictionary.md).
 ```bash
 uv run astro-fire ingest     # zips → country CSVs → normalized hotspots Parquet + QA report
 uv run astro-fire aggregate  # → cell_month_counts
+uv run astro-fire coverage   # → coverage_daily, coverage_monthly: satellite outages (exists)
 uv run astro-fire calibrate  # → factors (K, M by cross-validation), continuity factor
 uv run astro-fire harmonize  # → calendar (+ bootstrap intervals, anomalies)
 uv run astro-fire validate   # → validation table and charts
