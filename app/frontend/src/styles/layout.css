@@ -101,6 +101,38 @@
   color: var(--color-text-primary);
 }
 
+/* CSV download (D6) */
+.csv-download {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.csv-note,
+.csv-status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.csv-status {
+  color: var(--color-text-primary);
+}
+
+.csv-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.csv-download .button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 /* Dashboard grid */
 .dash {
   display: grid;

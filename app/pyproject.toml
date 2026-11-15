@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "duckdb>=2.0.0",
     "fastapi>=0.163.0",
+    "gcsfs>=2024.6",
     "uvicorn>=0.54.0",
 ]
 

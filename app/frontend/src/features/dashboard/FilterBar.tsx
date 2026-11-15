@@ -7,6 +7,7 @@ import { YearSelect } from "../../components/ui/YearSelect";
 import { checkArea, sameBounds } from "../../lib/area";
 import { cellsInBounds, type Bounds } from "../../lib/grid";
 import { FIRST_YEAR, LAST_YEAR, PILOT_BOUNDS, useDashboard, type Period, type Scale } from "../../state/dashboard";
+import { DownloadCsv } from "./DownloadCsv";
 
 const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
   { value: "ALL", label: "All" },
@@ -56,6 +57,7 @@ export function FilterBar() {
         value={state.scale}
         onChange={(scale) => dispatch({ type: "setScale", scale })}
       />
+      <DownloadCsv />
     </div>
   );
 }

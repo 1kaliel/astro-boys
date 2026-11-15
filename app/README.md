@@ -32,7 +32,9 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
 - D4 burning calendar: year × month heatmap that reads the API.
 - D8 (image): the calendar is baked into the image at build time, with its `model_version` (see [Container](#container-same-contract-as-cloud-run)).
 - Dashboard layout: app bar, filter bar, KPI row (reads the same calendar answer as the heatmap), calendar and map.
-- Not done: "this month vs median" card with date picker (D5), CSV (D6, reads `hotspots/v1` from the bucket).
+- D6 CSV download: `GET /api/hotspots.csv` streams the native hotspots of the same cells and years, read from the
+  bucket on Cloud Run (see [Hotspots CSV API](#hotspots-csv-api)); "CSV" in the filter bar.
+- Not done: "this month vs median" card with date picker (D5).
 
 ## Calendar API
 
@@ -63,6 +65,33 @@ Data: `$ASTRO_DATA_ROOT/processed/calendar/$ASTRO_DATASET_VERSION` (defaults `da
 # real data: pull the calendar from the bucket (read-only copy into data/, which git ignores)
 GCS_BUCKET=<bucket> APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1
 ASTRO_DATA_ROOT=../data uv run uvicorn --app-dir backend astro_dashboard.main:app --port 8080     # from app/
+```
+
+## Hotspots CSV API
+
+`GET /api/hotspots/count?west=&south=&east=&north=&start=YYYY-MM-DD&end=YYYY-MM-DD[&period=ALL|D|N][&include_all=true]`
+gives `{rows, max_rows, cells, ...}`; `GET /api/hotspots.csv` with the same query streams the file
+(`astro-hotspots_<box>_<start>_<end>.csv`).
+
+- **Same cells as the calendar** (the 0.25° cells that overlap the box), and `start`/`end` are local solar dates
+  (`date_local`), so a CSV adds up to the raw counts behind the calendar. Checked on the real data: 16 cells
+  (-41, -10, -40, -9) in 2013 give 1,723 rows, the `raw_snpp` sum of the calendar.
+- **Main filter by default** (`passes_main_filter`: type 0, nominal or high confidence), the rows the calendar
+  counts; `include_all=true` returns every detection.
+- Columns: `hotspot_id, acq_ts_utc, date_local, latitude, longitude, satellite, instrument, version, daynight,
+  confidence_raw, confidence_class, type, passes_main_filter, frp_mw, brightness_mir_k, brightness_tir_k, scan_km,
+  track_km, cell_l2, cell_l3, country, source_file`, ordered by time. Values as delivered by NASA FIRMS for each
+  sensor; never compare brightness or confidence across sensors.
+- Limits: at most `ASTRO_CSV_MAX_ROWS` rows (default 500,000; more is a 413 with "narrow the area or the years"),
+  one export at a time per instance (429 otherwise). Bad box or dates: 422; source unreadable: 503.
+
+Source: `$ASTRO_HOTSPOTS_ROOT`, default `$ASTRO_DATA_ROOT/processed/hotspots/v1`. On Cloud Run it is
+`gs://<bucket>/astro/processed/hotspots/v1`, read with the service account (Application Default Credentials, gcsfs;
+no key files). Only the partitions of the requested years are read: one year is about 60 to 90 MB (MODIS + VIIRS).
+Locally, pull the years you need or read the bucket after `gcloud auth application-default login`:
+
+```bash
+APPLY=1 ./scripts/sync_data.sh pull processed hotspots/v1/instrument=VIIRS/year=2013   # one partition, ~23 MB
 ```
 
 ## Map API

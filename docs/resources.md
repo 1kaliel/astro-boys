@@ -20,7 +20,7 @@ At least one NASA data source is required for global judging.
 | [Matplotlib](https://matplotlib.org/) | Static figures for the write-up and the demo (`uv sync --extra figures`) | Matplotlib license (BSD-style) |
 | [uv](https://docs.astral.sh/uv/) | Python env and locked dependencies | Apache-2.0 / MIT |
 | [Python](https://www.python.org/) 3.12 | Pipeline language | PSF |
-| [gcsfs](https://github.com/fsspec/gcsfs) | Optional `gs://` access | BSD-3-Clause |
+| [gcsfs](https://github.com/fsspec/gcsfs) | Optional `gs://` access in the pipeline; the dashboard reads `hotspots/v1` from the bucket with it for the CSV download (D6) | BSD-3-Clause |
 | [pytest](https://pytest.org/), [Ruff](https://docs.astral.sh/ruff/) | Tests, lint | MIT |
 | [gitleaks](https://github.com/gitleaks/gitleaks) | CI secret scan | MIT |
 | Google Cloud (Cloud Storage, Compute Engine, Cloud Run, Artifact Registry) | Shared data, pipeline VM, dashboard hosting | Commercial service |

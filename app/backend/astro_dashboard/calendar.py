@@ -135,6 +135,16 @@ class CalendarStore:
             raise FileNotFoundError(f"No calendar Parquet files under {folder}")
         return cls(str(folder / "**" / "*.parquet"))
 
+    def cells_in(self, bounds: Bounds) -> tuple[str, ...]:
+        """The 0.25 degree cells that overlap the box (the area rule of the calendar), sorted.
+
+        The CSV download (D6) uses the same cells, so its rows add up to the counts behind the calendar."""
+        cursor = self._con.cursor()
+        rows = cursor.execute(
+            f"SELECT cell_l2 FROM cells WHERE {_OVERLAP_SQL} ORDER BY 1", bounds.overlap_params()
+        ).fetchall()
+        return tuple(r[0] for r in rows)
+
     def area_calendar(
         self,
         bounds: Bounds,
