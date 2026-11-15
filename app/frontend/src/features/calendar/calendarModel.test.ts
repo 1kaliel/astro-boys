@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import { parseApiResponse, parseFixture, type ApiCalendar, type CalendarMonth } from "../../data/calendarSource";
 import {
   SEQ_BINS,
-  binIndex,
+  buildScale,
   buildSeries,
   cellAriaLabel,
+  legendStops,
+  monthSpan,
+  peakSeason,
   provenanceText,
+  scaleStep,
   valueRange,
 } from "./calendarModel";
 
@@ -73,25 +77,124 @@ describe("valueRange", () => {
   });
 });
 
-describe("binIndex", () => {
-  it("maps the minimum to step 1 and the maximum to the last step", () => {
-    expect(binIndex(0, 0, 100)).toBe(1);
-    expect(binIndex(100, 0, 100)).toBe(SEQ_BINS);
+describe("buildSeries with a month filter", () => {
+  const rows = [1, 5, 9, 10, 11].map((m) => month({ month: m, count: m * 10 }));
+
+  it("keeps all twelve months when no month is picked", () => {
+    expect(buildSeries(rows, "ALL", 2010, 2010)[0].data).toHaveLength(12);
+    expect(buildSeries(rows, "ALL", 2010, 2010, [])[0].data).toHaveLength(12);
   });
 
-  it("is monotonic and stays inside 1..bins", () => {
+  it("keeps only the picked months, in calendar order", () => {
+    const [row] = buildSeries(rows, "ALL", 2010, 2010, [11, 9, 10]);
+    expect(row.data.map((cell) => cell.x)).toEqual(["Sep", "Oct", "Nov"]);
+    expect(row.data.map((cell) => cell.y)).toEqual([90, 100, 110]);
+  });
+
+  it("shows a picked month without data as no data, not as zero", () => {
+    const [row] = buildSeries(rows, "ALL", 2010, 2010, [2, 5]);
+    expect(row.data.map((cell) => cell.y)).toEqual([null, 50]);
+  });
+});
+
+describe("color scale", () => {
+  const skewed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 5000];
+
+  it("splits the values into groups of about the same size, not equal-width steps", () => {
+    const scale = buildScale(skewed)!;
+    const steps = skewed.map((v) => scaleStep(v, scale));
+    // equal-width steps over 1..5000 would put 13 of the 14 values in the first step
+    expect(steps.filter((step) => step === 1).length).toBeLessThanOrEqual(3);
+    expect(new Set(steps).size).toBe(SEQ_BINS);
+    expect(scaleStep(5000, scale)).toBe(SEQ_BINS);
+    expect(scaleStep(1, scale)).toBe(1);
+  });
+
+  it("is monotonic: a bigger value never gets a lighter step", () => {
+    const scale = buildScale(skewed)!;
     let previous = 0;
-    for (let value = 0; value <= 100; value += 1) {
-      const step = binIndex(value, 0, 100);
+    for (const value of [...skewed].sort((a, b) => a - b)) {
+      const step = scaleStep(value, scale);
       expect(step).toBeGreaterThanOrEqual(previous);
-      expect(step).toBeGreaterThanOrEqual(1);
-      expect(step).toBeLessThanOrEqual(SEQ_BINS);
       previous = step;
     }
   });
 
-  it("uses the middle step when there is no spread", () => {
-    expect(binIndex(7, 7, 7)).toBe(Math.ceil(SEQ_BINS / 2));
+  it("has unique ascending limits and never an empty color", () => {
+    const scale = buildScale([5, 5, 5, 5, 5, 5, 5, 9, 9, 9, 100])!;
+    expect(new Set(scale.breaks).size).toBe(scale.breaks.length);
+    expect([...scale.breaks].sort((a, b) => a - b)).toEqual(scale.breaks);
+    expect(scale.breaks.every((limit) => limit > scale.min)).toBe(true);
+  });
+
+  it("spreads few colors over the whole ramp, so the contrast does not shrink", () => {
+    const scale = buildScale([5, 5, 5, 5, 100, 100, 100, 100])!;
+    expect(scale.breaks).toEqual([100]);
+    expect(scaleStep(5, scale)).toBe(1);
+    expect(scaleStep(100, scale)).toBe(SEQ_BINS);
+  });
+
+  it("uses the middle color when every value is the same", () => {
+    const scale = buildScale([7, 7, 7])!;
+    expect(scaleStep(7, scale)).toBe(Math.ceil(SEQ_BINS / 2));
+  });
+
+  it("has no scale without values", () => {
+    expect(buildScale([])).toBeNull();
+  });
+
+  it("prints where each color starts, with the limits in the legend", () => {
+    const scale = buildScale(skewed)!;
+    const stops = legendStops(scale);
+    expect(stops).toHaveLength(scale.breaks.length + 1);
+    expect(stops[0].label).toBe("1");
+    expect(stops[1].label.startsWith("≥ ")).toBe(true);
+    expect(stops.map((stop) => stop.step)).toEqual([...stops.map((stop) => stop.step)].sort((a, b) => a - b));
+  });
+});
+
+describe("peakSeason", () => {
+  const year = (y: number, counts: Record<number, number>, partial: number[] = []) =>
+    Object.entries(counts).map(([m, count]) =>
+      month({ year: y, month: Number(m), count, isPartial: partial.includes(Number(m)) }),
+    );
+  // September to November is the strong season in every year
+  const rows = [2010, 2011, 2012].flatMap((y) => year(y, { 1: 5, 6: 10, 8: 60, 9: 120, 10: 125, 11: 62, 12: 36 }));
+
+  it("finds the three consecutive months with the highest typical activity", () => {
+    const series = buildSeries(rows, "ALL", 2010, 2012);
+    expect(peakSeason(series)).toEqual([9, 10, 11]);
+  });
+
+  it("wraps over the year end", () => {
+    const winter = [2010, 2011, 2012].flatMap((y) => year(y, { 11: 90, 12: 100, 1: 95, 6: 10, 7: 5 }));
+    expect(peakSeason(buildSeries(winter, "ALL", 2010, 2012))).toEqual([11, 12, 1]);
+  });
+
+  it("ignores partial months: an incomplete month is not 'low' and not 'peak'", () => {
+    const withPartial = [
+      ...year(2010, { 9: 100, 10: 100, 11: 100, 12: 1 }),
+      ...year(2011, { 9: 100, 10: 100, 11: 100, 12: 1 }),
+      ...year(2012, { 9: 1, 10: 1, 11: 1, 12: 400 }, [9, 10, 11, 12]),
+    ];
+    expect(peakSeason(buildSeries(withPartial, "ALL", 2010, 2012))).toEqual([9, 10, 11]);
+  });
+
+  it("is null with fewer than three months of data", () => {
+    expect(peakSeason(buildSeries(year(2010, { 9: 1, 10: 2 }), "ALL", 2010, 2010))).toBeNull();
+  });
+});
+
+describe("monthSpan", () => {
+  it("writes runs as a range, including over the year end", () => {
+    expect(monthSpan([9, 10, 11])).toBe("Sep–Nov");
+    expect(monthSpan([11, 12, 1])).toBe("Nov–Jan");
+    expect(monthSpan([3])).toBe("Mar");
+  });
+
+  it("lists months that are not consecutive instead of implying a range", () => {
+    expect(monthSpan([1, 3])).toBe("Jan, Mar");
+    expect(monthSpan([])).toBe("");
   });
 });
 

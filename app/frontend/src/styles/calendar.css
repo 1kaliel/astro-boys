@@ -50,6 +50,13 @@
   stroke: var(--viz-selection);
 }
 
+.calendar-cell-estimated-casing {
+  fill: none;
+  stroke: var(--color-surface);
+  stroke-width: calc(2 * var(--size-px-2));
+  pointer-events: none;
+}
+
 .calendar-cell-estimated {
   fill: none;
   stroke: var(--viz-estimated-outline);
@@ -73,6 +80,11 @@
 .calendar-cell:focus-visible .calendar-cell-rect {
   stroke: var(--color-ring);
   stroke-width: calc(2 * var(--size-px-2));
+}
+
+.calendar-tooltip {
+  /* nivo positions the tooltip in a shrink-to-fit box next to the pointer; without this it wraps word by word */
+  width: max-content;
 }
 
 .calendar-tooltip p {
@@ -125,4 +137,114 @@
   margin: var(--space-2) 0 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+}
+
+/* Hover and focus: the row (year) and the column (month) of the cell stay, the rest steps back */
+.calendar-cell {
+  transition: opacity 120ms ease;
+}
+
+.calendar-cell-dim {
+  opacity: var(--viz-dim-opacity);
+}
+
+.calendar-cell-hover .calendar-cell-rect {
+  stroke: var(--viz-selection);
+  stroke-width: calc(2 * var(--size-px-2));
+}
+
+.calendar-axis-label {
+  fill: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  transition: fill 120ms ease;
+}
+
+.calendar-axis-label.is-active {
+  fill: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Month filter */
+.month-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.month-filter-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chip {
+  min-height: var(--size-target-min);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-full);
+  background: var(--input-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+  color: var(--color-surface);
+}
+
+.month-chips {
+  display: grid;
+  /* 12 in a row on a wide card, 6 + 6 on a phone: never a lone month on a second row */
+  grid-template-columns: repeat(auto-fit, minmax(calc(1.4 * var(--size-target-min)), 1fr));
+  gap: var(--space-1);
+}
+
+.month-chip {
+  min-height: var(--size-target-min);
+  padding: var(--space-1);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.month-chip[data-pressed] {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+  color: var(--color-surface);
+}
+
+/* Legend with the limits of each color */
+.legend-stops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-stop-label {
+  color: var(--color-text-secondary);
+}
+
+/* The legend and badge marks follow the same two layers as the cell */
+.legend-mark-estimated,
+.badge-estimated .badge-mark {
+  box-shadow: inset 0 0 0 calc(2 * var(--size-px-2)) var(--color-surface);
 }

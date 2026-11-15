@@ -7,16 +7,29 @@ type LegendProps = {
   unit: string;
   /** Show the provenance marks (estimated, partial month, no data). */
   showMarking?: boolean;
+  /** Sequential only: the colors actually used, each with where it starts (e.g. "≥ 4,400"). */
+  stops?: ReadonlyArray<{ step: number; label: string }>;
+  /** One line that says how the colors were split, so the scale is never a secret. */
+  note?: string;
 };
 
 const SEQ_STEPS = [1, 2, 3, 4, 5, 6, 7];
 const DIV_STEPS = ["neg-4", "neg-3", "neg-2", "neg-1", "mid", "pos-1", "pos-2", "pos-3", "pos-4"];
 
-export function Legend({ mode, minLabel, maxLabel, unit, showMarking = true }: LegendProps) {
+export function Legend({ mode, minLabel, maxLabel, unit, showMarking = true, stops, note }: LegendProps) {
   return (
     <div className="legend" aria-label="Legend">
       <div className="legend-row">
-        {mode === "sequential" ? (
+        {mode === "sequential" && stops ? (
+          <ol className="legend-stops" aria-label="Color scale: each color starts at">
+            {stops.map((stop) => (
+              <li key={stop.step} className="legend-stop">
+                <span className="legend-step" style={{ background: `var(--viz-seq-${stop.step})` }} />
+                <span className="legend-stop-label">{stop.label}</span>
+              </li>
+            ))}
+          </ol>
+        ) : mode === "sequential" ? (
           <>
             <span className="legend-end">{minLabel ?? "Less"}</span>
             <span className="legend-ramp" aria-hidden="true">
@@ -59,6 +72,7 @@ export function Legend({ mode, minLabel, maxLabel, unit, showMarking = true }: L
           </li>
         </ul>
       )}
+      {note && <p className="legend-note">{note}</p>}
       {mode === "diverging" && (
         <p className="legend-note">Robust z-score bands are a product choice, not a NASA threshold and not a probability.</p>
       )}
