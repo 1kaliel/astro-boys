@@ -86,8 +86,10 @@ that month. Found in 2000–2026 (expected = detections implied by the other sat
 
 Incomplete months: Terra 2000-10, Terra 2000-12, Terra 2001-06, Terra 2002-01, Terra 2002-03, Aqua 2002-07, Aqua 2002-08, Terra 2003-12, SNPP 2012-01, Terra 2016-02, Aqua 2020-08, Aqua 2022-04, SNPP 2022-07, SNPP 2022-08, Terra 2022-10, N20 2023-07, SNPP 2024-07, SNPP 2024-11, SNPP 2026-07, N20 2026-11, SNPP 2026-11. Months in which Aqua or S-NPP is incomplete are left out of calibration and out
 of the main validation scores (scores on all months are kept in the JSON). Single low days are not gaps:
-MODIS swaths leave uncovered strips at low latitudes on some days and VIIRS does not. Dates are derived
-from the data and still need to be checked against the instrument notices.
+MODIS swaths leave uncovered strips at low latitudes on some days and VIIRS does not. The gaps of 2003–2026
+were checked against NASA and NOAA notices: of 17 gap events, 16 match a published event (one from a
+secondary source only, one only likely) and the NOAA-20 gap of July 2023 has no notice ([resources.md](resources.md#official-notices-satellite-gaps-and-orbit-changes)). The gaps of
+2000–2002 have not been checked.
 
 ### Calibration (2012–2019, January 2012 left out)
 
@@ -242,7 +244,9 @@ detections in the pilot extent, by year (`uv run python scripts/overpass_time.py
   harder than the reconstruction task. We report its bias as measured.
 - Terra, the witness, was stable until 2020 and drifted earlier from 2021; it is used as a witness only for
   2003–2011 in the product.
-- Still to do: confirm the dates on which orbit maintenance ended in the mission notices.
+- This matches the mission record: Aqua's last inclination maneuver was on 2021-03-18 and its last drag
+  make-up maneuver on 2021-12-01; Terra's last inclination maneuver was on 2020-02-27
+  ([resources.md](resources.md#official-notices-satellite-gaps-and-orbit-changes)).
 
 Late years, 2024–2025 (22 months; 2024-07 and 2024-11 left out as S-NPP gaps):
 
@@ -403,7 +407,7 @@ held back to 2000.
 | Terra-only 2000-11 → 2002-06 | Fitted and checked, **not used** (relation not stable backward) |
 | API files compared with archive files on the same dates (2026 looks unusually low) | Not done |
 | Uncertainty band on the before/after chart (regional annual totals) | Not done |
-| Gap dates checked against instrument notices | Not done |
+| Gap dates of 2000–2002 checked against instrument notices | Not done (2003–2026 are checked) |
 
 ## Findings from the team's Belize 2020 audit (pilot, one country, one year)
 
