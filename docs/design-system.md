@@ -85,7 +85,23 @@ Texture (hatching at 45°/135°) is **opt-in only**: an accessibility setting, p
 - Every chart has a table view, and tooltips on keyboard focus as well as hover. Minimum hit target and cell size 24 px.
 - `prefers-reduced-motion` turns motion off. Focus ring: `--color-ring`, 2 px.
 
+## Components
+
+UI primitives come from [Base UI](https://base-ui.com/) (unstyled, accessible), styled only with our tokens. No Tailwind.
+
+| Folder | Component | Notes |
+|--------|-----------|-------|
+| `components/ui/` | `Button`, `Card`, `Badge` | `Card` takes a `caption` for source, period and unit. `Badge` kinds: estimated, partial, nrt, simulated |
+| `components/ui/` | `Tooltip` (+ `TooltipProvider`), `SegmentedControl`, `YearSelect`, `CoordinateField`, `InfoDialog`, `ChartTableTabs` | Base UI Tooltip, Toggle Group, Select, Number Field, Dialog, Tabs. State attributes used in CSS: `data-pressed`, `data-active`, `data-highlighted`, `data-selected` |
+| `components/viz/` | `Legend`, `StatTile` | Legend shows the ramp plus the provenance marks. StatTile shows the delta in ink, never red or green |
+| `state/` | `DashboardProvider`, `useDashboard` | One shared state: area, period (`ALL`/`D`/`N`), scale, year range, selected month |
+| `features/dashboard/` | `DashboardPage`, `AboutDialog` | Layout from the spec; "How to read" text is a first draft for task D10 |
+
+Calendar: our own heatmap, not an events calendar (FullCalendar has no year × month view). Map: MapLibre GL JS with
+react-map-gl and terra-draw for the rectangle; basemap from OpenFreeMap. react-globe.gl was considered and not used;
+deck.gl is deferred to the L3 drill-down.
+
 ## Open items
 
 - Texture mode tokens (step 4 of the plan).
-- Map basemap provider and attribution: decided in task D3.
+- Map section (basemap, attribution, projection) when the map lands (task D3).

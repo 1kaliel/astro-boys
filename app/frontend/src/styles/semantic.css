@@ -19,6 +19,7 @@
 
   --color-accent: var(--blue-500); /* links and the page title */
   --color-ring: var(--blue-450);
+  --color-overlay: var(--black-alpha-40);
 
   --color-status-good: var(--status-good);
   --color-status-warning: var(--status-warning);
