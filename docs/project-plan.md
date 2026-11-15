@@ -5,9 +5,9 @@ task's owner and logged; the defaults in [open decisions](#open-decisions) apply
 
 Supersedes plan v1. Built from the team's six research documents ([ADR 0005](decisions/0005-plan-v2.md)).
 Specs: [harmonization](spec/harmonization.md) · [dashboard](spec/dashboard.md) · [data contract](data-dictionary.md).
-Schedule: [timeline.md](timeline.md) · Who does what: [tasks.md](tasks.md) · Tools: [tool-usage.md](tool-usage.md).
+Schedule, task board and tool guide were team-internal files, removed before submission (see the diary for the record).
 
-**Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/) ([our summary](challenge/brief.md)).
+**Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/).
 **Deadline:** Sun Nov 15, 23:59 local. We submit by 22:30.
 
 ## The problem, in one paragraph
@@ -128,7 +128,7 @@ contract, and logs the choice as a `DECISION`. Defaults apply until the owner sa
 | Q7 | Start of the series | ✅ July 2002 (Aqua's first months). Terra-only 2000-11 → 2002-06 was fitted and checked but is not published ([why](methodology.md#extending-the-record-before-2003)) | Kali |
 | Q8 | AGGS scope | Default: grid now; drill-down and priority index are stretch | Guilherme |
 | Q9 | Prediction / early warning | Default: out | Kali |
-| Q10 | Names on tasks | ✅ Confirmed ([team.md](team.md)). Demo lead and video-vs-slides still to confirm | Team |
+| Q10 | Names on tasks | ✅ Confirmed. Demo lead and video-vs-slides still to confirm | Team |
 | Q11 | FIRMS MAP_KEY for 2026 data | ✅ Key obtained. Justino stores it in `.env` on the VM and locally; never in git or in docs | Justino |
 | Q12 | Local Event registration (all 6, same event) | ✅ Confirmed. Local judging time: check with the Local Lead | Kali |
 | Q13 | Outside material (other teams' code, text, numbers) | ✅ None used. Anything added later goes in [resources.md](resources.md) | Everyone |
