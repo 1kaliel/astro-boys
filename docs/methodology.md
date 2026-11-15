@@ -7,17 +7,31 @@ Living document, owned by Team Harmonization. It feeds the project page's detail
 
 ## Study area and period
 
-- Extent processed: _TBD_ (default Brazil) · Demo region: _TBD_
-- Period: _TBD_ · Grid: L2 = 0.25° · Time unit: local solar month
+The pilot covers the Northeast Brazil study bounding box: longitude −48.8° to −34.7° and latitude −18.4° to −1.0° (west, south, east, north: −48.8, −18.4, −34.7, −1.0). This rectangular extent is the processing and whole-area demonstration reference; it is not an administrative-boundary mask. The dashboard also supports user-selected areas within the grid.
+
+The published calendar runs from July 2002 to November 2026, with observations available through 14 November 2026. July and August 2002 have incomplete Aqua coverage; November 2026 is an unfinished month. Terra observations from 2000–2002 support the early coverage analysis, but the Terra-only period before Aqua is not published as a reconstructed calendar.
+
+Counts are grouped into L2 cells of 0.25° latitude by 0.25° longitude and local solar months, keeping day and night separate. These angular cells have different surface areas at different latitudes. UTC acquisition time and source provenance are retained in the native-detection dataset. Calibration uses 2012–2019, development uses 2020–2021, the frozen final test uses 2022–2023, and 2024–2025 are reported separately.
 
 ## Data used
 
-| Sensor / satellite | `version` values found | Period used | Rows in | Rows after the main filter |
-|--------------------|------------------------|-------------|---------|----------------------------|
-| MODIS Aqua | | | | |
-| MODIS Terra | | | | |
-| VIIRS S-NPP | | | | |
-| VIIRS NOAA-20 | | | | |
+NASA LANCE FIRMS supplies the MODIS Terra/Aqua and VIIRS S-NPP/NOAA-20 hotspot detections. The table below describes the **2003–2025 historical QA package only**, after normalization and clipping to the study box. “Normalized rows” includes detections rejected by the main scientific filter; it is not the number of global or Brazil-wide source rows. Versions are the literal source `version` values and are not inferred from the year.
+
+| Sensor / satellite | Source `version` values found | Local solar years in this QA package | Normalized rows | Rows passing the main filter |
+|---|---|---|---:|---:|
+| MODIS Aqua | 6.2; 6.03; 61.03 | 2003–2025 | 2,082,573 | 2,000,334 |
+| MODIS Terra | 6.2; 6.03; 61.03 | 2003–2025 | 1,204,930 | 1,149,017 |
+| VIIRS S-NPP | 2 | 2012–2025 | 7,406,727 | 6,508,292 |
+| VIIRS NOAA-20 | 2 | 2018–2025 | 3,783,729 | 3,294,825 |
+| **Total** | | **2003–2025** | **14,477,959** | **12,952,468** |
+
+Source: [H3 QA report](../artifacts/20261115T003611Z_ingest_2e2b2e/qa.md), run `20261115T003611Z_ingest_2e2b2e`. The input reconciliation is 39,356,670 source rows − 24,878,709 rows outside the study box − 2 rows removed by the remaining ingest filters = 14,477,959 normalized rows; no exact duplicate rows were reported as dropped. The normalized dataset has 26 columns and unique hotspot identifiers.
+
+Version boundaries matter. Aqua uses 6.2 in 2003–2017, 6.03 in 2018–2022 and 61.03 in 2023–2025. Terra uses 6.2 in 2003–2016; local year 2017 has 54,020 rows of 6.2 and one of 6.03; 2018–2021 use 6.03; local year 2022 has 46,121 rows of 6.03 and four of 61.03; 2023–2025 use 61.03. The mixed Terra years reflect the UTC-to-local-solar-date boundary. VIIRS version is 2 throughout the respective historical periods. These are provenance fields, not equivalent cross-sensor quality scales.
+
+The main historical filter retains presumed vegetation detections (`type = 0`) at nominal or high confidence. Confidence is mapped separately for each sensor; a MODIS confidence value and a VIIRS confidence class are not interchangeable. The H3 report retains 41 suspicious numeric values from low-confidence VIIRS records as source data: 13 negative FRP values, 9 non-positive MIR brightness temperatures and 19 TIR temperatures at or below 150 K. None passes the main filter. The report's verdict is **PASS WITH WARNINGS**; their upstream cause was not established.
+
+Two additions extend the product beyond that QA table. The early-years run normalizes 215,459 detections for local years 2000–2002 and produces 36,558 count keys; the 2026 API run normalizes 531,036 detections, of which 460,569 pass its implemented main filter. These totals are reported in the team's H13 reproduction record and are not added to the per-satellite historical table without a separate breakdown. Standard-processing API files cover January–July 2026; NRT files cover August onward. Untyped NRT detections retain `type = null`; nominal/high untyped NRT detections enter provisional counts and are explicitly flagged. The historical `type = 0` rule remains unchanged.
 
 ## Results: transfer function Aqua → VIIRS-equivalent (Northeast Brazil)
 
@@ -212,7 +226,7 @@ One run, `20261115T014038Z_validate-final_1f4753`, after the method was frozen a
   The final method is still more accurate per cell than every baseline (MAE 3.88 against 4.61) and level on
   regional totals (7,040 against 6,924; interval of the difference −69 to +300), but a 20% bias means the
   2012–2019 factors should not be used to convert Aqua counts of those years. This is consistent with the
-  drift of the MODIS orbits to later overpass times; it needs to be confirmed against the mission notices.
+  measured drift of MODIS overpass times and the mission records discussed below; that agreement supports the explanation without proving it is the only cause.
 - Consequences for the product: (1) for 2012 onward the series uses observed VIIRS, so this bias does not
   enter it; (2) for 2003–2011 the factors are applied backward, where no test is possible. The ratio was
   stable from 2012 to 2021 (table above), which is the only evidence for the backward assumption, and the
@@ -302,7 +316,7 @@ observed / estimated and the mean squared error per unit of estimate (`processed
 
 ### Anomalies
 
-Per cell, month of year and period, over all fully observed years 2003–2025: historical median, absolute
+Per cell, month of year and period, using complete months within the calendar run’s historical window (2002–2026 in the extended published run): historical median, absolute
 and percent anomaly, and robust z-score `(count − median) / (1.4826 × MAD)`. A fully observed month with no
 detection counts as zero in the history, although it has no row in the table. Partial months get no
 anomaly. In sparse cells the MAD is small and z is extreme (19% of cell-months have |z| ≥ 2), so per-cell z
@@ -420,4 +434,61 @@ day/night, same-overpass pairs, per-sensor filters.
 
 ## Limitations
 
-See [spec/harmonization.md](spec/harmonization.md#13-limitations-to-state-everywhere). Add what the results reveal.
+### Meaning and spatial support
+
+A hotspot detection is a satellite observation, not an individual fire, a count of fires, burned area or a complete inventory of burning. One fire can generate multiple detections; small, short-lived, obscured or between-overpass fires can be missed. The reconstructed record describes activity on an early-afternoon satellite-observation scale, with a separate night component; it does not recover an all-day fire history. MODIS and VIIRS differ in spatial resolution, detection response and confidence definitions. Their raw counts, confidence and brightness temperatures must not be treated as equivalent, and raw satellite counts must not be added into one combined series.
+
+The study area is a bounding box, not the official Northeast administrative outline. L2 cells are angular rather than equal-area. Selecting cells that overlap a user-drawn box approximates the selected area; a count is not an area-normalized density. Estimated activity has L2 cell-month support and must not be converted into synthetic VIIRS points or interpreted at street, property or individual-event scale.
+
+### Backward reconstruction and sensor change
+
+The transfer relation is learned on 2012–2019 and assumed to hold for the earlier Aqua record, July 2002–January 2012. There is no VIIRS observation of those earlier years against which to validate the reconstruction directly. Similar Aqua overpass times before and during calibration support this assumption, but do not prove unchanged land use, fire timing or sensor response. The background term is an average estimate of activity VIIRS may detect where Aqua recorded none; it is not an observed detection or an identified missing fire.
+
+The final method has approximately +6.3% bias in the 2022–2023 test and +19.7% in 2024–2025. Its lower cell-level errors do not remove that bias. Historical Aqua factors should not be applied uncritically to recent Aqua observations. The product uses observed VIIRS from February 2012, with the documented NOAA-20 continuity adjustment where needed, so these forward Aqua-conversion biases are not directly inserted into that observed segment. The NOAA-20 adjustment is itself estimated from overlapping observations, rather than evidence that the satellites are identical.
+
+Terra-only reconstruction before Aqua was fitted but withheld: its daytime relation to Aqua was not stable backward. Terra's auxiliary role in the main model does not justify publishing those Terra-only months. A claim that harmonization proves the real historical trend would also be too strong; the reconstruction inherits the Aqua record and its assumptions.
+
+### Validation and uncertainty
+
+The 2020–2021 development set was inspected four times during method development and is not a blind test. The frozen 2022–2023 test supports lower cell-month MAE and RMSE than the baselines. Regional monthly errors are statistically indistinguishable from the best baseline under the reported 90% paired interval; the result must not be described as proven regional superiority. Years 2024–2025 are a separate stress result. Reproducing a frozen test is an audit, not a new independent blind test or permission to tune on its outcomes.
+
+Intervals are empirical 5th–95th percentile error intervals from leaving calibration years out, not the originally planned bootstrap over years. Their observed coverage is 94.2% on the development data and was not evaluated on the final-test years. They are not guaranteed coverage for the pre-2012 reconstruction, all locations or changed sensor conditions. They apply to estimates and do not describe all uncertainty in observed VIIRS counts. Neighboring cell errors are correlated: summed-area intervals use an approximate empirical widening, not a full spatial covariance model. Annual uncertainty bands on the before/after chart have not been produced; monthly intervals cannot simply be added to obtain them.
+
+### Coverage, missing data and provisional observations
+
+FIRMS detection CSVs do not contain a full cloud, swath or valid-no-fire observation mask. The coverage procedure infers likely outages from detection deficits and cannot identify every missing observation or distinguish all very quiet periods from incomplete coverage. A lack of detections is not evidence that no fire occurred. Zero is used only under the implemented completeness rules; missing or unsupported estimates remain missing. Observations close to UTC/local-year boundaries and the end of an available archive require care. The dates of inferred gaps in 2000–2002 have not been checked against instrument notices.
+
+The current month is incomplete and is compared only with matching days of earlier eligible years. Other partial months do not receive a full-month anomaly. API/NRT records are provisional and may be revised. NRT records lack detection type, so nominal/high provisional counts can include non-vegetation detections. The non-vegetation share removed in January–July standard files, 1.4%–4.5% per month, is context rather than a measured correction for later NRT months. The unusually low August–October 2026 activity appears in both VIIRS sources, but API and archive data have not yet been compared for matching dates; it must not be presented as a fully resolved physical change.
+
+### Historical comparisons and intended use
+
+Historical medians and anomalies depend on the dataset version, included years and coverage rules. The extended run uses the 2002–2026 window, retaining complete months; its baseline includes estimates as well as observations. Adding 2002 changes some medians and anomalies even when the other counts match. The baseline is descriptive, not an external fixed climate normal or a forecast. The current partial-month comparison uses its separate same-days history. Sparse-cell MAD values can make robust z-scores extreme or undefined. Color classes and anomaly thresholds are product choices, not NASA thresholds, probabilities or fire-risk measures.
+
+This prototype supports exploratory historical comparisons. It provides no prediction, early-warning service, detection probability or operational risk assessment. It should not be used on its own for emergency response, public-safety or resource-allocation decisions. NASA/FIRMS data use does not imply NASA endorsement. Source acknowledgments and the LANCE disclaimer are recorded in [resources.md](resources.md).
+
+## Reproducibility and evidence status
+
+The H3 report documents the full historical QA scan. A clean clone of `main` at `5286248` was run end to end on the
+team VM on Nov 15, 2026, from the raw files in the bucket ([reproduction report](../artifacts/h13-reproducibility/report.md)).
+Every stage reproduced the published runs: row counts, calibration (equal within 10⁻¹³), the development and
+final-test tables (identical) and the calendar. The default 2003-onward run yields 1,782,394 calendar rows and
+medians over 2003–2026; adding the documented early-years step yields the published 1,838,338 rows, equal in
+every column, with medians over 2002–2026. The early-years step includes a manual partition copy that has no
+manifest of its own; it is documented in [historical-batch.md](historical-batch.md#early-years-20002002-terra-only-then-aqua-from-july-2002).
+
+The VM logs, the 14 manifests and the data of that run were then audited read-only
+([VM audit](../artifacts/h13-reproducibility/vm-audit.md)): every step exited 0 (apart from `make ci`, because
+`make` was missing on the VM; the same checks run by hand passed), no log or manifest contains a key, the 176 raw
+files are identical to the bucket (MD5, and SHA-256 for the 48 zips), and the layers are consistent (detections
+passing the filter equal the summed monthly counts; no duplicate keys).
+
+A separate local audit of commit `4be300e64f2bd89749d124fadfcdc66b87711bbb`
+([audit](../artifacts/h13-reproducibility/jean-audit.md)) installed locked dependencies and passed 84 pipeline
+tests, lint, repository hygiene, shell syntax checks and the 30-row smoke test. It had no production data, so it
+checks the toolchain, not the scientific results.
+
+Input checksums refer to exact files: hashes for Brazil CSVs and global ZIPs cannot be equated. Every reproduction must check each input against its own manifest, retain its code/settings and compare normalized outputs and scientific metrics separately. The current manifest implementation does not checksum output datasets automatically; verifying output equivalence requires an explicit comparison. Logs should remain outside the clone so they do not mark the code version dirty.
+
+## Authorship and scope of this text update
+
+This editorial completion was prepared for Jean Gustavo with AI assistance, using the team's existing methodology, H3 report, scientific artifacts, source code and H13 reproduction report. It introduces no new scientific model, input observations or recomputed production results. It completes the text for review; publication, acceptance of the reproduction evidence and the H13 task-board decision remain separate actions.
