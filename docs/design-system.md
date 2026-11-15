@@ -42,7 +42,8 @@ Footer: what this shows · data credit
 | Deltas in ink with an arrow and a word ("▼ 60% below the March median") | More or fewer hotspots is not good or bad; no risk claims |
 | While data reloads, the previous render stays, dimmed | No skeleton, no layout jump |
 | The app root is isolated (`isolation: isolate`) and popups use `--layer-popup` | Base UI popups always open above the map |
-| Breakpoints: 75rem (calendar 7 / map 5), 56rem (one column, KPIs 2 × 2, map collapsed until "Show map"), 30rem (phone: 18 px heatmap cells, single-letter months) | Media queries cannot read custom properties: these are the only raw values outside `primitives.css` |
+| Breakpoints: 75rem (calendar 7 / map 5), 56rem (one column, KPIs 2 × 2, map collapsed until "Show map", map tools in a row above a 420 px map), 30rem (phone: the calendar's 12 months fit the card with 20 px cells and one-letter months, so the year labels never scroll away; month buttons 6 + 6) | Media queries cannot read custom properties: these are the only raw values outside `primitives.css` |
+| Touch targets: every control takes `--control-size`: 24 px (`--size-target-min`) with a mouse, 44 px (`--size-target-touch`) under 56rem or with `pointer: coarse`, MapLibre's zoom buttons included | Fingers need 44 px (WCAG 2.5.5, Apple HIG); a mouse does not, and the desktop filter row stays one line |
 
 ## Burning calendar (heatmap)
 
@@ -197,7 +198,7 @@ labels scroll with it.
 ## Accessibility
 
 - Text contrast ≥ 4.5:1 (secondary ink at most; muted ink is for axis labels and captions only). Marks ≥ 3:1, or a relief channel.
-- Every chart has a table view, and tooltips on keyboard focus as well as hover. Minimum hit target and cell size 24 px.
+- Every chart has a table view, and tooltips on keyboard focus as well as hover. Minimum hit target and cell size 24 px with a mouse; controls are 44 px on touch screens and narrow windows (heatmap cells on a phone: 20 px, with the table view as the exact alternative).
 - `prefers-reduced-motion` turns motion off. Focus ring: `--color-ring`, 2 px.
 
 ## Components
@@ -208,7 +209,7 @@ UI primitives come from [Base UI](https://base-ui.com/) (unstyled, accessible), 
 |--------|-----------|-------|
 | `components/ui/` | `Button`, `Card`, `Badge` | `Card` takes a `caption` for source, period and unit. `Badge` kinds: estimated, partial, nrt, simulated |
 | `components/ui/` | `Tooltip` (+ `TooltipProvider`), `SegmentedControl`, `YearSelect`, `CoordinateField`, `InfoDialog`, `ChartTableTabs` | Base UI Tooltip, Toggle Group, Select, Number Field, Dialog, Tabs. State attributes used in CSS: `data-pressed`, `data-active`, `data-highlighted`, `data-selected` |
-| `components/ui/` | `Popover` | Base UI Popover, used by the Area filter (lat/lon fields, reset to pilot) |
+| `components/ui/` | `Popover` | Base UI Popover, used by the Area filter: four fields in a 2 × 2 grid, a live preview (L2 cells, size in km, why the box cannot be applied, edges clamped to the study area), "Reset to the study area" |
 | `components/viz/` | `KpiTile`, `Legend` | KpiTile: label, compact value, delta in ink, badges. Legend: ramp (or the map's fixed class limits) plus provenance marks |
 | `features/calendar/` | `BurningCalendar`, `CalendarCell`, `CalendarTable` | Heatmap rules above. Takes the calendar the page loaded (shared with the KPI row) |
 | `components/map/` | `MapPanel`, `CellMap`, `MapTools`, `DrillLegend` | Map in a lazy chunk; tools over the map: Flat / Globe, Draw area, Use visible area; in the L3 drill-down, Back to L2 cells |
@@ -224,15 +225,17 @@ deck.gl was kept for the L3 drill-down, which turned out not to need it (16 cell
 | Topic | Rule |
 |-------|------|
 | Engine | MapLibre GL JS via react-map-gl, in its own lazy chunk (~315 KB gzip). Phones download it only after "Show map" |
-| Projection | Flat (Mercator) by default, best for choosing an area. A Flat / Globe toggle uses MapLibre's own globe (no extra library) |
+| Projection | Flat (Mercator) by default, best for choosing an area. A Flat / Globe toggle uses MapLibre's own globe (no extra library). Globe opens on the whole globe turned to the study area (zoom from the map size, `globeZoomToFit`), with free panning and zoom out; the study area is dashed and labeled "Study area: Northeast Brazil · data processed only here", and a click on it (below zoom 3) or on its label flies in. Nothing is drawn outside it: no data there is never shown as zero. Back to Flat frames the selected area again |
 | Basemap | OpenFreeMap Positron (light) or Dark, following the theme. If the style does not load in 5 s, a plain background is used and the map says so |
 | Attribution | Comes with the style, compact control, always visible. Never hidden |
 | Cells | L2 polygons built in the browser from the cell ID (`lib/grid.ts`); the API sends values only (~9 KB gzip per month) |
 | Colors | `--viz-seq-1…7`, read with `getComputedStyle` because MapLibre cannot read `var()`; re-read on theme change. Classes: fixed limits from `/api/cells` (`breaks`: quantiles 50–98% of every positive cell-month), the same for every month so a quiet month looks quiet |
 | Estimated month | Cell outlines dashed (`--viz-estimated-outline`), plus the "Estimated from MODIS" badge |
-| Selected area | Ink outline (`--viz-selection`), 2 px |
+| Selected area | Ink outline (`--viz-selection`), 2 px, at every zoom |
+| Cell grid | The outline of each L2 cell of the area (`--viz-selection`, 0.5 px) fades in with zoom: hidden below 16 px per cell (zoom ~5.5), full (0.6 opacity) from 32 px (zoom ~6.5), `GRID_FADE` in `components/map/view.ts`. At the zoom that frames the area, 4,000 outlines were a mesh that hid the colors |
+| No detection | A cell with no detection that month is not drawn: the basemap shows through (dark squares on the dark basemap). Never a zero-colored cell; the legend says so |
 | Precision | `maxZoom` 10: a cell is 28 km wide, so closer zoom would suggest precision the data does not have. Rotation and pitch off |
-| Phones | `pixelRatio` capped at 2, no fade, no fly animation with `prefers-reduced-motion`; "Use visible area" selects without drawing |
+| Phones | `pixelRatio` capped at 2, no fade, no fly animation with `prefers-reduced-motion`; "Use visible area" selects without drawing. Tools above the map in one column; the attribution starts folded (the "i" button) under 640 px of map width, so it does not cover the cells |
 | Area rule | A cell belongs to the area when it overlaps the bounds; touching an edge is not enough (same rule in `/api/calendar` and `lib/grid.ts`) |
 | L3 drill-down (D11) | A click on an L2 cell (or Enter on the focused map, for the cell at its center) frames its 3 x 3 block and asks `/api/drilldown`. The harmonized fill, the area outline and the area tools are hidden: only native detections of the month's source satellite are on screen. The target's 16 L3 cells (0.0625°) are filled on the sequential tokens with their own classes (at most 4 equal whole-number steps between the lowest and highest sub-cell, `drillBreaks` in `lib/scale.ts`); empty sub-cells stay unfilled with a hairline. The 8 neighbors are dashed outlines labeled with their native count, and a click on one moves the drill-down there. Its own legend: "Native detections, <satellite> (<instrument>), <month>: not harmonized". Max depth L3; a cell with fewer than `min_detections` (5) is not subdivided and says so. "Back to L2 cells" or Escape restores the previous view; a new month, period or area also leaves it. 503 reads "Detections are unavailable right now" (with Retry); a 422 for a month without data is a neutral note |
 

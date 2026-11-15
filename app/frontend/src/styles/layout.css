@@ -655,6 +655,7 @@
   }
 
   .segmented-item,
+  .chip,
   .month-chip {
     min-width: var(--size-target-touch);
   }
