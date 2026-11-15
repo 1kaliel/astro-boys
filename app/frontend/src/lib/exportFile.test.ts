@@ -87,6 +87,12 @@ describe("calendarCsv", () => {
     expect(calendarCsv(rows, META, CONTEXT)).toContain("# Estimated from MODIS (before 2012-02): 2002-01 to 2002-03 2003-01 2003-03");
   });
 
+  it("says raw native counts carry no interval", () => {
+    const raw = calendarCsv(ROWS, META, { ...CONTEXT, series: "raw_by_sensor", intervalApproximate: false });
+    expect(raw).toContain("# Interval: ci90_low and ci90_high are empty: native counts carry no interval");
+    expect(raw).toContain(",raw_by_sensor,ALL,v1");
+  });
+
   it("has no comma inside a comment row", () => {
     for (const line of lines.filter((l) => l.startsWith("#"))) expect(line).not.toContain(",");
   });

@@ -124,9 +124,11 @@ export function calendarCsv(rows: readonly CalendarCsvRow[], meta: ExportMeta, c
     commentRow("Note", `Empty count = no data or no estimate (not zero). ${NOT_FIRES_TEXT}`),
     commentRow(
       "Interval",
-      `ci90_low and ci90_high are the 90% interval of months estimated from MODIS (equal to count when observed; empty when there is none).${
-        context.intervalApproximate ? " For an area the interval is approximate: the errors of nearby cells are correlated." : ""
-      }`,
+      context.series === "raw_by_sensor"
+        ? "ci90_low and ci90_high are empty: native counts carry no interval (intervals belong to the harmonized series)."
+        : `ci90_low and ci90_high are the 90% interval of months estimated from MODIS (equal to count when observed; empty when there is none).${
+            context.intervalApproximate ? " For an area the interval is approximate: the errors of nearby cells are correlated." : ""
+          }`,
     ),
   ];
   lines.push(CALENDAR_CSV_COLUMNS.join(","));
