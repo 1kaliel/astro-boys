@@ -13,6 +13,9 @@ dependencies = [
 gcs = ["gcsfs>=2024.6"]
 # Exploration in notebooks.
 notebooks = ["jupyterlab>=4", "pandas>=2.2", "pyarrow>=16", "matplotlib>=3.8"]
+figures = [
+    "matplotlib>=3.8",
+]
 
 [project.scripts]
 astro-fire = "astro_fire.cli:main"

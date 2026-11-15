@@ -1,0 +1,232 @@
+[
+  {
+    "year": 2003,
+    "modis_aqua_raw": 122275,
+    "viirs_snpp_observed": null,
+    "harmonized": 701894.7411566005,
+    "estimated_part": 701894.7411566005,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2004,
+    "modis_aqua_raw": 120282,
+    "viirs_snpp_observed": null,
+    "harmonized": 706999.1401145431,
+    "estimated_part": 706999.1401145431,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2005,
+    "modis_aqua_raw": 117439,
+    "viirs_snpp_observed": null,
+    "harmonized": 719841.0065103868,
+    "estimated_part": 719841.0065103868,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2006,
+    "modis_aqua_raw": 76309,
+    "viirs_snpp_observed": null,
+    "harmonized": 444282.7576967287,
+    "estimated_part": 444282.7576967287,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2007,
+    "modis_aqua_raw": 162623,
+    "viirs_snpp_observed": null,
+    "harmonized": 1003457.525162237,
+    "estimated_part": 1003457.525162237,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2008,
+    "modis_aqua_raw": 90939,
+    "viirs_snpp_observed": null,
+    "harmonized": 536998.2467745101,
+    "estimated_part": 536998.2467745101,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2009,
+    "modis_aqua_raw": 63233,
+    "viirs_snpp_observed": null,
+    "harmonized": 376435.80268022156,
+    "estimated_part": 376435.80268022156,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2010,
+    "modis_aqua_raw": 128945,
+    "viirs_snpp_observed": null,
+    "harmonized": 807262.6242210375,
+    "estimated_part": 807262.6242210375,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2011,
+    "modis_aqua_raw": 77919,
+    "viirs_snpp_observed": null,
+    "harmonized": 466805.8189667801,
+    "estimated_part": 466805.8189667801,
+    "all_estimated": true,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2012,
+    "modis_aqua_raw": 111216,
+    "viirs_snpp_observed": 724294,
+    "harmonized": 734762.4109827429,
+    "estimated_part": 12923.41098274389,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2013,
+    "modis_aqua_raw": 54134,
+    "viirs_snpp_observed": 329971,
+    "harmonized": 329971.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2014,
+    "modis_aqua_raw": 73060,
+    "viirs_snpp_observed": 454958,
+    "harmonized": 454958.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2015,
+    "modis_aqua_raw": 103094,
+    "viirs_snpp_observed": 704952,
+    "harmonized": 704952.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2016,
+    "modis_aqua_raw": 64904,
+    "viirs_snpp_observed": 412522,
+    "harmonized": 412522.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2017,
+    "modis_aqua_raw": 72954,
+    "viirs_snpp_observed": 482158,
+    "harmonized": 482158.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2018,
+    "modis_aqua_raw": 47315,
+    "viirs_snpp_observed": 309619,
+    "harmonized": 309619.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2019,
+    "modis_aqua_raw": 67727,
+    "viirs_snpp_observed": 448650,
+    "harmonized": 448650.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2020,
+    "modis_aqua_raw": 59104,
+    "viirs_snpp_observed": 406819,
+    "harmonized": 406819.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2021,
+    "modis_aqua_raw": 73272,
+    "viirs_snpp_observed": 475572,
+    "harmonized": 475572.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2022,
+    "modis_aqua_raw": 72183,
+    "viirs_snpp_observed": 437831,
+    "harmonized": 437831.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 2,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2023,
+    "modis_aqua_raw": 78445,
+    "viirs_snpp_observed": 468922,
+    "harmonized": 468922.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2024,
+    "modis_aqua_raw": 79123,
+    "viirs_snpp_observed": 399949,
+    "harmonized": 399949.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 2,
+    "model_version": "fb-l1-terra-rec-4"
+  },
+  {
+    "year": 2025,
+    "modis_aqua_raw": 83839,
+    "viirs_snpp_observed": 452075,
+    "harmonized": 452075.0,
+    "estimated_part": null,
+    "all_estimated": false,
+    "partial_months": 0,
+    "model_version": "fb-l1-terra-rec-4"
+  }
+]
