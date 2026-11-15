@@ -1,5 +1,4 @@
 import { useId, useState, type ReactNode } from "react";
-import { InfoTip } from "../../components/ui/InfoTip";
 import { Popover } from "../../components/ui/Popover";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
 import { YearSelect } from "../../components/ui/YearSelect";
@@ -17,17 +16,22 @@ import {
   type Relevance,
   type Sensor,
 } from "../../state/dashboard";
+import {
+  DATA_SERIES,
+  DATA_SERIES_HINT,
+  DATA_SERIES_LABEL,
+  dataSeriesActions,
+  dataSeriesOf,
+  isMixed,
+  type DataSeries,
+} from "../../lib/dataSeries";
 import "../../styles/filters.css";
 import { AreaPicker, describeArea } from "./AreaPicker";
 
-/** The data series: the harmonized VIIRS-equivalent counts, or the native counts of one instrument family. */
-type DataSeries = "harmonized" | "modis" | "viirs";
-
-const DATA_OPTIONS: ReadonlyArray<SegmentOption<DataSeries>> = [
-  { value: "harmonized", label: "Harmonized" },
-  { value: "modis", label: "MODIS" },
-  { value: "viirs", label: "VIIRS" },
-];
+const DATA_OPTIONS: ReadonlyArray<SegmentOption<DataSeries>> = DATA_SERIES.map((value) => ({
+  value,
+  label: DATA_SERIES_LABEL[value].short,
+}));
 const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
   { value: "ALL", label: "All" },
   { value: "D", label: "Day" },
@@ -62,43 +66,14 @@ const SATELLITE: Record<Exclude<Sensor, "harmonized">, string> = {
   n20: "NOAA-20",
 };
 
-const familyOf = (sensor: Sensor): DataSeries =>
-  sensor === "harmonized" ? "harmonized" : sensor === "aqua" || sensor === "terra" ? "modis" : "viirs";
-
-/**
- * The data series as one choice over two pieces of state: the calendar scale and the map layer. Harmonized =
- * scale "harmonized" + layer "harmonized"; MODIS = scale "raw" + a MODIS satellite (Aqua unless Terra is already on
- * the map); VIIRS = scale "raw" + a VIIRS satellite (S-NPP unless NOAA-20). "mixed" when the map layer control set
- * them apart: no option is pressed and the hint says so.
- */
-function dataSeriesOf(state: Pick<DashboardState, "scale" | "sensor">): DataSeries | "mixed" {
-  const family = familyOf(state.sensor);
-  if (family === "harmonized") return state.scale === "harmonized" ? "harmonized" : "mixed";
-  return state.scale === "raw" ? family : "mixed";
-}
-
 function setDataSeries(series: DataSeries, sensor: Sensor, dispatch: (action: DashboardAction) => void) {
-  if (series === "harmonized") {
-    dispatch({ type: "setScale", scale: "harmonized" });
-    dispatch({ type: "setSensor", sensor: "harmonized" });
-    return;
-  }
-  dispatch({ type: "setScale", scale: "raw" });
-  if (familyOf(sensor) !== series) dispatch({ type: "setSensor", sensor: series === "modis" ? "aqua" : "snpp" });
+  for (const action of dataSeriesActions(series, sensor)) dispatch(action);
 }
-
-const DATA_HINT: Record<DataSeries | "mixed", string> = {
-  harmonized: "VIIRS-equivalent counts, comparable from 2002 to today.",
-  modis: "Raw: native counts, not comparable across sensors.",
-  viirs: "Raw: native counts, not comparable across sensors.",
-  mixed: "Calendar and map show different series: pick one.",
-};
 
 function dataText(state: DashboardState): string {
   const series = dataSeriesOf(state);
-  if (series === "harmonized") return "Harmonized (VIIRS-equivalent)";
-  if (series === "mixed") return "Mixed series";
-  return `${series === "modis" ? "MODIS" : "VIIRS"} raw · ${SATELLITE[state.sensor as Exclude<Sensor, "harmonized">]}`;
+  if (series === "harmonized") return DATA_SERIES_LABEL.harmonized.long;
+  return `${DATA_SERIES_LABEL[series].long} · ${SATELLITE[state.sensor as Exclude<Sensor, "harmonized">]}`;
 }
 
 type ActiveFilter = { key: string; text: string; changed: boolean; clear?: () => void };
@@ -124,7 +99,7 @@ function activeFilters(state: DashboardState, dispatch: (action: DashboardAction
     {
       key: "data",
       text: dataText(state),
-      changed: series !== "harmonized",
+      changed: series !== "harmonized" || isMixed(state),
       clear: () => setDataSeries("harmonized", state.sensor, dispatch),
     },
     {
@@ -172,6 +147,7 @@ export function FilterBar({ when, collapsible }: { when?: ReactNode; collapsible
   const chips = activeFilters(state, dispatch);
   const active = chips.filter((chip) => chip.changed).length;
   const series = dataSeriesOf(state);
+  const mixed = isMixed(state);
   const folded = Boolean(collapsible) && !panelOpen;
 
   function resetAll() {
@@ -255,16 +231,15 @@ export function FilterBar({ when, collapsible }: { when?: ReactNode; collapsible
             <SegmentedControl
               label="Data"
               options={DATA_OPTIONS}
-              value={series === "mixed" ? ("mixed" as DataSeries) : series}
+              value={series}
               onChange={(next) => setDataSeries(next, state.sensor, dispatch)}
             />
-            {series !== "mixed" && <InfoTip label="About the data series">{DATA_HINT[series]}</InfoTip>}
           </div>
-          {series === "mixed" && (
-            <p className="fbar-note" id={hintId} data-tone="warn">
-              {DATA_HINT[series]}
-            </p>
-          )}
+          <p className="fbar-note fbar-data-hint" id={hintId} data-tone={mixed ? "warn" : undefined}>
+            {mixed
+              ? "The calendar and the map were out of step: pick a series to set both."
+              : `${DATA_SERIES_HINT[series]} Same switch as Data on the map.`}
+          </p>
           <div className="xp-row">
             <SegmentedControl
               label="Time of day"

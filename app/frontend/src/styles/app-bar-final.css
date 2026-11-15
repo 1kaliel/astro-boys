@@ -1,0 +1,80 @@
+/*
+ * App bar additions: the "Story" link next to Guide, and the guide prompt as a small chip docked in the header row
+ * (it never floats over the map or the content). Breakpoints as in header-help.css (56rem, 40rem).
+ */
+a.hh-button,
+a.hh-menu-item {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hh-controls,
+.hh-mobile {
+  order: 2;
+}
+
+/* Beats the explorer's fixed placement (.xp-app.is-wide/.is-narrow .hh-prompt): the chip stays in the header row. */
+:is(.xp-app, body) .hh-bar .hh-prompt.hh-prompt-chip {
+  position: static;
+  inset: auto;
+  order: 1;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: none;
+  margin-inline-start: auto;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--color-border, var(--tooltip-border));
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: none;
+  animation: none;
+}
+
+.hh-prompt-open {
+  min-height: var(--size-target-min);
+  min-width: 0;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hh-prompt-open:hover {
+  text-decoration: underline;
+}
+
+.hh-prompt-chip .hh-prompt-close {
+  min-width: var(--size-target-min);
+  min-height: var(--size-target-min);
+  padding: 0;
+  border-color: transparent;
+  border-radius: var(--radius-full);
+  background: none;
+}
+
+.hh-prompt-short {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .hh-prompt-long {
+    display: none;
+  }
+
+  .hh-prompt-short {
+    display: inline;
+  }
+
+  .hh-prompt-open {
+    padding-inline-start: var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+}
