@@ -1,5 +1,5 @@
 import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/heatmap";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
@@ -7,13 +7,15 @@ import { YearSelect } from "../../components/ui/YearSelect";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
-import { anomalyColor, anomalyStep } from "../../lib/charts";
+import { anomalyColor, anomalyLegend, anomalyStep } from "../../lib/charts";
 import { formatCount } from "../../lib/format";
 import { FIRST_YEAR, LAST_YEAR, useDashboard, type Period } from "../../state/dashboard";
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
 import { CalendarKey } from "./CalendarLegend";
+import { CalendarFilterPanel } from "./CalendarFilterPanel";
+import { countMatches, latestMonthIndex, passesFilters } from "./calendarFilters";
 import { SkylineTab } from "./SkylineTab";
 import { MonthFilter } from "./MonthFilter";
 import {
@@ -133,10 +135,29 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     () => buildScale(series.flatMap((row) => row.data.flatMap((cell) => (cell.y === null ? [] : [cell.y])))),
     [series],
   );
+  // The filters mask months without moving them. The scale above is built from the unmasked series, so the limits of
+  // the colors stay put while the user picks colors or ranges.
+  const filters = state.filters;
+  const matchContext = useMemo(() => ({ scale, anomaly }), [scale, anomaly]);
+  const maskedSeries = useMemo(
+    (): CalendarSerie[] =>
+      series.map((row) => ({
+        ...row,
+        data: row.data.map((cell) => ({ ...cell, filtered: !passesFilters(cell, filters, matchContext) })),
+      })),
+    [series, filters, matchContext],
+  );
+  const matches = useMemo(() => countMatches(series, filters, matchContext), [series, filters, matchContext]);
+  const latest = useMemo(() => latestMonthIndex(dataset.months), [dataset.months]);
+  // Picked colors belong to the scale they were picked on: a new scale (area, period, series) starts clean.
+  const scaleKey = scale ? `${scale.breaks.join(",")}|${scale.min}|${scale.max}` : "";
+  useEffect(() => {
+    dispatch({ type: "setLegend", steps: [] });
+  }, [scaleKey, dispatch]);
   const onSelect = useCallback((year: number, month: number) => dispatch({ type: "select", year, month }), [dispatch]);
 
   const selectedHasData = state.selected
-    ? series.some((row) =>
+    ? maskedSeries.some((row) =>
         row.data.some((c) => c.entry && c.year === state.selected?.year && c.month === state.selected.month),
       )
     : false;
@@ -176,6 +197,22 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
 
   // The calendar's own filters sit beside it: year range, months of the year and time of day. They are the same
   // shared state the KPI row, the map and the charts follow.
+  const legendLabels = anomaly
+    ? anomalyLegend()
+        .filter((item) => filters.legend.includes(item.step))
+        .map((item) => item.label)
+    : scale
+      ? legendRanges(scale)
+          .filter((range) => filters.legend.includes(range.step))
+          .map((range) => range.label)
+      : [];
+  const hiddenSelected =
+    state.selected &&
+    maskedSeries.some((row) =>
+      row.data.some((c) => c.filtered && c.year === state.selected?.year && c.month === state.selected.month),
+    )
+      ? state.selected
+      : null;
   const side = (
     <aside className="calendar-side" aria-label="Calendar filters">
       <div className="calendar-years">
@@ -199,7 +236,18 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         value={state.period}
         onChange={(next) => dispatch({ type: "setPeriod", period: next })}
       />
+      <CalendarFilterPanel
+        latest={latest}
+        firstYear={dataset.firstYear}
+        deviationAvailable={!raw}
+        matches={matches}
+        legendLabels={legendLabels}
+        hiddenSelected={hiddenSelected}
+        unit={raw ? RAW_UNIT : CALENDAR_UNIT}
+      />
       <CalendarKey
+        picked={filters.legend}
+        onPick={(steps) => dispatch({ type: "setLegend", steps })}
         ranges={scale ? legendRanges(scale) : []}
         anomaly={anomaly}
         unit={anomaly ? ANOMALY_UNIT : raw ? RAW_UNIT : CALENDAR_UNIT}
@@ -209,7 +257,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
 
   if (!scale) {
     return (
-      <div className="calendar">
+      <div className="calendar" data-palette={state.palette}>
         {side}
         <div className="calendar-body">
           <p className="calendar-status" role="status">
@@ -233,7 +281,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
       >
         <CalendarCellContext.Provider value={contextValue}>
           <ResponsiveHeatMap
-            data={series}
+            data={maskedSeries}
             margin={MARGIN}
             layers={[CalendarDefs, "cells", CalendarAxes]}
             cellComponent={CalendarCell}
@@ -262,53 +310,53 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   );
 
   return (
-    <div className="calendar">
+    <div className="calendar" data-palette={state.palette}>
       {side}
       <div className="calendar-body">
-      {dataset.synthetic && (
-        <p className="calendar-notice">
-          <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
-        </p>
-      )}
-      {!dataset.synthetic && (
-        <p className="calendar-notice">
-          {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
-          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
-          {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
-          {refreshing && ". Updating…"}
-        </p>
-      )}
-      {showsIntervals && (
-        <p className="calendar-notice">
-          Intervals for an area are approximate: the errors of nearby cells are correlated, so the interval of the sum is
-          widened (variance sum × n<sup>0.32</sup>).
-        </p>
-      )}
-      {raw && (
-        <p className="calendar-notice">
-          <strong>Raw by sensor:</strong> each month shows the native count of its source satellite, Aqua MODIS until
-          January 2012 and VIIRS after. The two instruments do not count the same way, so the jump in 2012 is the
-          change of sensor, not a change in fire activity. Switch to Harmonized to compare years.
-          {state.metric === "anomaly" && " Anomalies are computed on the harmonized series only."}
-        </p>
-      )}
-      {anomaly && (
-        <p className="calendar-notice">
-          <strong>Anomaly:</strong> each month is colored by how far it is from the median of that month of the year
-          (robust z-score). It says how unusual a month was; it is not a probability of fire and not a forecast.
-        </p>
-      )}
-      <ChartTableTabs
-        label="Burning calendar"
-        chart={chart}
-        table={<CalendarTable series={series} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />}
-        extra={{ name: "Skyline", panel: <SkylineTab /> }}
-      />
-      {anomaly ? (
-        <AnomalyLegend unit={ANOMALY_UNIT} />
-      ) : (
-        <CalendarLegend ranges={legendRanges(scale)} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />
-      )}
+        {dataset.synthetic && (
+          <p className="calendar-notice">
+            <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
+          </p>
+        )}
+        {!dataset.synthetic && (
+          <p className="calendar-notice">
+            {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
+            {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
+            {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
+            {refreshing && ". Updating…"}
+          </p>
+        )}
+        {showsIntervals && (
+          <p className="calendar-notice">
+            Intervals for an area are approximate: the errors of nearby cells are correlated, so the interval of the sum
+            is widened (variance sum × n<sup>0.32</sup>).
+          </p>
+        )}
+        {raw && (
+          <p className="calendar-notice">
+            <strong>Raw by sensor:</strong> each month shows the native count of its source satellite, Aqua MODIS until
+            January 2012 and VIIRS after. The two instruments do not count the same way, so the jump in 2012 is the
+            change of sensor, not a change in fire activity. Switch to Harmonized to compare years.
+            {state.metric === "anomaly" && " Anomalies are computed on the harmonized series only."}
+          </p>
+        )}
+        {anomaly && (
+          <p className="calendar-notice">
+            <strong>Anomaly:</strong> each month is colored by how far it is from the median of that month of the year
+            (robust z-score). It says how unusual a month was; it is not a probability of fire and not a forecast.
+          </p>
+        )}
+        <ChartTableTabs
+          label="Burning calendar"
+          chart={chart}
+          table={<CalendarTable series={maskedSeries} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />}
+          extra={{ name: "Skyline", panel: <SkylineTab /> }}
+        />
+        {anomaly ? (
+          <AnomalyLegend unit={ANOMALY_UNIT} />
+        ) : (
+          <CalendarLegend ranges={legendRanges(scale)} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />
+        )}
       </div>
     </div>
   );

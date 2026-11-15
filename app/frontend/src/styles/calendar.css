@@ -666,3 +666,153 @@
   height: var(--space-3);
   margin-top: var(--space-1);
 }
+
+/* A month an active filter hides: empty with a dashed edge. Not hatching (no data) and not the zero fill. */
+.calendar-cell-filtered .calendar-cell-rect {
+  fill: transparent;
+  stroke: var(--color-border-strong, var(--color-border));
+  stroke-width: 1px;
+  stroke-dasharray: 3 3;
+}
+
+.calendar-cell-filtered .calendar-cell-estimated-dot,
+.calendar-cell-filtered .calendar-cell-partial {
+  opacity: 0.4;
+}
+
+/* ---- Filters beside the calendar ----------------------------------------------------------------------------- */
+.calendar-filters {
+  display: grid;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.calendar-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.calendar-volume {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.calendar-volume label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.calendar-volume input {
+  min-width: 0;
+  min-height: var(--size-target-min);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-filters-hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.calendar-active {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.calendar-active ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-active li {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised, var(--color-surface));
+  border: 1px solid var(--color-border);
+}
+
+/* Legend entries that can be picked */
+button.calendar-key-pick {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: var(--size-target-min) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--size-target-min);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+button.calendar-key-pick:hover {
+  background: var(--color-surface-raised, var(--color-surface));
+}
+
+button.calendar-key-pick:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Picked: a check and a heavier edge, not only color. */
+button.calendar-key-pick[aria-pressed="true"] {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 2px var(--color-text-primary);
+}
+
+button.calendar-key-pick[aria-pressed="true"]::after {
+  content: "✓";
+}
+
+/* High-contrast palette: one ramp whose steps differ strongly in lightness, for both the grid and the legend. */
+.calendar[data-palette="contrast"] {
+  --viz-seq-1: #440154;
+  --viz-seq-2: #443a83;
+  --viz-seq-3: #31688e;
+  --viz-seq-4: #21908d;
+  --viz-seq-5: #35b779;
+  --viz-seq-6: #90d743;
+  --viz-seq-7: #fde725;
+  --viz-div-neg-1: #6baed6;
+  --viz-div-neg-2: #2171b5;
+  --viz-div-neg-3: #08519c;
+  --viz-div-neg-4: #08306b;
+  --viz-div-pos-1: #fdae6b;
+  --viz-div-pos-2: #f16913;
+  --viz-div-pos-3: #cc4c02;
+  --viz-div-pos-4: #7f2704;
+}
+
+.calendar-key-pickable li {
+  display: block;
+}
+
+.calendar-key-clear {
+  all: unset;
+  cursor: pointer;
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.calendar-key-clear:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}

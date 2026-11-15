@@ -56,8 +56,8 @@ export function CalendarLegend({ ranges, unit }: CalendarLegendProps) {
         </li>
       </ul>
       <p className="calendar-legend-note">
-        Each color holds about the same number of months, so the ranges are not evenly spaced. They are recomputed for the
-        months on screen.
+        Each color holds about the same number of months, so the ranges are not evenly spaced. They are recomputed for
+        the months on screen.
       </p>
     </div>
   );
@@ -106,6 +106,9 @@ export function AnomalyLegend({ unit }: { unit: string }) {
 }
 
 type CalendarKeyProps = {
+  /** Color steps picked (count steps, or anomaly steps). Empty = all. */
+  picked: readonly number[];
+  onPick: (steps: readonly number[]) => void;
   /** Count view: the colour ranges on screen. Anomaly view: the z-score classes. Empty when there is nothing to colour. */
   ranges: ReadonlyArray<LegendRange>;
   anomaly: boolean;
@@ -116,31 +119,58 @@ type CalendarKeyProps = {
  * The key beside the calendar: what each colour means on this screen, and what each mark on a cell means (the dot,
  * the corner, the hatching, the outline). Written for someone who reads the chart cold.
  */
-export function CalendarKey({ ranges, anomaly, unit }: CalendarKeyProps) {
+export function CalendarKey({ ranges, anomaly, unit, picked, onPick }: CalendarKeyProps) {
+  const toggle = (step: number) => onPick(picked.includes(step) ? picked.filter((s) => s !== step) : [...picked, step]);
   return (
     <section className="calendar-key" aria-label="How to read the calendar">
       <h3 className="calendar-key-title">How to read the colors</h3>
       <p className="calendar-key-unit">{unit}</p>
+      <p className="calendar-key-unit">
+        Pick one or more colors to keep only those months.{" "}
+        {picked.length > 0 && (
+          <button type="button" className="calendar-key-clear" onClick={() => onPick([])}>
+            Clear colors
+          </button>
+        )}
+      </p>
       {anomaly ? (
-        <ul className="calendar-key-list" aria-label="Robust z-score, by color">
+        <ul className="calendar-key-list calendar-key-pickable" aria-label="Robust z-score, by color">
           {anomalyLegend().map((item) => (
             <li key={item.step}>
-              <span className="calendar-key-swatch" style={{ background: anomalyColor(item.step) }} aria-hidden="true" />
-              {item.label}
+              <button
+                type="button"
+                className="calendar-key-pick"
+                aria-pressed={picked.includes(item.step)}
+                onClick={() => toggle(item.step)}
+              >
+                <span
+                  className="calendar-key-swatch"
+                  style={{ background: anomalyColor(item.step) }}
+                  aria-hidden="true"
+                />
+                {item.label}
+              </button>
             </li>
           ))}
         </ul>
       ) : (
         ranges.length > 0 && (
-          <ul className="calendar-key-list" aria-label="Detections per month, by color">
+          <ul className="calendar-key-list calendar-key-pickable" aria-label="Detections per month, by color">
             {ranges.map((range) => (
               <li key={`${range.step}-${range.from}`}>
-                <span
-                  className="calendar-key-swatch"
-                  style={{ background: `var(--viz-seq-${range.step})` }}
-                  aria-hidden="true"
-                />
-                {range.label}
+                <button
+                  type="button"
+                  className="calendar-key-pick"
+                  aria-pressed={picked.includes(range.step)}
+                  onClick={() => toggle(range.step)}
+                >
+                  <span
+                    className="calendar-key-swatch"
+                    style={{ background: `var(--viz-seq-${range.step})` }}
+                    aria-hidden="true"
+                  />
+                  {range.label}
+                </button>
               </li>
             ))}
           </ul>
@@ -168,7 +198,8 @@ export function CalendarKey({ ranges, anomaly, unit }: CalendarKeyProps) {
         <li>
           <span className="calendar-chip calendar-chip-partial" aria-hidden="true" />
           <span>
-            <strong>The cut corner</strong>: a partial month, so it is compared only with the same days of earlier years.
+            <strong>The cut corner</strong>: a partial month, so it is compared only with the same days of earlier
+            years.
           </span>
         </li>
         <li>

@@ -1,3 +1,4 @@
+import { NO_FILTERS, type CalendarFilters, type DeviationBand } from "../features/calendar/calendarFilters";
 import { createContext, useContext, useMemo, useReducer, type Dispatch, type ReactNode } from "react";
 
 /** Day, night or both, as in the data contract (`period` column). */
@@ -5,6 +6,7 @@ export type Period = "ALL" | "D" | "N";
 export type Scale = "harmonized" | "raw";
 /** What the calendar colors show: the count of each month, or how unusual it is for that month of the year. */
 export type Metric = "count" | "anomaly";
+export type Palette = "default" | "contrast";
 export type Bounds = { west: number; south: number; east: number; north: number };
 
 /** Pilot extent: Northeast Brazil MVP clip (docs/spec/harmonization.md). */
@@ -24,6 +26,9 @@ export type DashboardState = {
   months: readonly number[];
   /** Month picked in the calendar; drives the map. */
   selected: { year: number; month: number } | null;
+  /** Calendar filters that mask months without moving them (see features/calendar/calendarFilters.ts). */
+  filters: CalendarFilters;
+  palette: Palette;
 };
 
 export type DashboardAction =
@@ -33,7 +38,13 @@ export type DashboardAction =
   | { type: "setMetric"; metric: Metric }
   | { type: "setYears"; startYear: number; endYear: number }
   | { type: "setMonths"; months: readonly number[] }
-  | { type: "select"; year: number; month: number };
+  | { type: "select"; year: number; month: number }
+  | { type: "setVolume"; min: number | null; max: number | null }
+  | { type: "setDeviation"; bands: readonly DeviationBand[] }
+  | { type: "setRange"; startYear: number; endYear: number; range: CalendarFilters["range"] }
+  | { type: "setLegend"; steps: readonly number[] }
+  | { type: "setPalette"; palette: Palette }
+  | { type: "clearFilters" };
 
 const initialState: DashboardState = {
   area: PILOT_BOUNDS,
@@ -44,6 +55,8 @@ const initialState: DashboardState = {
   endYear: LAST_YEAR,
   months: [],
   selected: null,
+  filters: NO_FILTERS,
+  palette: "default",
 };
 
 export function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
@@ -53,14 +66,16 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
     case "setPeriod":
       return { ...state, period: action.period };
     case "setScale":
-      return { ...state, scale: action.scale };
+      return { ...state, scale: action.scale, filters: { ...state.filters, legend: [], deviation: [] } };
     case "setMetric":
-      return { ...state, metric: action.metric };
+      // The legend steps mean something else in the other view.
+      return { ...state, metric: action.metric, filters: { ...state.filters, legend: [] } };
     case "setYears": {
       // Keep the range ordered whichever end the user moved.
       const startYear = Math.min(action.startYear, action.endYear);
       const endYear = Math.max(action.startYear, action.endYear);
-      return { ...state, startYear, endYear };
+      // Picking the years by hand drops a shortcut window.
+      return { ...state, startYear, endYear, filters: { ...state.filters, range: null } };
     }
     case "setMonths": {
       // Keep 1..12, sorted and unique. All twelve is the same as no filter.
@@ -69,6 +84,28 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
     }
     case "select":
       return { ...state, selected: { year: action.year, month: action.month } };
+    case "setVolume": {
+      const ok = (v: number | null) => (v !== null && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null);
+      let min = ok(action.min);
+      let max = ok(action.max);
+      if (min !== null && max !== null && min > max) [min, max] = [max, min];
+      return { ...state, filters: { ...state.filters, volumeMin: min, volumeMax: max } };
+    }
+    case "setDeviation":
+      return { ...state, filters: { ...state.filters, deviation: [...new Set(action.bands)] } };
+    case "setRange":
+      return {
+        ...state,
+        startYear: action.startYear,
+        endYear: action.endYear,
+        filters: { ...state.filters, range: action.range },
+      };
+    case "setLegend":
+      return { ...state, filters: { ...state.filters, legend: [...new Set(action.steps)].sort((a, b) => a - b) } };
+    case "setPalette":
+      return { ...state, palette: action.palette };
+    case "clearFilters":
+      return { ...state, filters: NO_FILTERS };
   }
 }
 
