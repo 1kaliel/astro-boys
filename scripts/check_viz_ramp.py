@@ -42,6 +42,12 @@ THEMES = {
         "null_de": MIN_NULL_DE,
         "text": [],
     },
+    "weather": {
+        "prefix": "teal",
+        "modes": {"light": ("neutral-25", "neutral-200"), "dark": ("neutral-900", "neutral-850")},
+        "null_de": MIN_NULL_DE,
+        "text": [],
+    },
     "calendar": {
         "prefix": "ember",
         "modes": {"light": ("ash-100", "ash-200")},

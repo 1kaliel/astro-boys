@@ -196,3 +196,35 @@ def test_out_of_range_is_its_own_error() -> None:
     service = WeatherService(fetch=FakeFetch())
     with pytest.raises(WeatherOutOfRange):
         service.month_summary(Bounds(-40.4, -10.1, -39.9, -9.6), 2026, 12, today=date(2026, 11, 14))
+
+
+def test_grid_uses_a_sub_grid_of_era5_and_stays_small() -> None:
+    from astro_dashboard.weather import GRID_MAX_POINTS, grid_points
+
+    step, points = grid_points(Bounds(west=-48.8, south=-18.4, east=-34.7, north=-1.0))
+    assert step == 1.0 and 0 < len(points) <= GRID_MAX_POINTS
+    assert all(lat == round(lat) and lon == round(lon) for lat, lon in points)  # multiples of 1 degree
+    step, points = grid_points(Bounds(west=-40.4, south=-10.1, east=-39.9, north=-9.6))
+    assert step == 0.25 and len(points) == 4  # a small box keeps the full 0.25 degree grid
+
+
+def test_grid_endpoint_returns_one_mean_per_point_with_its_status(client: TestClient) -> None:
+    params = {"year": 2020, "month": 10, "west": -45.0, "south": -12.0, "east": -42.0, "north": -10.0}
+    r = client.get("/api/weather/grid", params=params)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["model"] == "era5" and body["status"] == "ok"
+    assert body["step_deg"] == 0.25 or body["step_deg"] == 0.5 or body["step_deg"] == 1.0
+    assert len(body["points"]) > 0
+    first = body["points"][0]
+    assert (
+        first["temperature_c"] == 30.0 and first["wind_speed_kmh"] == 15.0 and first["wind_from_deg"] == 45.0
+    )
+    assert app.state.fake.calls == -(-len(body["points"]) // 50)  # one request per chunk of 50 points
+
+
+def test_grid_a_missing_point_is_none_not_zero(client: TestClient) -> None:
+    app.state.weather = WeatherService(fetch=FakeFetch(temp=None))
+    params = {"year": 2020, "month": 10, "west": -45.0, "south": -12.0, "east": -42.0, "north": -10.0}
+    body = client.get("/api/weather/grid", params=params).json()
+    assert body["points"][0]["temperature_c"] is None and body["points"][0]["wind_speed_kmh"] == 15.0

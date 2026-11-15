@@ -246,6 +246,73 @@ def summarize(
     )
 
 
+# ---- A map layer: one value per sampled ERA5 point -------------------------------------------------------
+
+GRID_STEPS_DEG = (0.25, 0.5, 1.0, 2.0)  # the finest spacing that keeps a request small is used
+GRID_MAX_POINTS = 400
+GRID_CHUNK = 50  # points per request to the service
+
+
+@dataclass(frozen=True)
+class WeatherPoint:
+    lat: float
+    lon: float
+    temperature_c: float | None
+    wind_speed_kmh: float | None
+    # Where the wind blows FROM (meteorological convention), of the point's mean wind vector.
+    wind_from_deg: float | None
+    days_available: int
+
+
+@dataclass(frozen=True)
+class WeatherGrid:
+    year: int
+    month: int
+    start: date
+    end: date
+    available_through: date | None
+    days_requested: int
+    step_deg: float
+    points: list[WeatherPoint]
+
+
+def grid_points(bounds: Bounds) -> tuple[float, list[Point]]:
+    """The ERA5 points of the box on a regular lattice, as fine as GRID_MAX_POINTS allows (0.25 to 2 degrees).
+
+    The lattice is a sub-grid of ERA5's own (multiples of the step): every point is a real ERA5 grid point."""
+    for step in GRID_STEPS_DEG:
+        lats = _lattice(bounds.south, bounds.north, step)
+        lons = _lattice(bounds.west, bounds.east, step)
+        if lats and lons and len(lats) * len(lons) <= GRID_MAX_POINTS:
+            return step, [(lat, lon) for lat in lats for lon in lons]
+    # A box so small it holds no point of any lattice: the nearest ERA5 point (the layer is then one point).
+    _, points = era5_points(bounds)
+    return ERA5_GRID_DEG, points[:1]
+
+
+def _lattice(low: float, high: float, step: float) -> list[float]:
+    first = math.ceil(round(low / step, 9))
+    last = math.floor(round(high / step, 9))
+    return [round(k * step, 4) for k in range(first, last + 1)]
+
+
+def _point_summary(
+    point: Point, daily: dict[str, list[float | None]], n_days: int
+) -> tuple[WeatherPoint, int | None]:
+    """The monthly means of one point, and the index of the latest day that has a value (None if none)."""
+    base = date(2000, 1, 1)
+    one = summarize([daily], base, base + timedelta(days=n_days - 1), 2000, 1, 1)
+    last = None if one.available_through is None else (one.available_through - base).days
+    return WeatherPoint(
+        lat=point[0],
+        lon=point[1],
+        temperature_c=one.temperature_mean_c,
+        wind_speed_kmh=one.wind_speed_mean_kmh,
+        wind_from_deg=one.wind_direction_from_deg,
+        days_available=one.days_available,
+    ), last
+
+
 class WeatherService:
     """Asks ERA5 once per (area, month) and remembers the answer in memory (no files, no cloud resources)."""
 
@@ -254,6 +321,7 @@ class WeatherService:
         self._clock = clock
         self._lock = threading.Lock()
         self._cache: dict[tuple, tuple[float | None, WeatherSummary]] = {}
+        self._grids: dict[tuple, tuple[float | None, WeatherGrid]] = {}
 
     def month_summary(
         self, bounds: Bounds, year: int, month: int, today: date | None = None
@@ -275,3 +343,42 @@ class WeatherService:
                 self._cache.pop(next(iter(self._cache)))
             self._cache[key] = (None if settled else now + RECENT_TTL_SECONDS, summary)
         return summary
+
+    def month_grid(self, bounds: Bounds, year: int, month: int, today: date | None = None) -> WeatherGrid:
+        """One monthly mean per sampled ERA5 point, for the map. Asked in chunks, cached like the summary."""
+        today = today or date.today()
+        start, end = _month_bounds(year, month, today)
+        step, points = grid_points(bounds)
+        key = (year, month, end, tuple(points))
+        now = self._clock()
+        with self._lock:
+            hit = self._grids.get(key)
+        if hit and (hit[0] is None or hit[0] > now):
+            return hit[1]
+        n_days = (end - start).days + 1
+        out: list[WeatherPoint] = []
+        last_day = -1
+        for i in range(0, len(points), GRID_CHUNK):
+            chunk = points[i : i + GRID_CHUNK]
+            for point, daily in zip(chunk, self._fetch(chunk, start, end), strict=True):
+                summary, last = _point_summary(point, daily, n_days)
+                out.append(summary)
+                if last is not None:
+                    last_day = max(last_day, last)
+        through = start + timedelta(days=last_day) if last_day >= 0 else None
+        grid = WeatherGrid(
+            year=year,
+            month=month,
+            start=start,
+            end=end,
+            available_through=through,
+            days_requested=n_days,
+            step_deg=step,
+            points=out,
+        )
+        settled = (today - end).days > RECENT_DAYS
+        with self._lock:
+            if len(self._grids) >= CACHE_ENTRIES:
+                self._grids.pop(next(iter(self._grids)))
+            self._grids[key] = (None if settled else now + RECENT_TTL_SECONDS, grid)
+        return grid

@@ -128,3 +128,37 @@ export function weatherUrl(
   });
   return `/api/weather?${params}`;
 }
+
+/** ERA5 monthly means at sampled grid points of the area, for the weather map layers (`/api/weather/grid`). */
+export type WeatherGridResponse = {
+  source: string;
+  model: string;
+  year: number;
+  month: number;
+  start: string;
+  end: string;
+  available_through: string | null;
+  days_requested: number;
+  status: "ok" | "partial" | "unavailable";
+  /** Spacing of the sampled points (a sub-grid of ERA5's 0.25° grid): a sample, not a surface. */
+  step_deg: number;
+  points: WeatherGridPoint[];
+};
+
+export type WeatherGridPoint = {
+  lat: number;
+  lon: number;
+  /** null = no value, never zero. */
+  temperature_c: number | null;
+  wind_speed_kmh: number | null;
+  /** Where the wind blows FROM (meteorological convention). */
+  wind_from_deg: number | null;
+  days_available: number;
+};
+
+export function weatherGridUrl(
+  area: { west: number; south: number; east: number; north: number },
+  month: { year: number; month: number },
+): string {
+  return weatherUrl(area, month).replace("/api/weather?", "/api/weather/grid?");
+}

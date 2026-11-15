@@ -247,6 +247,73 @@ def weather(
     )
 
 
+class WeatherPointOut(BaseModel):
+    lat: float
+    lon: float
+    # Monthly means at one ERA5 grid point; None = no value (never zero).
+    temperature_c: float | None
+    wind_speed_kmh: float | None
+    # Where the wind blows FROM (meteorological convention).
+    wind_from_deg: float | None
+    days_available: int
+
+
+class WeatherGridOut(BaseModel):
+    source: str
+    model: str
+    year: int
+    month: int
+    start: date
+    end: date
+    available_through: date | None
+    days_requested: int
+    status: Literal["ok", "partial", "unavailable"]
+    # Spacing of the sampled ERA5 points (a sub-grid of the 0.25 degree grid): a sample, not a surface.
+    step_deg: float
+    points: list[WeatherPointOut]
+
+
+@router.get("/weather/grid", response_model=WeatherGridOut, tags=["weather"])
+def weather_grid(
+    service: Annotated[WeatherService, Depends(get_weather)],
+    year: int = Query(..., ge=1940, le=2200),
+    month: int = Query(..., ge=1, le=12),
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+) -> WeatherGridOut:
+    """Context only: the monthly ERA5 means at sampled grid points of the area, for the map layers."""
+    if west >= east or south >= north:
+        raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
+    try:
+        grid = service.month_grid(Bounds(west=west, south=south, east=east, north=north), year, month)
+    except WeatherOutOfRange as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    with_values = [p for p in grid.points if p.days_available > 0]
+    if not with_values:
+        status = "unavailable"
+    elif grid.available_through is None or grid.available_through < _month_end(year, month):
+        status = "partial"
+    else:
+        status = "ok"
+    return WeatherGridOut(
+        source=WEATHER_SOURCE,
+        model=WEATHER_MODEL,
+        status=status,
+        year=grid.year,
+        month=grid.month,
+        start=grid.start,
+        end=grid.end,
+        available_through=grid.available_through,
+        days_requested=grid.days_requested,
+        step_deg=grid.step_deg,
+        points=[WeatherPointOut(**asdict(p)) for p in grid.points],
+    )
+
+
 def _month_end(year: int, month: int) -> date:
     following = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
     return following - timedelta(days=1)

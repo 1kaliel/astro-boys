@@ -269,3 +269,11 @@ Rules:
   surface and the cells take the global magma ramp, the same one as the map (ember's darkest step is only 1.4:1 on the
   navy surface, so it cannot live there). The light-theme island (ash plane, petrol ink, ember ramp) is unchanged, with
   one exception: its active month chips take the accent (`--cal-active`).
+
+## Weather layers (ERA5 context)
+
+The map has four layers: Hotspots (the default, magma) and three ERA5 context layers: Temperature, Wind speed (circles on
+the cool `--wx-seq-*` ramp, mint to deep blue, flipped in the dark theme like magma) and Wind direction (arrows tinted
+with the page ink). Only one layer is on at a time, each with its own legend, unit, period and source, and the hotspot
+cells and their 0.25 degree outlines are hidden while a weather layer is on. The ramp is raw in `primitives.css`
+(`--teal-100..700`), checked by `scripts/check_viz_ramp.py --theme weather`, and never used for hotspot counts.

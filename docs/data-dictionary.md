@@ -216,6 +216,21 @@ Rules:
 - **Terms.** Free use is non-commercial, fewer than 10,000 calls a day, with attribution (CC BY 4.0). The backend
   caches each (area, month) in memory: for ever once the month is more than 60 days old, six hours before that.
 
+### Weather map layers (`GET /api/weather/grid`)
+
+Same rules as above, for the map layers (temperature, wind speed, wind direction). Request: the same six parameters.
+Answer: the same source and period fields, `status`, `step_deg` and `points`, one monthly mean per sampled ERA5 point
+(`lat`, `lon`, `temperature_c`, `wind_speed_kmh`, `wind_from_deg`, `days_available`; `null` is "no value", never zero).
+
+- **A sample, not a surface.** Points are a regular sub-grid of ERA5's own grid, as fine as 400 points allow (0.25, 0.5, 1
+  or 2 degrees; 1 degree, 252 points, for the pilot area). They are drawn as points and arrows, never as filled cells, so
+  the map does not claim a resolution it does not have. Requests go to Open-Meteo in chunks of 50 points and the whole
+  answer is cached in memory for the same (area, month).
+- **Scales.** Fixed classes for every month and area: temperature 20, 22, 24, 26, 28, 30 degrees C; wind speed 8, 12,
+  16, 20, 24, 28 km/h. The ramp is the cool teal ramp (`--wx-seq-*`), apart from the warm magma ramp of the hotspots;
+  `scripts/check_viz_ramp.py --theme weather` checks it. The two legends are never combined.
+- **Arrows** point where the wind blows **toward** (the opposite of the meteorological "from"); the legend says so.
+
 ## API shape (if the app has a backend)
 
 Suggested, not mandatory; the functional contract is what matters ([spec/dashboard.md](spec/dashboard.md)).

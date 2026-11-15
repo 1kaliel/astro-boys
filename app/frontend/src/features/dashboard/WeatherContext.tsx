@@ -15,17 +15,7 @@ function dayLabel(iso: string): string {
   return `${d} ${MONTHS_LONG[m - 1].slice(0, 3)}`;
 }
 
-function Stat({
-  label,
-  value,
-  unit,
-  note,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  note?: string;
-}) {
+function Stat({ label, value, unit, note }: { label: string; value: string; unit?: string; note?: string }) {
   return (
     <div className="weather-stat">
       <dt className="weather-label">{label}</dt>
@@ -58,18 +48,14 @@ export function WeatherContext({ month }: WeatherContextProps) {
   } else if (!data) {
     body = (
       <div className="weather-status" role="alert">
-        <p>
-          The weather context could not be loaded. The hotspot figures are not
-          affected. {remote.error}
-        </p>
+        <p>The weather context could not be loaded. The hotspot figures are not affected. {remote.error}</p>
         <Button onClick={remote.retry}>Try again</Button>
       </div>
     );
   } else if (data.status === "unavailable") {
     body = (
       <p className="weather-status" role="status">
-        ERA5 has no values for {title} yet: it is published a few days after the
-        fact.
+        ERA5 has no values for {title} yet: it is published a few days after the fact.
       </p>
     );
   } else {
@@ -79,32 +65,20 @@ export function WeatherContext({ month }: WeatherContextProps) {
         <dl className="weather-grid">
           <Stat
             label="Air temperature, 2 m"
-            value={
-              data.temperature_mean_c === null
-                ? "No data"
-                : data.temperature_mean_c.toFixed(1)
-            }
+            value={data.temperature_mean_c === null ? "No data" : data.temperature_mean_c.toFixed(1)}
             unit={data.temperature_mean_c === null ? undefined : "°C"}
             note="Mean of the daily means"
           />
           <Stat
             label="Wind speed, 10 m"
-            value={
-              data.wind_speed_mean_kmh === null
-                ? "No data"
-                : data.wind_speed_mean_kmh.toFixed(1)
-            }
+            value={data.wind_speed_mean_kmh === null ? "No data" : data.wind_speed_mean_kmh.toFixed(1)}
             unit={data.wind_speed_mean_kmh === null ? undefined : "km/h"}
             note="Mean of the daily means"
           />
           <Stat
             label="Wind blowing from"
             value={data.wind_direction_from ?? "No prevailing direction"}
-            unit={
-              data.wind_direction_from_deg === null
-                ? undefined
-                : `${Math.round(data.wind_direction_from_deg)}°`
-            }
+            unit={data.wind_direction_from_deg === null ? undefined : `${Math.round(data.wind_direction_from_deg)}°`}
             note={
               data.wind_direction_steadiness === null
                 ? undefined
@@ -126,8 +100,7 @@ export function WeatherContext({ month }: WeatherContextProps) {
           {sampled
             ? ` sampled from the ${data.points_in_area.toLocaleString("en-US")} inside the area`
             : " inside the area"}
-          , ocean points included. ERA5 is a reanalysis on a 0.25° grid, not a
-          station reading. Days are UTC days.
+          , ocean points included. ERA5 is a reanalysis on a 0.25° grid, not a station reading. Days are UTC days.
         </p>
       </>
     );

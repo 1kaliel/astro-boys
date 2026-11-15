@@ -61,6 +61,19 @@
   --kpi-violet-bg: #1e1c2b;
   --kpi-violet-700: #5b3db5;
 
+  /*
+   * Teal: the sequential ramp of the weather layers (temperature, wind speed), mint to deep blue. Cool on purpose: the
+   * warm magma ramp means hotspots and must never be mistaken for weather. Checked by
+   * `uv run python scripts/check_viz_ramp.py --theme weather`.
+   */
+  --teal-100: #d8ffe0;
+  --teal-200: #a0dfc7;
+  --teal-300: #67bdb2;
+  --teal-400: #219ba1;
+  --teal-500: #007990;
+  --teal-600: #00587c;
+  --teal-700: #003763;
+
   /* Blue: sequential ramp and negative diverging arm (documented steps) */
   --blue-100: #cde2fb;
   --blue-200: #9ec5f4;
