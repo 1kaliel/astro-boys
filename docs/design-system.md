@@ -282,3 +282,17 @@ The fifth layer, **Live wind**, is the wind of the weather model *now* over a wi
 month or the area). It is drawn as streaks on a canvas over the map, in the page ink with brightness following speed (so
 no color is spent on it), and as static arrows with reduced motion. It refreshes by itself and the legend says the model
 time, that the animation is time-lapsed and interpolated, and when the answer is stale.
+
+## Typography
+
+Two faces. The **display face**, `--font-display`, is Neuropolitical (Typodermic Fonts, one weight, no arrows); it is used
+for the app title, card and dialog titles, the upper-case labels and the big figures of the KPI and weather cards, and
+the month above the map. Everything else (body text, controls, tables, legends, chart text, tooltips) stays in
+`--font-sans`, the system font, because a wide display face at 12 to 14 px is hard to read and its glyph set has no
+arrows. The stack falls back to `--font-sans` for a missing file or glyph, and the display rules set the regular weight
+and `font-synthesis: none` so the browser never fakes a bold.
+
+**License.** The free Typodermic license is a desktop one. Live text in a website, where the browser receives the font
+file, needs their paid **Webfont license** (their licensing page, "Live website text"). So the file is **not in git**:
+it lives in `app/frontend/public/fonts/` and `fonts/`, both git-ignored, and a build without it uses the fallback. To
+ship the font on the public site, buy the Webfont license first, or swap `--font-display` for an open (OFL) face.

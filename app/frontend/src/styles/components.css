@@ -60,6 +60,9 @@
 }
 
 .card-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+  font-synthesis: none;
   margin: 0;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
@@ -333,6 +336,9 @@
 }
 
 .dialog-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+  font-synthesis: none;
   margin: 0 0 var(--space-3);
   font-size: var(--font-size-xl);
 }

@@ -9,6 +9,18 @@
 /* After layout.css: the chart cards override the full-row default of `.dash > *`. */
 @import "./charts.css";
 
+/*
+ * The display font file is not in git: it needs a webfont license before it can be shipped (docs/design-system.md,
+ * Typography). Without the file the browser uses the fallback of --font-display.
+ */
+@font-face {
+  font-family: "Neuropolitical";
+  src: url("/fonts/Neuropolitical-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
