@@ -37,8 +37,8 @@ The local environment did not contain the production raw inputs, Parquet outputs
 
 ## Acceptance still required
 
-An authorized reviewer must inspect the VM logs and manifests against the exact inputs and reference outputs, or reproduce the frozen pipeline with read access. Compare CSV and ZIP checksums against their own manifests, not against each other; include early years; compare keys, values, intervals, origin flags, medians and anomalies. Do not tune the frozen method using final-test results.
-
-H13 remains in progress until the methodology and full reproduction evidence are accepted and integrated. Remaining scientific future-work items are disclosed in methodology; they are not represented as completed. This change supplies documentation and reproduction instructions without changing the scientific pipeline, opening a new final test, merging or deploying.
+Update, Nov 15, 10:25 UTC: the VM logs, manifests and data of the full reproduction were inspected read-only
+against the bucket and the published runs; see [vm-audit.md](vm-audit.md). Every check passed. What remains for
+H13 is the review and merge of this text and the task-board decision.
 
 At Jean's explicit prior instruction, this delivery does not edit the repository diary. Its scope, validation and blockers are recorded here and in the pull request; existing diary entries remain unchanged.

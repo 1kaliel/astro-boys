@@ -468,9 +468,24 @@ This prototype supports exploratory historical comparisons. It provides no predi
 
 ## Reproducibility and evidence status
 
-The H3 report documents the full historical QA scan. The team's [PR #38](https://github.com/1kaliel/astro-boys/pull/38), at commit `95037665d54224aba02e17672079d6308e96ee93`, contains a [clean-clone reproduction report](https://github.com/1kaliel/astro-boys/blob/95037665d54224aba02e17672079d6308e96ee93/artifacts/h13-reproducibility/report.md). It reports reproduction on the VM from commit `5286248`, followed by the early-years extension, yielding 1,838,338 calendar rows. The default 2003-onward run alone yields 1,782,394 rows and different historical medians; the early-years step is necessary for matching the extended product. The PR also documents a manual partition-copy step without its own manifest. These records must be reviewed with their logs and production manifests; an open PR is not an integrated main-branch deliverable.
+The H3 report documents the full historical QA scan. A clean clone of `main` at `5286248` was run end to end on the
+team VM on Nov 15, 2026, from the raw files in the bucket ([reproduction report](../artifacts/h13-reproducibility/report.md)).
+Every stage reproduced the published runs: row counts, calibration (equal within 10⁻¹³), the development and
+final-test tables (identical) and the calendar. The default 2003-onward run yields 1,782,394 calendar rows and
+medians over 2003–2026; adding the documented early-years step yields the published 1,838,338 rows, equal in
+every column, with medians over 2002–2026. The early-years step includes a manual partition copy that has no
+manifest of its own; it is documented in [historical-batch.md](historical-batch.md#early-years-20002002-terra-only-then-aqua-from-july-2002).
 
-A separate audit of commit `4be300e64f2bd89749d124fadfcdc66b87711bbb` installed locked dependencies and passed 84 pipeline tests, lint, repository hygiene, shell syntax checks and the 30-row CSV/Parquet smoke test. Its smoke manifest records `0.1.0 (4be300e)`, and both local input SHA-256 values were recalculated successfully. That audit did not have the production raw data, Parquet datasets or production manifests and therefore did not independently repeat the full scientific run. Matching published tables is documentary consistency, not a fresh computation from the complete inputs.
+The VM logs, the 14 manifests and the data of that run were then audited read-only
+([VM audit](../artifacts/h13-reproducibility/vm-audit.md)): every step exited 0 (apart from `make ci`, because
+`make` was missing on the VM; the same checks run by hand passed), no log or manifest contains a key, the 176 raw
+files are identical to the bucket (MD5, and SHA-256 for the 48 zips), and the layers are consistent (detections
+passing the filter equal the summed monthly counts; no duplicate keys).
+
+A separate local audit of commit `4be300e64f2bd89749d124fadfcdc66b87711bbb`
+([audit](../artifacts/h13-reproducibility/jean-audit.md)) installed locked dependencies and passed 84 pipeline
+tests, lint, repository hygiene, shell syntax checks and the 30-row smoke test. It had no production data, so it
+checks the toolchain, not the scientific results.
 
 Input checksums refer to exact files: hashes for Brazil CSVs and global ZIPs cannot be equated. Every reproduction must check each input against its own manifest, retain its code/settings and compare normalized outputs and scientific metrics separately. The current manifest implementation does not checksum output datasets automatically; verifying output equivalence requires an explicit comparison. Logs should remain outside the clone so they do not mark the code version dirty.
 
