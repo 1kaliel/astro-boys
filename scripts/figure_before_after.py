@@ -139,8 +139,8 @@ def draw(data: list[dict], out: Path) -> None:
              "Source: NASA FIRMS active fire detections (MODIS Aqua and Terra; VIIRS S-NPP 375 m), presumed "
              "vegetation fires, nominal and high confidence, pilot bounding box.\n"
              f"Estimates: model {data[0]['model_version']}, calibrated on 2012–2019; uncertainty intervals "
-             f"not shown yet. January 2012 is estimated. {' and '.join(partial)} include months with S-NPP "
-             "outages.\n"
+             "exist per cell and month and are not drawn here. January 2012 is estimated.\n"
+             f"{' and '.join(partial)} include months with S-NPP outages. "
              "A detection is not a fire and not burned area. Chart code written with AI assistance.",
              fontsize=8.6, color=INK_2, ha="left", va="bottom", linespacing=1.45)
 

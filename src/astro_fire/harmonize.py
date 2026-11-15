@@ -5,7 +5,9 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from astro_fire import calibration, storage
+import duckdb
+
+from astro_fire import calibration, storage, uncertainty
 from astro_fire.config import Settings
 from astro_fire.manifest import Manifest, new_run_id
 
@@ -59,24 +61,52 @@ WITH raw AS (
            substring(cell_l1, 2, 3)::INTEGER - 90 + (child // 4) * 0.25 AS lat_min,
            substring(cell_l1, 5, 3)::INTEGER - 180 + (child % 4) * 0.25 AS lon_min
     FROM cells
+), slots AS (  -- years in which each month was fully observed: the length of every cell's history
+    SELECT month, count(DISTINCT year) AS n_years FROM bounds WHERE NOT is_partial GROUP BY month
+), history AS (  -- a fully observed month with no row had no detection: it counts as 0 in the history
+    SELECT b.cell_l2, b.month, b.period,
+           list_resize(coalesce(list(b.count_harmonized) FILTER (
+               WHERE NOT b.is_partial AND b.count_harmonized IS NOT NULL), []), any_value(s.n_years), 0.0)
+               AS counts
+    FROM bounds b JOIN slots s USING (month) GROUP BY ALL
+), baseline AS (
+    SELECT cell_l2, month, period, list_median(counts) AS median_hist,
+           list_median(list_transform(counts, lambda x: abs(x - list_median(counts)))) AS mad
+    FROM history
+), final AS (
+    SELECT b.*, h.median_hist, h.mad,
+           CASE WHEN NOT b.is_estimated THEN b.count_harmonized
+                WHEN u.q05_ratio IS NOT NULL
+                THEN least(b.count_harmonized * u.q05_ratio, b.count_harmonized) END AS ci_low,
+           CASE WHEN NOT b.is_estimated THEN b.count_harmonized
+                WHEN u.q95_ratio IS NOT NULL
+                THEN greatest(b.count_harmonized * u.q95_ratio, b.count_harmonized) END AS ci_high,
+           CASE WHEN NOT b.is_estimated THEN 0.0
+                ELSE b.count_harmonized * u.variance_ratio END AS var_harmonized,
+           CASE WHEN NOT b.is_partial THEN b.count_harmonized - h.median_hist END AS anomaly_abs
+    FROM bounds b
+    LEFT JOIN baseline h USING (cell_l2, month, period)
+    LEFT JOIN uncertainty u
+      ON b.is_estimated AND b.count_harmonized > 0 AND u.period = b.period
+     AND u.regime = CASE WHEN b.raw_aqua > 0 THEN 'aqua_positive' ELSE 'aqua_zero' END
+     AND u.bin = greatest({bin_min}, least({bin_max}, floor(log2(b.count_harmonized))))::INT
 )
 SELECT cell_l2, cell_l1,
        lat_min::DOUBLE AS lat_min, (lat_min + 0.25)::DOUBLE AS lat_max,
        lon_min::DOUBLE AS lon_min, (lon_min + 0.25)::DOUBLE AS lon_max,
        year::INTEGER AS year, month::INTEGER AS month, period, count_harmonized::DOUBLE AS count_harmonized,
-       CASE WHEN NOT is_estimated THEN count_harmonized END::DOUBLE AS ci_low,
-       CASE WHEN NOT is_estimated THEN count_harmonized END::DOUBLE AS ci_high,
-       CASE WHEN NOT is_estimated THEN 0.0 END::DOUBLE AS var_harmonized,
+       ci_low::DOUBLE AS ci_low, ci_high::DOUBLE AS ci_high, var_harmonized::DOUBLE AS var_harmonized,
        CASE WHEN is_estimated THEN 'VIIRS_EQUIVALENT_FROM_MODIS' ELSE 'VIIRS_OBSERVED' END AS origin,
        source_satellite, is_estimated, false AS is_nrt, is_partial, days_observed,
        raw_aqua::INTEGER AS raw_aqua, raw_terra::INTEGER AS raw_terra,
        raw_snpp::INTEGER AS raw_snpp, raw_n20::INTEGER AS raw_n20,
        frp_sum_mw_native::DOUBLE AS frp_sum_mw_native,
-       median(count_harmonized) FILTER (WHERE NOT is_partial)
-           OVER (PARTITION BY cell_l2, month, period)::DOUBLE AS median_hist,
-       NULL::DOUBLE AS anomaly_abs, NULL::DOUBLE AS anomaly_pct, NULL::DOUBLE AS anomaly_z,
+       median_hist::DOUBLE AS median_hist,
+       anomaly_abs::DOUBLE AS anomaly_abs,
+       CASE WHEN median_hist > 0 THEN 100 * anomaly_abs / median_hist END::DOUBLE AS anomaly_pct,
+       CASE WHEN mad > 0 THEN anomaly_abs / (1.4826 * mad) END::DOUBLE AS anomaly_z,
        ?::VARCHAR AS model_version
-FROM bounds
+FROM final
 """
 
 
@@ -86,6 +116,7 @@ def run(
     counts: str | None = None,
     factors: str | None = None,
     coverage: str | None = None,
+    uncertainty_location: str | None = None,
 ) -> dict:
     version = settings.dataset_version
     inputs = {
@@ -107,6 +138,16 @@ def run(
             else:
                 for path in sorted(Path(location).rglob("*.parquet")):
                     manifest.add_input(path.as_posix())
+        # Error table from `calibrate`: without it the estimated months keep null intervals.
+        error_location = uncertainty_location or storage.uri(settings, "processed", "uncertainty", version)
+        try:
+            con.read_parquet(storage.parquet_glob(error_location)).create_view("uncertainty")
+            manifest.inputs.append({"path": error_location, "sha256": None, "rows": None})
+            has_intervals = True
+        except (duckdb.Error, OSError):
+            con.execute("CREATE TEMP TABLE uncertainty (regime VARCHAR, period VARCHAR, bin INT, "
+                        "variance_ratio DOUBLE, q05_ratio DOUBLE, q95_ratio DOUBLE)")
+            has_intervals = False
         model_versions = con.execute("SELECT DISTINCT model_version FROM factors").fetchall()
         if len(model_versions) != 1 or not model_versions[0][0]:
             raise ValueError("expected exactly one nonempty calibration model version")
@@ -124,12 +165,16 @@ def run(
             witness_gap_months=sorted(set(months) - terra_complete),
         )
         calibration.apply_factors(con, "source", "factors")
-        con.execute(CALENDAR_SQL, [model_version])
+        sql = CALENDAR_SQL.format(bin_min=uncertainty.BIN_MIN, bin_max=uncertainty.BIN_MAX)
+        con.execute(sql, [model_version])
         rows, unique, estimates, missing, first, last = con.execute("""
             SELECT count(*), count(DISTINCT (cell_l2, year, month, period)),
                    count(*) FILTER (WHERE is_estimated), count(*) FILTER (WHERE count_harmonized IS NULL),
                    min(year), max(year) FROM calendar
         """).fetchall()[0]
+        no_interval = con.execute(
+            "SELECT count(*) FROM calendar WHERE is_estimated AND count_harmonized IS NOT NULL "
+            "AND ci_low IS NULL").fetchone()[0]
         if not 0 < estimates < rows or rows != unique:
             raise ValueError("expected unique calendar keys with both historical estimates and observations")
         output = Path(work) / "calendar"
@@ -141,7 +186,8 @@ def run(
         manifest.checks = {
             "model_version": model_version, "historical_median_years": [first, last],
             "estimated_rows": estimates, "observed_rows": rows - estimates, "missing_count_rows": missing,
-            "estimated_intervals": "pending H11",
+            "estimated_intervals": "from the out-of-year error table" if has_intervals else "missing",
+            "estimated_rows_without_interval": no_interval,
         }
         storage.publish_dir(settings, output.as_posix(), target)
     manifest.add_output(target, rows=rows)

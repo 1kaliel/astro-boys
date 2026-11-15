@@ -160,6 +160,8 @@ def test_validate_command_end_to_end(tmp_path, capsys):
     assert report["eval"]["rows"] == 16 * 24 * 2 and report["incomplete_months_left_out"] == []
     assert {s["method"] for s in report["scores"]} == {key for key, _, _ in val.METHODS}
     assert report["verdict"]["rule"] == val.RULE and "late_years" not in report
+    overall = report["interval_coverage_90pct"][0]
+    assert overall["regime"] is None and overall["n"] > 0 and 0 <= overall["inside"] <= 1
     assert "NASA FIRMS" in open(result["table"]).read()
 
 

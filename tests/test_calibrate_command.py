@@ -84,7 +84,14 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
     assert 3 < report["panel"]["overall_ratio"] < 6
     manifest = json.loads(open(result["manifest"]).read())
     assert manifest["pipeline"] == "calibrate" and manifest["status"] == "ok"
-    assert manifest["inputs"][0]["rows"] > 0 and len(manifest["outputs"]) == 2
+    assert manifest["inputs"][0]["rows"] > 0 and len(manifest["outputs"]) == 3
+    # The error table for the intervals: 2 regimes x 3 periods x 14 size bins.
+    errors = f"read_parquet('{tmp_path}/processed/uncertainty/v1/part-0.parquet')"
+    assert con.execute(f"SELECT count(*), count(q95_ratio) FROM {errors}").fetchone() == (84, 84)
+    check = report["intervals"]["coverage_of_90pct_interval_out_of_year"]
+    assert check[0]["regime"] is None and 0.85 <= check[0]["inside"] <= 1
+    assert report["intervals"]["sum_inflation"]["whole_extent_month"] > 0
+    assert report["continuity_snpp_over_noaa20"] is None  # no NOAA-20 and no coverage table here
 
 
 def test_fixed_weights_are_used_as_given(tmp_path):
