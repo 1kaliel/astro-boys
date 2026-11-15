@@ -1,6 +1,3 @@
-Failed to create stream fd: Operation not permitted
-Failed to create stream fd: Operation not permitted
-Failed to create stream fd: Operation not permitted
 # H2 ingest QA report
 
 Run: `20261115T003611Z_ingest_2e2b2e`  
