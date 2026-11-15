@@ -192,9 +192,11 @@ labels scroll with it.
 
 - **Calendar table as CSV**: a "Table: Download CSV" button above the calendar. Built in the browser from the months in
   memory (`lib/exportFile.ts`, `calendarCsv`), for the scale (harmonized or raw by sensor), time of day, years and months
-  on screen. First rows are `#` comments with title, unit, area, period, series, model version and source; then `year`
-  plus one column per month. Counts are rounded like the table; **no data or no estimate is an empty field, never 0**;
-  estimated and partial months are listed in closing `#` rows.
+  on screen. First rows are `#` comments with title, unit, area, period, series, model version, source and how to read
+  the interval; then one row per month: `year,month,count,ci90_low,ci90_high,is_estimated,is_partial,source_satellite,
+  series,time_of_day,model_version`. Counts and intervals are rounded like the table; **no data or no estimate is an
+  empty count, never 0** (a month outside the data has empty flags too); estimated and partial months are also listed
+  in closing `#` rows.
 - **Chart images**: "Image: SVG, PNG" under the calendar heatmap, the seasonal profile and the trend chart
   (`components/ui/DownloadBar.tsx`, `lib/chartExport.ts`). The SVG on screen is cloned with its computed styles inlined
   (CSS variables and `currentColor` resolved), so the file needs no stylesheet and keeps the theme on screen (dark, light,
