@@ -1,0 +1,204 @@
+/*
+ * Search by coordinates (components/map/CoordinateSearch.tsx). A button in the map tools; its panel floats under
+ * the tools row over the map on wide screens and sits in the flow above the map when the dashboard is one column.
+ * Tokens only (docs/design-system.md), so both themes follow.
+ */
+.coord-search {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.coord-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.coord-toggle[aria-expanded="true"],
+.coord-toggle.has-point {
+  border-color: var(--color-text-primary);
+}
+
+.coord-toggle-note {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.coord-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Wide screens: the tools are absolute over the map, so the panel hangs under the whole tools row. */
+.coord-panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(21rem, 100%);
+  max-height: min(70vh, 32rem);
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+}
+
+.coord-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.coord-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.coord-input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-size);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  background: var(--input-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.coord-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.coord-input[aria-invalid="true"] {
+  border-color: var(--color-status-critical);
+}
+
+.coord-help,
+.coord-meta {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.coord-pick {
+  align-self: flex-start;
+}
+
+/* Pressed like a segmented item: ink fill. */
+.coord-pick[aria-pressed="true"] {
+  border-color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  color: var(--color-surface);
+}
+
+.coord-panel .segmented {
+  display: flex;
+}
+
+.coord-panel .segmented-item {
+  flex: 1;
+  padding-inline: var(--space-2);
+  white-space: nowrap;
+}
+
+.coord-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.coord-apply {
+  border-color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  color: var(--color-surface);
+  font-weight: var(--font-weight-semibold);
+}
+
+.coord-apply:hover {
+  border-color: var(--color-text-primary);
+  opacity: 0.9;
+}
+
+.coord-panel .button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coord-error {
+  margin: 0;
+  padding: var(--space-2);
+  border-left: 3px solid var(--color-status-critical);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+}
+
+.coord-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.coord-count {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.coord-count-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* The searched point on the map: an ink dot on a surface ring, readable on any cell color and basemap. */
+.map-point-marker {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 3px solid var(--color-surface);
+  border-radius: var(--radius-full);
+  background: var(--viz-selection);
+  box-shadow: 0 0 0 1px var(--viz-selection), var(--shadow-sm);
+}
+
+/* One column: the tools are in the flow above the map, and so is the panel (full width, nothing covered). */
+@media (max-width: 56rem) {
+  .coord-search.is-open {
+    flex-basis: 100%;
+  }
+
+  .coord-panel {
+    position: static;
+    width: 100%;
+    max-height: none;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+@media (max-width: 30rem) {
+  .coord-panel {
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .coord-actions .button {
+    flex: 1 1 auto;
+  }
+}
