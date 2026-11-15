@@ -2,7 +2,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl, type ExpressionSpecification, type StyleSpecification } from "maplibre-gl";
 // MapLibre looks for its worker next to its own file, which does not exist after bundling: point it at the asset.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import Map, { Layer, Marker, NavigationControl, Popup, Source, type MapLayerMouseEvent, type MapRef } from "react-map-gl/maplibre";
 import type { DrilldownResponse } from "../../data/api";
 import { formatCount } from "../../lib/format";
@@ -19,6 +19,13 @@ import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } fr
 import { drillStep, rampStep } from "../../lib/scale";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 import { blockBounds, blockGeoJSON, l3GeoJSON, nativeDetections, satelliteName, type DrillCellProps } from "./drill";
+import {
+  GLOBE_FLY_IN_BELOW_ZOOM,
+  boundsCenter,
+  globeZoomToFit,
+  gridOutlineOpacityExpression,
+  insideBounds,
+} from "./view";
 
 setWorkerUrl(workerUrl);
 
@@ -37,6 +44,12 @@ type Token = (typeof TOKENS)[number];
 const L2_LAYERS = ["cells-fill"];
 const DRILL_LAYERS = ["drill-l3-hit", "drill-block-hit"];
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+/** Below this map width the compact attribution starts folded (the "i" button), so it does not cover the cells. */
+const NARROW_MAP_PX = 640;
+const STUDY_DATA = boundsToGeoJSON(PILOT_BOUNDS);
+const [STUDY_LON, STUDY_LAT] = boundsCenter(PILOT_BOUNDS);
+const GRID_OPACITY = gridOutlineOpacityExpression() as unknown as ExpressionSpecification;
 
 /** Pan limits in the flat view, [west, south, east, north]: the pilot extent with a margin. */
 const MERCATOR_LIMITS: [number, number, number, number] = [-56, -26, -27, 6];
@@ -169,15 +182,41 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
   }, [drillCell, mapRef]);
 
   // Follow the selected area (no animation when the user asked for reduced motion).
+  const fitTo = useCallback(
+    (b: Bounds) =>
+      mapRef.current?.fitBounds(
+        [
+          [b.west, b.south],
+          [b.east, b.north],
+        ],
+        { padding: 24, duration: prefersReducedMotion() ? 0 : 400 },
+      ),
+    [mapRef],
+  );
   useEffect(() => {
-    mapRef.current?.fitBounds(
-      [
-        [area.west, area.south],
-        [area.east, area.north],
-      ],
-      { padding: 24, duration: prefersReducedMotion() ? 0 : 400 },
-    );
-  }, [area, mapRef]);
+    fitTo(area);
+  }, [area, fitTo]);
+
+  // Globe: open on the whole globe, turned to the study area, instead of the box filling the view. Back to Flat:
+  // frame the selected area again, as on load. Not on mount (the map opens Flat, fitted to the area).
+  const previousProjection = useRef(projection);
+  useEffect(() => {
+    if (previousProjection.current === projection) return;
+    previousProjection.current = projection;
+    const map = mapRef.current;
+    if (!map || drillCell) return;
+    if (projection === "globe") {
+      const canvas = map.getCanvas();
+      map.easeTo({
+        center: [STUDY_LON, STUDY_LAT],
+        zoom: globeZoomToFit(canvas.clientWidth, canvas.clientHeight),
+        duration: prefersReducedMotion() ? 0 : 600,
+      });
+    } else {
+      fitTo(area);
+    }
+    // Only a change of projection moves the view here; the area has its own effect (hence the short deps).
+  }, [projection]);
 
   const hoverAt = (event: MapLayerMouseEvent): Hover | null => {
     const feature = event.features?.[0];
@@ -203,6 +242,12 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
   // A click on an L2 cell, or on a neighbor in the drill-down, subdivides it. A click on an L3 cell (the deepest
   // level) or on the target shows its popup, which is how a touch screen reads a cell.
   const onClick = (event: MapLayerMouseEvent) => {
+    // Seen from afar on the globe a cell is a few pixels: a click on the study area flies into it.
+    const zoom = mapRef.current?.getZoom() ?? 0;
+    if (projection === "globe" && !drill && zoom < GLOBE_FLY_IN_BELOW_ZOOM) {
+      if (insideBounds(event.lngLat.lng, event.lngLat.lat, PILOT_BOUNDS)) fitTo(area);
+      return;
+    }
     const next = hoverAt(event);
     if (next?.kind === "l2") onDrill(next.cell.id);
     else if (next?.kind === "block" && !next.target) onDrill(next.id);
@@ -229,7 +274,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
         }}
         projection={projection}
         maxBounds={projection === "mercator" ? MERCATOR_LIMITS : undefined}
-        minZoom={projection === "globe" ? 1 : 3}
+        minZoom={projection === "globe" ? 0 : 3}
         maxZoom={10}
         dragRotate={false}
         pitchWithRotate={false}
@@ -244,6 +289,13 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
         onLoad={(event) => {
           event.target.touchZoomRotate.disableRotation();
           event.target.keyboard.disableRotation();
+          // On a phone the open attribution covers the bottom of the map: start it folded (still one tap away).
+          const container = event.target.getContainer();
+          if (container.clientWidth < NARROW_MAP_PX) {
+            const attribution = container.querySelector(".maplibregl-ctrl-attrib");
+            attribution?.classList.remove("maplibregl-compact-show");
+            attribution?.removeAttribute("open");
+          }
         }}
         cursor={hover ? "pointer" : "grab"}
         style={{ width: "100%", height: "100%" }}
@@ -264,7 +316,9 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
             id="area-cells-line"
             type="line"
             layout={{ visibility: drill ? "none" : "visible" }}
-            paint={{ "line-color": colors["--viz-selection"], "line-width": 0.5, "line-opacity": 0.6 }}
+            // Fades in with zoom: at the zoom that frames the whole area 4,000 outlines are a mesh that hides the
+            // colors; once a cell is ~16-32 px wide each outline reads, and shows which cells the area is made of.
+            paint={{ "line-color": colors["--viz-selection"], "line-width": 0.5, "line-opacity": GRID_OPACITY }}
           />
         </Source>
         <Source id="area" type="geojson" data={areaData}>
@@ -276,6 +330,23 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
             paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }}
           />
         </Source>
+        {/* Globe: the study area, the only place with data, dashed and labeled. Outside it nothing is drawn. */}
+        <Source id="study" type="geojson" data={STUDY_DATA}>
+          <Layer
+            id="study-line"
+            type="line"
+            layout={{ visibility: projection === "globe" && !drill ? "visible" : "none" }}
+            paint={{ "line-color": colors["--viz-selection"], "line-width": 1.5, "line-dasharray": [2, 2] }}
+          />
+        </Source>
+        {projection === "globe" && !drill && (
+          <Marker longitude={STUDY_LON} latitude={PILOT_BOUNDS.north} anchor="bottom" offset={[0, -6]}>
+            <button type="button" className="map-study-label" onClick={() => fitTo(area)}>
+              Study area: Northeast Brazil
+              <span className="map-study-label-note">data processed only here · go there</span>
+            </button>
+          </Marker>
+        )}
         {/* Drill-down, native detections only. Always mounted (empty outside it), so the layers the pointer reads exist. */}
         <Source id="drill-block" type="geojson" data={blockData}>
           <Layer id="drill-block-hit" type="fill" paint={{ "fill-color": colors["--color-surface"], "fill-opacity": 0 }} />
