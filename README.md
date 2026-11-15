@@ -1,6 +1,10 @@
-# Astro Boys 🚀
+# FIREWATCHER
 
-Our team's project for the **NASA International Space Apps Challenge**.
+A burning-activity calendar of harmonized MODIS and VIIRS hotspots, by team **Astro Boys**, for the
+**NASA International Space Apps Challenge 2026**.
+
+**Live app:** https://astro-dashboard-301238386836.us-central1.run.app · **Methodology:**
+[docs/methodology.md](docs/methodology.md) · **Credits and AI use:** [docs/resources.md](docs/resources.md)
 
 > **Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/)
 > **Hackathon:** Sat Nov 14 09:00 → Sun Nov 15 23:59 (local event time), 2026
