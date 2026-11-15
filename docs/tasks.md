@@ -66,7 +66,7 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 | S1 | Project page fields drafted in English (summary, description, NASA data, references) | Kali + Jean | Sun 20:00 | 🔄 Draft of every field in [submission.md](submission.md); FIREWATCHER name confirmed by Jean; editorial review of sensor transitions, NRT and reproducibility prepared; pending the demo link and final review by Kali and Jean |
 | S2 | Demo: seven slides in English, including title and intro; storyboard by Sun 13:00 | Jean | Sun 21:00 | ⬜ |
 | S3 | References list: every data source, library, tool; FIRMS citation and disclaimer link | Justino | Sun 20:00 | ✅ Final review done: every data source, library and service in [resources.md](resources.md), with citations, DOIs and the LANCE disclaimer link; every link checked |
-| S4 | AI-use statement for the form + acknowledgment in the repo ([resources.md](resources.md#ai-usage)) | Kali | Sun 20:00 | 🔄 Statement drafted in [submission.md](submission.md#use-of-super-intelligence-ai); Kali's tasks added to the AI-usage table; one point to confirm by Kali |
+| S4 | AI-use statement for the form + acknowledgment in the repo ([resources.md](resources.md#ai-usage)) | Kali | Sun 20:00 | 🔄 Statement in [submission.md](submission.md#use-of-super-intelligence-ai), plan-and-research-notes point confirmed by Kali; Kali's tasks in the AI-usage table; pending a check against the final S2 slides |
 | S5 | All links tested in a private window; repo public and in English | Justino (cross-team final review) | Sun 22:00 | ⬜ |
 | S6 | Submitted; confirmation saved | Kali | Sun 22:30 | ⬜ |
 
