@@ -36,6 +36,8 @@ export function DownloadCsv() {
     endYear: state.endYear,
     period: state.period,
     includeAll,
+    minFrp: state.minFrp,
+    relevance: state.relevance,
   };
   const countUrl = hotspotsCountUrl(request);
   const count: CountState = answer.status !== "loading" && answer.url !== countUrl ? { status: "loading" } : answer;

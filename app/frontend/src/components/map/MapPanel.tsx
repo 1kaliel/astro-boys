@@ -6,11 +6,13 @@ import { cellIdAt } from "../../lib/grid";
 import { drillBreaks, sequentialEdges } from "../../lib/scale";
 import { useDashboard } from "../../state/dashboard";
 import { Badge } from "../ui/Badge";
+import { Fold } from "../ui/Fold";
 import { Button } from "../ui/Button";
 import { Legend } from "../viz/Legend";
 import { CellMap, type DrillView } from "./CellMap";
 import { DrillLegend } from "./DrillLegend";
 import { useDrilldown } from "./drill";
+import { MapLayerControl, layerCountLabel, layerUnit } from "./MapLayerControl";
 import { MapTools, type Projection } from "./MapTools";
 
 const EMPTY: CellsResponse["cells"] = [];
@@ -25,7 +27,7 @@ export default function MapPanel() {
   const mapRef = useRef<MapRef | null>(null);
   const [projection, setProjection] = useState<Projection>("mercator");
   const [drawing, setDrawing] = useState(false);
-  const remote = useRemote<CellsResponse>(cellsUrl(state.period, state.selected));
+  const remote = useRemote<CellsResponse>(cellsUrl(state.period, state.selected, state.sensor));
 
   const data = remote.data;
   const cells = data?.cells ?? EMPTY;
@@ -42,8 +44,8 @@ export default function MapPanel() {
   // The drill-down asks for the month on the map (the latest month when none is picked yet).
   const drillCell = state.drillCell;
   const drillRequest = useMemo(
-    () => (drillCell && data ? { cell: drillCell, year: data.year, month: data.month, period: state.period } : null),
-    [drillCell, data, state.period],
+    () => (drillCell && data ? { cell: drillCell, year: data.year, month: data.month, period: state.period, minFrp: state.minFrp, relevance: state.relevance, sensor: state.sensor } : null),
+    [drillCell, data, state.period, state.minFrp, state.relevance, state.sensor],
   );
   const { load: drillLoad, retry: retryDrill } = useDrilldown(drillRequest);
   const drillData = drillLoad?.status === "ready" && drillLoad.data.cell === drillCell ? drillLoad.data : null;
@@ -90,6 +92,7 @@ export default function MapPanel() {
           {drillCell && ` · Cell ${drillCell}: native detections of its 0.0625° sub-cells`}
           {remote.loading && data ? " · updating…" : ""}
         </p>
+        <MapLayerControl sensor={state.sensor} onSensor={(sensor) => dispatch({ type: "setSensor", sensor })} />
         <div className="map-badges">
           {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
           {estimated && !drillCell && <Badge kind="estimated" />}
@@ -118,6 +121,7 @@ export default function MapPanel() {
             drill={drill}
             onDrill={onDrill}
             monthLabel={monthLabel}
+            countLabel={layerCountLabel(state.sensor)}
             suppressFocus={drawing}
           />
         </div>
@@ -158,15 +162,29 @@ export default function MapPanel() {
             </p>
           )}
           {data && data.cells.length === 0 && (
-            <p className="map-note">No hotspot detections in this month. No detection does not mean no fire.</p>
+            <p className="map-note">
+              {state.sensor === "harmonized"
+                ? "No hotspot detections in this month. No detection does not mean no fire."
+                : "This satellite has no data for this month (it was not flying yet, or it was out of service). Missing data is not zero detections."}
+            </p>
           )}
           {data && (
+            <>
             <Legend
               mode="sequential"
               breaks={breaks}
-              unit="VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month · cells with no detection that month are left empty (the basemap shows through, not zero) · cell outlines appear when you zoom in; closer in, the colors turn translucent so the basemap reads through (same classes) and the cell at the center, or under the mouse, is outlined and described · click a cell for its sub-cells"
+              unit={`${layerUnit(state.sensor)} per 0.25° cell and month · an empty cell has no detection (not zero) · click a cell for its sub-cells`}
               showMarking={false}
             />
+            <Fold summary="How to read the map">
+              <p className="map-note">
+                Classes are the same for every month, so a quiet month looks quiet. Cells with no detection that month are
+                left empty and the basemap shows through: that is missing, not zero. Cell outlines appear when you zoom in;
+                closer in, the colors turn translucent so the basemap reads through (same classes), and the cell at the
+                center, or under the mouse, is outlined and described.
+              </p>
+            </Fold>
+            </>
           )}
         </>
       )}

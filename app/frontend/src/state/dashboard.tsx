@@ -4,6 +4,15 @@ import { createContext, useContext, useMemo, useReducer, type Dispatch, type Rea
 export type Period = "ALL" | "D" | "N";
 export type Scale = "harmonized" | "raw";
 /** What the calendar colors show: the count of each month, or how unusual it is for that month of the year. */
+/**
+ * Layer of the map. "harmonized" is the VIIRS-equivalent count of the calendar (MODIS months estimated on the VIIRS
+ * scale); the others are native counts of one satellite (MODIS: Aqua, Terra; VIIRS: S-NPP, NOAA-20), never added.
+ */
+export type Sensor = "harmonized" | "aqua" | "terra" | "snpp" | "n20";
+/** Minimum fire radiative power (MW) of a native detection; 0 = no minimum. Intensity filter. */
+export type MinFrp = 0 | 10 | 50 | 100;
+/** Lowest confidence class of a native detection (l < n < h). Relevance filter. */
+export type Relevance = "l" | "n" | "h";
 export type Metric = "count" | "anomaly";
 export type Bounds = { west: number; south: number; east: number; north: number };
 
@@ -18,6 +27,11 @@ export type DashboardState = {
   period: Period;
   scale: Scale;
   metric: Metric;
+  /** Intensity and relevance act on native detections only (drill-down, CSV): the harmonized calendar has neither. */
+  minFrp: MinFrp;
+  relevance: Relevance;
+  /** Layer of the map (and of its drill-down). */
+  sensor: Sensor;
   startYear: number;
   endYear: number;
   /** Months of the year shown (1..12). Empty means every month. */
@@ -36,6 +50,9 @@ export type DashboardAction =
   | { type: "setPeriod"; period: Period }
   | { type: "setScale"; scale: Scale }
   | { type: "setMetric"; metric: Metric }
+  | { type: "setSensor"; sensor: Sensor }
+  | { type: "setMinFrp"; minFrp: MinFrp }
+  | { type: "setRelevance"; relevance: Relevance }
   | { type: "setYears"; startYear: number; endYear: number }
   | { type: "setMonths"; months: readonly number[] }
   | { type: "select"; year: number; month: number }
@@ -47,7 +64,11 @@ const initialState: DashboardState = {
   period: "ALL",
   scale: "harmonized",
   metric: "count",
-  startYear: FIRST_YEAR,
+  minFrp: 0,
+  relevance: "l",
+  sensor: "harmonized",
+  // Opens on the last 10 years: the calendar has one row per year, and 25 rows is a very tall card.
+  startYear: LAST_YEAR - 9,
   endYear: LAST_YEAR,
   months: [],
   selected: null,
@@ -64,6 +85,16 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       return { ...state, period: action.period, drillCell: action.period === state.period ? state.drillCell : null };
     case "setScale":
       return { ...state, scale: action.scale };
+    case "setSensor":
+      return { ...state, sensor: action.sensor, drillCell: action.sensor === state.sensor ? state.drillCell : null };
+    case "setMinFrp":
+      return { ...state, minFrp: action.minFrp, drillCell: action.minFrp === state.minFrp ? state.drillCell : null };
+    case "setRelevance":
+      return {
+        ...state,
+        relevance: action.relevance,
+        drillCell: action.relevance === state.relevance ? state.drillCell : null,
+      };
     case "setMetric":
       return { ...state, metric: action.metric };
     case "setYears": {

@@ -45,6 +45,7 @@
   --viz-axis: var(--neutral-300);
   --viz-band-opacity: 0.1; /* 90% interval band: a wash, never a block */
   --viz-dim-opacity: 0.35; /* cells outside the hovered row and column */
+  --viz-filtered-opacity: 0.12; /* months of a color switched off in the legend */
 }
 
 @media (prefers-color-scheme: dark) {

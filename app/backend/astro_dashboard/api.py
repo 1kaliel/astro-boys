@@ -180,6 +180,8 @@ def version(request: Request) -> dict:
 
 
 FIRST_DATE = date(2000, 1, 1)
+# Map layer -> satellite name in hotspots/v1.
+SENSOR_SATELLITES = {"aqua": "Aqua", "terra": "Terra", "snpp": "SNPP", "n20": "N20"}
 
 
 def _hotspot_query(
@@ -192,6 +194,8 @@ def _hotspot_query(
     end: date,
     period: str,
     include_all: bool,
+    min_frp: float | None = None,
+    min_confidence: str = "l",
 ) -> hotspots.HotspotQuery:
     if west >= east or south >= north:
         raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
@@ -202,7 +206,11 @@ def _hotspot_query(
     cells = store.cells_in(Bounds(west=west, south=south, east=east, north=north))
     if not cells:
         raise HTTPException(status_code=422, detail="The selected area overlaps no 0.25 degree cell.")
-    return hotspots.HotspotQuery(cells=cells, start=start, end=end, period=period, include_all=include_all)
+    return hotspots.HotspotQuery(cells=cells, start=start, end=end, period=period,
+        include_all=include_all,
+        min_frp=min_frp,
+        min_confidence=min_confidence,
+    )
 
 
 def _unavailable(error: hotspots.HotspotsUnavailable) -> str:
@@ -224,6 +232,8 @@ class HotspotCountOut(BaseModel):
     end: date
     period: Literal["ALL", "D", "N"]
     include_all: bool
+    min_frp: float | None = None
+    min_confidence: Literal["l", "n", "h"] = "l"
 
 
 @router.get("/hotspots/count", response_model=HotspotCountOut, tags=["hotspots"])
@@ -237,8 +247,12 @@ def hotspots_count(
     north: float = Query(..., ge=-90, le=90),
     period: Literal["ALL", "D", "N"] = "ALL",
     include_all: bool = False,
+    min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
+    min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
 ) -> HotspotCountOut:
-    query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
+    query = _hotspot_query(
+        store, west, south, east, north, start, end, period, include_all, min_frp, min_confidence
+    )
     try:
         counted = hotspots.count(query)
     except hotspots.HotspotsUnavailable as error:
@@ -253,6 +267,8 @@ def hotspots_count(
         end=end,
         period=period,
         include_all=include_all,
+        min_frp=min_frp,
+        min_confidence=min_confidence,
     )
 
 
@@ -287,16 +303,23 @@ def drilldown_cell(
     year: int = Query(..., ge=FIRST_DATE.year, le=2200),
     month: int = Query(..., ge=1, le=12),
     period: Literal["ALL", "D", "N"] = "ALL",
+    min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
+    min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
+    sensor: Literal["harmonized", "aqua", "terra", "snpp", "n20"] = Query(
+        "harmonized", description="Map layer: harmonized uses the month's source satellite, else that satellite"
+    ),
 ) -> DrilldownOut:
     try:
         drilldown.l2_index(cell)
     except drilldown.NotAnL2Cell as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    satellite = store.source_satellite(year, month, period)
+    satellite = SENSOR_SATELLITES.get(sensor) or store.source_satellite(year, month, period)
     if satellite is None or satellite not in drilldown.INSTRUMENTS:
         raise HTTPException(status_code=422, detail=f"The calendar has no data for {year}-{month:02d}.")
     try:
-        result = drilldown.drilldown(cell, year, month, satellite, period)
+        result = drilldown.drilldown(
+            cell, year, month, satellite, period, min_frp=min_frp, min_confidence=min_confidence
+        )
     except hotspots.HotspotsUnavailable as error:
         log.warning("Drill-down failed: %s", error)
         raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
@@ -326,8 +349,12 @@ def hotspots_csv(
     north: float = Query(..., ge=-90, le=90),
     period: Literal["ALL", "D", "N"] = "ALL",
     include_all: bool = False,
+    min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
+    min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
 ) -> StreamingResponse:
-    query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
+    query = _hotspot_query(
+        store, west, south, east, north, start, end, period, include_all, min_frp, min_confidence
+    )
     try:
         body = hotspots.export_csv(query)
     except hotspots.Busy as error:
@@ -341,6 +368,8 @@ def hotspots_csv(
     box = "_".join(f"{v:g}" for v in (west, south, east, north))
     suffix = "" if period == "ALL" else f"_{period}"
     suffix += "_all-confidence" if include_all else ""
+    suffix += f"_frp{min_frp:g}" if min_frp else ""
+    suffix += f"_conf-{min_confidence}" if min_confidence != "l" else ""
     filename = f"astro-hotspots_{box}_{start.isoformat()}_{end.isoformat()}{suffix}.csv"
     return StreamingResponse(
         body,

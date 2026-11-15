@@ -12,6 +12,8 @@ import {
   PILOT_BOUNDS,
   useDashboard,
   type Metric,
+  type MinFrp,
+  type Relevance,
   type Period,
   type Scale,
 } from "../../state/dashboard";
@@ -30,6 +32,17 @@ const METRIC_OPTIONS: ReadonlyArray<SegmentOption<Metric>> = [
   { value: "count", label: "Count" },
   { value: "anomaly", label: "Anomaly" },
 ];
+const INTENSITY_OPTIONS: ReadonlyArray<SegmentOption<`${MinFrp}`>> = [
+  { value: "0", label: "Any" },
+  { value: "10", label: "≥ 10 MW" },
+  { value: "50", label: "≥ 50 MW" },
+  { value: "100", label: "≥ 100 MW" },
+];
+const RELEVANCE_OPTIONS: ReadonlyArray<SegmentOption<Relevance>> = [
+  { value: "l", label: "All" },
+  { value: "n", label: "Nominal+" },
+  { value: "h", label: "High only" },
+];
 const YEARS = Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
 
 // 2 x 2: the two longitudes, then the two latitudes. The fields take any coordinate; the preview says when an edge
@@ -44,43 +57,117 @@ const FIELDS: ReadonlyArray<{ key: keyof Bounds; label: string; min: number; max
 const boundsText = (b: Bounds) =>
   `W ${formatDegrees(b.west)}, S ${formatDegrees(b.south)}, E ${formatDegrees(b.east)}, N ${formatDegrees(b.north)}`;
 
-/** One row of filters, above the content; every view (KPIs, calendar, map) follows them. */
+/**
+ * The essentials stay in view (area, years, time of day); the rest sits behind "More filters". On a phone the bar
+ * is two columns and four short rows instead of one control per line, so the content starts on the first screen.
+ */
 export function FilterBar() {
   const [state, dispatch] = useDashboard();
   return (
     <div className="filter-bar" role="group" aria-label="Filters for every view">
       <AreaFilter area={state.area} onArea={(area) => dispatch({ type: "setArea", area })} />
-      <YearSelect
-        label="From"
-        value={state.startYear}
-        years={YEARS}
-        onChange={(startYear) => dispatch({ type: "setYears", startYear, endYear: state.endYear })}
-      />
-      <YearSelect
-        label="To"
-        value={state.endYear}
-        years={YEARS}
-        onChange={(endYear) => dispatch({ type: "setYears", startYear: state.startYear, endYear })}
-      />
-      <SegmentedControl
-        label="Time of day"
-        options={PERIOD_OPTIONS}
-        value={state.period}
-        onChange={(period) => dispatch({ type: "setPeriod", period })}
-      />
-      <SegmentedControl
-        label="Scale"
-        options={SCALE_OPTIONS}
-        value={state.scale}
-        onChange={(scale) => dispatch({ type: "setScale", scale })}
-      />
-      <SegmentedControl
-        label="Calendar shows"
-        options={METRIC_OPTIONS}
-        value={state.metric}
-        onChange={(metric) => dispatch({ type: "setMetric", metric })}
+      <div className="control filter-wide" role="group" aria-label="Years">
+        <span className="control-label">Years</span>
+        <div className="filter-years">
+          <YearSelect
+            label="From"
+            hideLabel
+            value={state.startYear}
+            years={YEARS}
+            onChange={(startYear) => dispatch({ type: "setYears", startYear, endYear: state.endYear })}
+          />
+          <span className="filter-years-dash" aria-hidden="true">
+            –
+          </span>
+          <YearSelect
+            label="To"
+            hideLabel
+            value={state.endYear}
+            years={YEARS}
+            onChange={(endYear) => dispatch({ type: "setYears", startYear: state.startYear, endYear })}
+          />
+        </div>
+      </div>
+      <div className="filter-wide">
+        <SegmentedControl
+          label="Time of day"
+          options={PERIOD_OPTIONS}
+          value={state.period}
+          onChange={(period) => dispatch({ type: "setPeriod", period })}
+        />
+      </div>
+      <MoreFilters
+        scale={state.scale}
+        metric={state.metric}
+        minFrp={state.minFrp}
+        relevance={state.relevance}
+        onScale={(scale) => dispatch({ type: "setScale", scale })}
+        onMetric={(metric) => dispatch({ type: "setMetric", metric })}
+        onMinFrp={(minFrp) => dispatch({ type: "setMinFrp", minFrp })}
+        onRelevance={(relevance) => dispatch({ type: "setRelevance", relevance })}
       />
       <DownloadCsv />
+    </div>
+  );
+}
+
+/**
+ * Everything that is not an everyday filter: the calendar scale and metric, and the intensity (FRP) and relevance
+ * (confidence) of the native detections, which only the drill-down, the counts and the CSV carry (the harmonized
+ * calendar and the L2 map have neither field). The button counts what is changed from the default.
+ */
+function MoreFilters({
+  scale,
+  metric,
+  minFrp,
+  relevance,
+  onScale,
+  onMetric,
+  onMinFrp,
+  onRelevance,
+}: {
+  scale: Scale;
+  metric: Metric;
+  minFrp: MinFrp;
+  relevance: Relevance;
+  onScale: (scale: Scale) => void;
+  onMetric: (metric: Metric) => void;
+  onMinFrp: (minFrp: MinFrp) => void;
+  onRelevance: (relevance: Relevance) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const active = [scale !== "harmonized", metric !== "count", minFrp > 0, relevance !== "l"].filter(Boolean).length;
+  return (
+    <div className="control">
+      <span className="control-label">Filters</span>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        triggerLabel={`More filters${active > 0 ? `, ${active} changed` : ""}`}
+        title="More filters"
+        trigger={
+          <>
+            More filters{active > 0 && <span className="filter-count">{active}</span>}
+            <span className="chip-icon" aria-hidden="true">
+              ▾
+            </span>
+          </>
+        }
+      >
+        <SegmentedControl label="Scale" options={SCALE_OPTIONS} value={scale} onChange={onScale} />
+        <SegmentedControl label="Calendar shows" options={METRIC_OPTIONS} value={metric} onChange={onMetric} />
+        <SegmentedControl
+          label="Intensity (fire radiative power)"
+          options={INTENSITY_OPTIONS}
+          value={`${minFrp}`}
+          onChange={(value) => onMinFrp(Number(value) as MinFrp)}
+        />
+        <SegmentedControl label="Relevance (confidence class)" options={RELEVANCE_OPTIONS} value={relevance} onChange={onRelevance} />
+        <p className="area-summary">
+          Intensity and relevance apply to the native detections: the sub-cells of the map, the detection count and the
+          CSV. The harmonized calendar and the 0.25° cells carry neither field, so they do not change.
+        </p>
+      </Popover>
     </div>
   );
 }
@@ -111,7 +198,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
   }
 
   return (
-    <div className="control">
+    <div className="control filter-wide">
       <span className="control-label">Area</span>
       <Popover
         open={open}

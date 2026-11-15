@@ -67,6 +67,9 @@ export function DashboardPage() {
             startYear={state.startYear}
             endYear={state.endYear}
             baselineYears={dataset.baselineYears}
+            area={state.area}
+            period={dataset.period ?? state.period}
+            modelVersion={dataset.modelVersion}
           />
         )}
 
@@ -78,7 +81,7 @@ export function DashboardPage() {
               {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
             </span>
           }
-          caption={`Source: NASA FIRMS · ${CALENDAR_UNIT}, summed over the 0.25° cells of the selected area`}
+          caption={`Source: NASA FIRMS · ${CALENDAR_UNIT}`}
         >
           <BurningCalendar load={load} reload={reload} />
         </Card>
@@ -88,7 +91,7 @@ export function DashboardPage() {
           title="Map"
           caption={
             state.drillCell
-              ? "Source: NASA FIRMS · native detections of one satellite per 0.0625° sub-cell, not harmonized · basemap © OpenStreetMap contributors"
+              ? "Source: NASA FIRMS · native detections per 0.0625° sub-cell · basemap © OpenStreetMap contributors"
               : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"
           }
         >
@@ -120,7 +123,7 @@ export function DashboardPage() {
                   {profileYear} against {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
                 </span>
               }
-              caption={`Source: NASA FIRMS · ${SEASONAL_UNIT}, summed over the 0.25° cells of the selected area · months before February 2012 are estimated from MODIS`}
+              caption={`Source: NASA FIRMS · ${SEASONAL_UNIT}`}
             >
               <SeasonalProfile
                 months={dataset.months}
@@ -138,7 +141,7 @@ export function DashboardPage() {
                   {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
                 </span>
               }
-              caption={`Source: NASA FIRMS (MODIS Aqua, VIIRS S-NPP and NOAA-20) · ${TREND_UNIT}, summed over the 0.25° cells of the selected area`}
+              caption={`Source: NASA FIRMS · ${TREND_UNIT}`}
             >
               <TrendChart
                 months={dataset.months}

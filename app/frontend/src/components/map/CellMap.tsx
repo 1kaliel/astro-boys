@@ -130,6 +130,8 @@ type CellMapProps = {
   onDrill: (cell: string) => void;
   /** "September 2013": the month on the map, for the focus chip. */
   monthLabel: string | null;
+  /** What a cell value counts, for the chips: "VIIRS-equivalent hotspots" or "native Aqua MODIS detections". */
+  countLabel?: string;
   /** True while the user draws an area: no focus chip (the drawing hint takes its place). */
   suppressFocus?: boolean;
 };
@@ -144,7 +146,7 @@ const isTrue = (value: unknown) => value === true || value === "true";
 /** GeoJSON properties come back from MapLibre serialized: a null may arrive as missing or as "null". */
 const countOf = (value: unknown) => (value == null || value === "null" ? null : Number(value));
 
-export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDrill, monthLabel, suppressFocus }: CellMapProps) {
+export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDrill, monthLabel, countLabel = "VIIRS-equivalent hotspots", suppressFocus }: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap(scheme);
   // The data layers go under the basemap's place names (the offline style has none: then on top).
@@ -354,7 +356,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
     }
     return (
       <>
-        Cell {id}: <strong>{formatCount(cell.value)}</strong> VIIRS-equivalent hotspots{month}
+        Cell {id}: <strong>{formatCount(cell.value)}</strong> {countLabel}{month}
         {cell.estimated && " · Estimated from MODIS"}
         {cell.partial && " · Partial month"}
         <br />
@@ -558,7 +560,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
           >
             {popup.kind === "l2" && (
               <>
-                <strong>{formatCount(popup.cell.value)}</strong> VIIRS-equivalent hotspots
+                <strong>{formatCount(popup.cell.value)}</strong> {countLabel}
                 <br />
                 Cell {popup.cell.id}
                 {popup.cell.estimated && " · Estimated from MODIS"}

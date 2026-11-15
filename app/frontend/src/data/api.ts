@@ -9,6 +9,8 @@ export type CellsResponse = {
   year: number;
   month: number;
   period: Period;
+  /** The layer served; absent in answers of older servers (then harmonized). */
+  sensor?: string;
   model_version: string | null;
   simulated: boolean;
   /** Fixed class limits for the map, the same for every month (quantiles of all cell-months). */
@@ -81,8 +83,13 @@ export function useRemote<T>(url: string | null): Remote<T> {
   return { ...state, retry };
 }
 
-export function cellsUrl(period: Period, selected: { year: number; month: number } | null): string {
+export function cellsUrl(
+  period: Period,
+  selected: { year: number; month: number } | null,
+  sensor: string = "harmonized",
+): string {
   const params = new URLSearchParams({ period });
+  if (sensor !== "harmonized") params.set("sensor", sensor);
   if (selected) {
     params.set("year", String(selected.year));
     params.set("month", String(selected.month));
@@ -114,10 +121,23 @@ export type DrilldownResponse = {
   total: number;
 };
 
-export type DrilldownRequest = { cell: string; year: number; month: number; period: Period };
+export type DrilldownRequest = {
+  cell: string;
+  year: number;
+  month: number;
+  period: Period;
+  /** Optional native-detection filters; omitted from the URL at their defaults. */
+  minFrp?: number;
+  relevance?: "l" | "n" | "h";
+  /** Map layer: a native satellite is drilled by that satellite; harmonized by the month's source satellite. */
+  sensor?: string;
+};
 
-export function drilldownUrl({ cell, year, month, period }: DrilldownRequest): string {
+export function drilldownUrl({ cell, year, month, period, minFrp, relevance, sensor }: DrilldownRequest): string {
   const params = new URLSearchParams({ cell, year: String(year), month: String(month), period });
+  if (sensor && sensor !== "harmonized") params.set("sensor", sensor);
+  if (minFrp) params.set("min_frp", String(minFrp));
+  if (relevance && relevance !== "l") params.set("min_confidence", relevance);
   return `/api/drilldown?${params}`;
 }
 

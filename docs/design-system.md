@@ -76,14 +76,13 @@ Each color does exactly one job. Text never wears a series color.
 
 | Token | Light | Dark |
 |-------|-------|------|
-| `--viz-seq-1` … `--viz-seq-7` | `#fcf0b2` → `#3b0f70` (magma 100 → 700: pale yellow, apricot, orange, coral, magenta, purple, deep purple) | Reversed: `#3b0f70` → `#fcf0b2` (more activity = lighter) |
+| `--viz-seq-1` … `--viz-seq-7` | `#fff3b0` → `#3f0b12` (thermal heat ramp, stored as `--magma-100` → `700`: pale yellow, amber, orange, red-orange, red, brick, dark crimson) | Reversed: `#3f0b12` → `#fff3b0` (more activity = lighter) |
 | `--viz-div-neg-1` … `-4` | blue 300, 400, 500, 600 | blue 600, 500, 400, 300 |
 | `--viz-div-mid` | `#f0efec` | `#383835` |
 | `--viz-div-pos-1` … `-4` | `#ff743d`, `#e15000`, `#b43f00`, `#8a2e00` | Reversed: `#8a2e00` … `#ff743d` |
 | `--viz-series-1…3` | `#2a78d6`, `#eb6834`, `#1baf7a` | `#3987e5`, `#d95926`, `#199e70` |
 
-**The sequential ramp is magma** (changed on Nov 14, 2026, from the blue ramp; a `DECISION` by Cleber, see the diary).
-Seven colors sampled from the perceptually uniform magma colormap at even lightness steps (L\* 94 to 18). Why: the
+**The sequential ramp is a thermal heat ramp** (Nov 15, 2026, in the `feat/ux-redesign` branch; before it was magma, from Nov 14, and the blue ramp before that). The token names `--magma-*` and `--ember-*` are kept so nothing else changes; both now hold the same seven colors, so the calendar and the map read as one scale (the calendar keeps its own plane and ink). Pale yellow through amber, orange and red to dark crimson at even lightness steps (L\* 95 to 12), the way a thermal camera paints heat. It is a look, not a measurement: the app counts hotspot detections and has no temperature sensor. Why: the
 calendar is about heat, and a warm ramp reads as heat without a legend lesson; lightness carries the magnitude, so it
 survives color vision deficiencies. Trade-off, stated: step 4 is a coral red. The diverging arms still avoid red, and
 the sequential ramp is a count scale, not a danger scale (the limitations panel says a hotspot is not a fire). The
@@ -102,7 +101,7 @@ makes no risk claims.
 | Diverging arms, light (blue and orange) | Ordinal: monotone L, adjacent ΔL ≥ 0.06, light end ≥ 2:1, one hue | Pass |
 | Diverging arms, dark (blue and orange, from the midpoint outward) | Same | Pass. A first try with blue 350–500 failed ΔL (0.048) and was replaced |
 | Series 1–3, light and dark | Categorical, all pairs (they share charts with the map) | Pass. Aqua is 2.74:1 on the light surface: **always direct-labeled, and a table view exists** |
-| Sequential (magma), both themes | `uv run python scripts/check_viz_ramp.py` (in the repo): L\* strictly ordered; neighbouring steps ΔE ≥ 15, and ≥ 8 as seen with protanopia, deuteranopia and tritanopia; least step vs "no data" ΔE ≥ 20 (≥ 8 with deficiencies); most step ≥ 4.5:1 against the surface | Pass. Neighbouring steps ΔE ≥ 18.5 (≥ 11.9 under deficiencies). Weakest point: least step vs "no data" under tritanopia, light theme, ΔE 9.3. Peak vs surface 13.8:1 (light), 15.1:1 (dark). The low steps are 1.1 to 1.6:1 against the surface **by design** for a sequential scale (near zero recedes). Mitigation: a hairline cell outline, tooltip and table |
+| Sequential (magma), both themes | `uv run python scripts/check_viz_ramp.py` (in the repo): L\* strictly ordered; neighbouring steps ΔE ≥ 15, and ≥ 8 as seen with protanopia, deuteranopia and tritanopia; least step vs "no data" ΔE ≥ 20 (≥ 8 with deficiencies); most step ≥ 4.5:1 against the surface | Pass (re-run Nov 15 for the thermal ramp). Neighbouring steps ΔE ≥ 18.5 (≥ 13.4 under deficiencies). Weakest point: least step vs "no data" under tritanopia, light theme, ΔE 9.0. Peak vs surface 16.1:1 (light), 15.5:1 (dark). The low steps are 1.1 to 1.6:1 against the surface **by design** for a sequential scale (near zero recedes). Mitigation: a hairline cell outline, tooltip and table |
 
 To re-run: `validate_palette.js` from that data-viz skill, with `--ordinal` for the diverging ramps and `--pairs all` for the
 series; `scripts/check_viz_ramp.py` for the sequential (magma) ramp.
@@ -141,8 +140,8 @@ it; nothing outside the card changes. The map and the other cards keep the globa
 
 - **Plane and ink:** light gray plane (`--ash-100`), petrol ink (`--petrol-700`), secondary ink (`--petrol-500`), active
   controls and the selection in petrol (`--petrol-600`, `--petrol-700`). Filters are capsules.
-- **Scale (ember):** `--ember-100` to `--ember-700`, from cream through peach and orange to earth red, even lightness
-  steps (L\* 97 to 22). The colors are quantile steps of the months on screen; the legend is horizontal, under the grid,
+- **Scale (ember):** `--ember-100` to `--ember-700`, the same thermal heat ramp as the map (Nov 15, 2026), pale yellow through orange and red to dark crimson, even
+  lightness steps (L\* 95 to 12). The colors are quantile steps of the months on screen; the legend is horizontal, under the grid,
   and labels each color with its **range of detections per month**.
 - **Cells:** rounded corners and the same 3 px gap in every direction.
 - **Month names:** Portuguese (Jan, Fev, Mar, Abr, Mai, Jun, Jul, Ago, Set, Out, Nov, Dez) by request. This is **one
@@ -266,6 +265,28 @@ deck.gl was kept for the L3 drill-down, which turned out not to need it (16 cell
 Not used: react-globe.gl (separate three.js engine, ~509 KB gzip, no flat map or area selection), Cesium /
 React-CesiumExt (~1.35 MB gzip plus assets; brings OpenLayers and Ant Design, a second UI kit). deck.gl (~276 KB gzip on
 top) is kept for the L3 drill-down only if MapLibre is too slow there.
+
+## UX additions (Nov 15, 2026)
+
+| Topic | Rule |
+|-------|------|
+| Native-detection filters | In "More filters" (see below): minimum FRP (Any, 10, 50, 100 MW) and lowest confidence class (All, Nominal+, High only). They act on the drill-down, `/api/hotspots/count` and the CSV (`min_frp`, `min_confidence`). The harmonized calendar and the L2 cells have neither field, so they do not change; the popover says so. Changing either closes an open drill-down |
+| Calendar color filter | The legend is the filter: each color (and "Zero detections") is a toggle button with `aria-pressed`. A hidden color fades its months in the grid (`--viz-filtered-opacity`) and shows as a faded, dashed, struck-through legend item, so state is never color alone. "N colors hidden. Show all colors" resets. The choice is dropped when the mode or the scale changes (the classes would mean other ranges). Months with no data or no comparison have no class and stay visible |
+| Clickable KPI cards | The label is a button whose `::after` covers the card (one tab stop, valid HTML). It opens `EvidenceDialog`: the exact figure, how it is computed, the monthly records behind it, and the source (NASA FIRMS, satellite and instrument, area, period, model version, the `/api/calendar` call, and a CSV link of the native detections when the card has a clear slice). Builders and tests: `features/dashboard/kpiEvidence.ts` |
+| Map layers | "Map layer" control: VIIRS-equivalent (harmonized, default), MODIS (Aqua, Terra) or VIIRS (S-NPP, NOAA-20), from the `raw_*` columns of `calendar/v1` through `/api/cells?sensor=`. Native layers are never added together, have their own classes, and a satellite with no data in a month leaves the map empty with a note (missing is not zero). The drill-down follows the layer's satellite. All VIIRS data here is already the 375 m product |
+
+## Filter bar, years and less text (Nov 15, 2026, second pass)
+
+Found on a real 360 px phone: the filter bar was seven controls in six lines, the calendar opened with 25 rows, and long notes crowded every card.
+
+| Topic | Rule |
+|-------|------|
+| Opens on 10 years | The dashboard opens on the last 10 years (`initialState` in `state/dashboard.tsx`), not 2002 to now. Everything follows the range (KPIs, calendar, seasonal profile, trend). The "Months estimated from MODIS" card is the exception: it always counts the whole record, because the last 10 years are all observed by VIIRS and it would read "0 of 118" |
+| Year chips | Above the calendar: Last 5, Last 10, VIIRS era (2012+), All (`YearPresets`, ranges in `lib/yearRanges.ts`, clamped to the years of the data). The chip that matches the range is pressed; a custom range from the From / To selects leaves none pressed. On a phone the word "Years" is hidden so the four chips share one row |
+| Filter bar | Essentials in view: Area, Years (From – To in one control), Time of day. Everything else is behind "More filters" (Scale, Calendar shows, Intensity, Relevance), with a count of what differs from the default; Download stays beside it. Phone: two columns, Area, Years and Time of day a full row each, More filters and Download sharing one (four rows instead of six). Wide screens: one row. No popover inside a popover |
+| Less text | Card captions are the source and the unit only. Long notes sit in a fold: "About this chart" (data status line, raw and anomaly explanations, how the colors are split, the 90% interval note) and "How to read the map". What must not be missed stays in one line: the raw view and anomaly mode each keep a one-line notice, and the legend says "Click a color to hide or show its months" |
+| KPI row | A last card that would sit alone in its row spans the full width (tablet and phone) |
+| Not used | shadcn/ui and Tailwind (suggested by the `ui-styling` skill): the app has its own token layers and Base UI primitives; adding a second styling system would split them |
 
 ## Open items
 

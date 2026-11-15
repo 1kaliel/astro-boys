@@ -6,6 +6,9 @@ const base: DashboardState = {
   period: "ALL",
   scale: "harmonized",
   metric: "count",
+  minFrp: 0,
+  relevance: "l",
+  sensor: "harmonized",
   startYear: FIRST_YEAR,
   endYear: LAST_YEAR,
   months: [],
@@ -74,5 +77,27 @@ describe("drill-down cell in the shared state", () => {
     expect(dashboardReducer(drilled, { type: "setMetric", metric: "anomaly" }).drillCell).toBe("G080140.06");
     expect(dashboardReducer(drilled, { type: "setMonths", months: [9] }).drillCell).toBe("G080140.06");
     expect(dashboardReducer(drilled, { type: "setYears", startYear: 2005, endYear: 2015 }).drillCell).toBe("G080140.06");
+  });
+});
+
+describe("intensity and relevance filters", () => {
+  const drilled = { ...base, drillCell: "G083135.16" };
+
+  it("clear the drill-down when the value changes, keep it when it is picked again", () => {
+    expect(dashboardReducer(drilled, { type: "setMinFrp", minFrp: 50 })).toMatchObject({ minFrp: 50, drillCell: null });
+    expect(dashboardReducer(drilled, { type: "setMinFrp", minFrp: 0 }).drillCell).toBe("G083135.16");
+    expect(dashboardReducer(drilled, { type: "setRelevance", relevance: "h" })).toMatchObject({
+      relevance: "h",
+      drillCell: null,
+    });
+    expect(dashboardReducer(drilled, { type: "setRelevance", relevance: "l" }).drillCell).toBe("G083135.16");
+  });
+});
+
+describe("map layer", () => {
+  it("clears the drill-down when the layer changes (another satellite is another slice)", () => {
+    const drilled = { ...base, drillCell: "G083135.16" };
+    expect(dashboardReducer(drilled, { type: "setSensor", sensor: "snpp" })).toMatchObject({ sensor: "snpp", drillCell: null });
+    expect(dashboardReducer(drilled, { type: "setSensor", sensor: "harmonized" }).drillCell).toBe("G083135.16");
   });
 });

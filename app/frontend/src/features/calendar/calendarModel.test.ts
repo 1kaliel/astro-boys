@@ -10,6 +10,8 @@ import {
   SEQ_BINS,
   anomalyText,
   buildScale,
+  colorClass,
+  type CalendarDatum,
   buildSeries,
   cellAriaLabel,
   legendRanges,
@@ -510,5 +512,28 @@ describe("anomalyText", () => {
 
     expect(anomalyText(partial)).toBe("11% below the median of the same 14 days (22.8K)");
     expect(anomalyText(month({ medianHist: null }))).toBeNull();
+  });
+});
+
+describe("colorClass (the legend color filter)", () => {
+  const scale = buildScale([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])!;
+  const datum = (y: number | null, anomalyZ: number | null = null): CalendarDatum =>
+    ({ x: "Mar", y, year: 2010, month: 3, entry: y === null ? null : ({ anomalyZ } as CalendarMonth) });
+
+  it("names zero apart from the ramp steps", () => {
+    expect(colorClass(datum(0), scale, false)).toBe("zero");
+    expect(colorClass(datum(14), scale, false)).toBe(`seq-${SEQ_BINS}`);
+    expect(colorClass(datum(1), scale, false)).toBe("seq-1");
+  });
+
+  it("has no class for a month without data", () => {
+    expect(colorClass(datum(null), scale, false)).toBeNull();
+  });
+
+  it("uses the anomaly step in anomaly mode, and none without a comparison", () => {
+    expect(colorClass(datum(5, 0), scale, true)).toBe("div-0");
+    expect(colorClass(datum(5, 3), scale, true)).toMatch(/^div-[1-9]/);
+    expect(colorClass(datum(5, -3), scale, true)).toMatch(/^div--[1-9]/);
+    expect(colorClass(datum(5, null), scale, true)).toBeNull();
   });
 });
