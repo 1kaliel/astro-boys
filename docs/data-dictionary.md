@@ -239,6 +239,9 @@ Forecast API**, `current` block: the weather model's analysis of the present mom
 model), refreshed by the service every 15 minutes. It is **not** ERA5 (ERA5 is published days late, so it cannot show
 "now") and **not** a station observation, and it has nothing to do with the hotspot data. The same answer feeds the
 temperature surface, the wind streaks and the "Region weather" panel, so the three never disagree.
+The map **clips the wind to the outline of Brazil** (Natural Earth 1:50m, `lib/brazil.ts`): streaks are born and live
+only inside the country, and wind points outside it are not drawn; the ERA5 wind layers (speed, direction) are clipped the
+same way. The temperature surface is not clipped: it covers the lattice, and says where it has no sample.
 
 Answer: `source`, `region`, `step_deg`, `fetched_at` (when this server asked), `model_time` (the latest time the service
 reported), `interval_seconds`, `ttl_seconds`, `stale`, `stale_reason` and `points` (`lat`, `lon`, `temperature_c`,

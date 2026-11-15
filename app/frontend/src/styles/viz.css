@@ -52,7 +52,7 @@
   --viz-thermal-5: var(--thermal-300);
   --viz-thermal-6: var(--thermal-200);
   --viz-thermal-7: var(--thermal-100);
-  --viz-wind: var(--wind-deep); /* the streaks of the live wind */
+  --viz-wind: var(--wind-pale); /* the streaks of the live wind: the basemap is satellite imagery in both themes */
 
   /* Weather layers: their own cool ramp, apart from the hotspot ramp above */
   --wx-seq-1: var(--teal-100);

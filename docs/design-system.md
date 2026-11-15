@@ -225,7 +225,7 @@ deck.gl is deferred to the L3 drill-down.
 |-------|------|
 | Engine | MapLibre GL JS via react-map-gl, in its own lazy chunk (~315 KB gzip). Phones download it only after "Show map" |
 | Projection | Flat (Mercator) by default, best for choosing an area. A Flat / Globe toggle uses MapLibre's own globe (no extra library) |
-| Basemap | OpenFreeMap Positron (light) or Dark, following the theme. If the style does not load in 5 s, a plain background is used and the map says so |
+| Basemap | Satellite imagery in both themes, like Google Earth: Sentinel-2 cloudless 2016 (EOX) over NASA GIBS Blue Marble, with the borders and place names of OpenFreeMap Positron on top, white on a dark halo (`lib/basemap.ts`). If the vector style does not load in 5 s, the imagery is shown alone and the map says so. Everything drawn over the imagery for the wind (streaks, arrows, outline of Brazil) is white on a dark halo |
 | Attribution | Comes with the style, compact control, always visible. Never hidden |
 | Cells | L2 polygons built in the browser from the cell ID (`lib/grid.ts`); the API sends values only (~9 KB gzip per month) |
 | Colors | `--viz-seq-1…7`, read with `getComputedStyle` because MapLibre cannot read `var()`; re-read on theme change. Classes: fixed limits from `/api/cells` (`breaks`: quantiles 50–98% of every positive cell-month), the same for every month so a quiet month looks quiet |
@@ -287,15 +287,16 @@ above all of them the basemap's own borders and names, so those stay readable (t
 below the first border layer of the style). Controls: Temperature and Hotspots can be hidden and the temperature opacity
 adjusted (default 50%); the wind has no switch, it runs while the map is visible and waits for no click.
 
-- **Basemap, dark theme** (`lib/basemapStyle.ts`): the OpenFreeMap "liberty" style repainted with a cartographic palette,
-  never black: ocean `#0B3855`, land `#22393B`, relief and details `#355052`, state borders `#78949A`, country borders
-  `#A3B9BE`, names `#E1EBEE` with a dark halo. The light theme keeps liberty's own colors.
+- **Basemap** (`lib/basemap.ts`, by Gabriel Justino): satellite imagery in both themes (Sentinel-2 cloudless over NASA GIBS
+  Blue Marble) with the borders and place names of OpenFreeMap repainted white on a dark halo. It is a real, colored map
+  (ocean, forest, relief), never black. I first repainted the OpenFreeMap "liberty" style with a teal-and-blue palette; the
+  team's satellite basemap was merged into this branch in parallel and is the one kept, so that palette was removed.
 - **Temperature**: the **thermal** ramp, deep blue to yellow (`--thermal-*`, `--viz-thermal-1..7`, checked by
   `check_viz_ramp.py --theme thermal`). It stops at yellow on purpose: orange and red belong to the hotspot ramp (magma),
   and a hot place of weather must never look like a hotspot of fire. Every temperature layer uses it (the live surface, the
   ERA5 month, the municipalities); the teal ramp stays for wind speed.
-- **Wind**: streaks in `--viz-wind` (pale cyan `#B0E8F5` on the dark theme, a deeper blue on the light one), thin, with
-  brightness following speed. The loop runs on its own animation frame outside React, reuses one buffer, adapts the
+- **Wind**: streaks in `--viz-wind` (pale cyan `#B0E8F5`: the basemap is imagery in both themes), thin, with
+  brightness following speed, clipped to the outline of Brazil. The loop runs on its own animation frame outside React, reuses one buffer, adapts the
   number of streaks to the frame time, pauses on a hidden tab and resumes on its own.
 - **Selection**: a clicked state is outlined in the accent (`--color-accent`) and the "Region weather" card opens bottom
   left. Periods are always named: "Hotspots: November 2026" and "Weather: now", with a warning when they differ.

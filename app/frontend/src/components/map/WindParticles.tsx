@@ -60,22 +60,25 @@ export function WindParticles({ mapRef, field, color }: WindParticlesProps) {
     const ceiling = width < 600 ? CEILING_PHONE : CEILING_DESKTOP;
     let active = Math.round(ceiling * 0.7); // start below the ceiling and let the frame time decide
     // One buffer for the whole life of the layer: it is reused, never rebuilt, while the density moves.
+    // A streak with no spot yet has no position (NaN): it is born again on the next frame.
     const particles: Particle[] = Array.from({ length: ceiling }, () => ({
-      lon: field.west,
-      lat: field.south,
+      lon: Number.NaN,
+      lat: Number.NaN,
       age: 0,
     }));
 
     /** Born anywhere on screen that the field covers; a spot with no value is retried, then left for the next frame. */
     const spawn = (particle: Particle) => {
-      const bounds = map.getBounds();
-      const west = Math.max(field.west, bounds.getWest());
-      const east = Math.min(field.east, bounds.getEast());
-      const south = Math.max(field.south, bounds.getSouth());
-      const north = Math.min(field.north, bounds.getNorth());
+      // On screen AND inside what the field covers (the lattice, narrowed to the clip when there is one).
+      const view = map.getBounds();
+      const box = field.spawnBounds;
+      const west = Math.max(box.west, view.getWest());
+      const east = Math.min(box.east, view.getEast());
+      const south = Math.max(box.south, view.getSouth());
+      const north = Math.min(box.north, view.getNorth());
       particle.age = Math.floor(Math.random() * MAX_AGE_FRAMES);
       if (west >= east || south >= north) return; // nothing of the field on screen: the streak waits
-      for (let tries = 0; tries < 6; tries += 1) {
+      for (let tries = 0; tries < 10; tries += 1) {
         const lon = west + Math.random() * (east - west);
         const lat = south + Math.random() * (north - south);
         if (field.sample(lon, lat)) {
@@ -135,7 +138,7 @@ export function WindParticles({ mapRef, field, color }: WindParticlesProps) {
 
       for (let i = 0; i < active; i += 1) {
         const p = particles[i];
-        const wind = field.sample(p.lon, p.lat);
+        const wind = Number.isFinite(p.lon) && Number.isFinite(p.lat) ? field.sample(p.lon, p.lat) : null;
         p.age += 1;
         if (!wind || p.age > MAX_AGE_FRAMES) {
           spawn(p);
