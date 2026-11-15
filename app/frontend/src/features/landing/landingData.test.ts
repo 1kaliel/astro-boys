@@ -107,23 +107,24 @@ describe("the 2012 story", () => {
 });
 
 describe("globe framing", () => {
-  it("leaves the left to the text on wide screens and the bottom on phones", () => {
+  it("puts a large globe on the right on wide screens and a smaller one above the text on phones", () => {
     const wide = globeFraming(1440, 900);
-    expect(wide.padding.left).toBeGreaterThan(500);
+    expect(wide.padding.left).toBe(576);
     expect(wide.padding.bottom).toBe(0);
+    expect(wide.diameter / 900).toBeGreaterThanOrEqual(0.85);
+    expect(wide.diameter / 900).toBeLessThanOrEqual(0.95);
+    // The zoom draws exactly that diameter: (512 * 2^zoom) / pi.
+    expect((512 * 2 ** wide.zoom) / Math.PI).toBeCloseTo(wide.diameter, 3);
     const phone = globeFraming(375, 812);
     expect(phone.padding.left).toBe(0);
-    expect(phone.padding.bottom).toBeGreaterThan(400);
+    expect(phone.padding.bottom).toBeGreaterThan(300);
+    expect(phone.diameter).toBeLessThanOrEqual(375);
     expect(phone.zoom).toBeLessThan(wide.zoom);
-    for (const f of [wide, phone]) {
-      expect(f.zoom).toBeGreaterThanOrEqual(1.4);
-      expect(f.zoom).toBeLessThanOrEqual(3.4);
-    }
   });
 
-  it("drifts around the study area and comes back", () => {
+  it("drifts a few degrees around the study area and comes back", () => {
     expect(driftOffset(0)).toBe(0);
-    expect(Math.abs(driftOffset(35_000))).toBeCloseTo(9, 5);
-    expect(driftOffset(140_000)).toBeCloseTo(0, 5);
+    expect(Math.abs(driftOffset(30_000))).toBeCloseTo(6, 5);
+    expect(driftOffset(120_000)).toBeCloseTo(0, 5);
   });
 });
