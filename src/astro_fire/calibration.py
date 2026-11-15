@@ -551,15 +551,17 @@ def leave_one_year_out(
     return out
 
 
+def best_weight(scores: Sequence[dict], column: str) -> float:
+    """Weight with the lowest out-of-year score in `column`; ties go to the larger weight (more pooling)."""
+    valid = [s for s in scores if s[column] is not None]
+    if not valid:
+        raise ValueError(f"no finite {column} score: the panel has no such months")
+    return min(valid, key=lambda s: (round(s[column], 9), -s["weight"]))["weight"]
+
+
 def choose_weights(scores: Sequence[dict], metric: str = "deviance") -> tuple[float, float]:
     """(K, M) with the lowest out-of-year score; ties go to the larger weight (more pooling)."""
-    def best(column: str) -> float:
-        valid = [s for s in scores if s[column] is not None]
-        if not valid:
-            raise ValueError(f"no finite {column} score: the panel has no such months")
-        return min(valid, key=lambda s: (round(s[column], 9), -s["weight"]))["weight"]
-
-    return best(f"{metric}_pos"), best(f"{metric}_zero")
+    return best_weight(scores, f"{metric}_pos"), best_weight(scores, f"{metric}_zero")
 
 
 def choose_pooling(
@@ -599,7 +601,7 @@ def choose_pooling(
             with_witness = leave_one_year_out(con, "_panel_witness", grid, pool=pool)
             scores += [{**r, "background": "witness"} for r in with_witness]
             static_known = min(r["deviance_zero"] for r in known if r["deviance_zero"] is not None)
-            _, m_w = choose_weights(with_witness)
+            m_w = best_weight(with_witness, "deviance_zero")  # only the zero-Aqua part uses the witness
             witness_deviance = {r["weight"]: r for r in with_witness}[m_w]["deviance_zero"]
             candidate |= {"deviance_zero_static_same_months": static_known,
                           "deviance_zero_witness": witness_deviance}

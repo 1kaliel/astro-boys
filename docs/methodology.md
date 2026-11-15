@@ -54,20 +54,27 @@ written after seeing 2020–2021, passing it there is not evidence. The strict c
 FIRMS files list detections only, so an outage looks like a quiet period. A day counts as missing for a
 satellite when it recorded at most 10% of the detections the other satellites imply, at least 30 were
 expected, and this lasted three or more days in a row. A month is complete with at least 90% of its days
-observed. Found in 2003–2026 (expected = detections implied by the other satellites):
+observed. A satellite flying alone (Terra before July 2002) is compared with its own usual day for
+that month. Found in 2000–2026 (expected = detections implied by the other satellites, or by its own usual day):
 
 | Satellite | First day | Last day | Days | Detections | Expected |
 |---|---|---|---:|---:|---:|
-| Terra | 2003-12-17 | 2003-12-23 | 7 | 0 | 978 |
+| Terra | 2000-12-14 | 2000-12-18 | 5 | 0 | 497 |
+| Terra | 2001-06-15 | 2001-07-03 | 19 | 9 | 1,527 |
+| Terra | 2002-01-06 | 2002-01-11 | 6 | 4 | 190 |
+| Terra | 2002-01-21 | 2002-01-23 | 3 | 6 | 95 |
+| Terra | 2002-03-20 | 2002-03-28 | 9 | 0 | 151 |
+| Aqua | 2002-07-30 | 2002-08-07 | 9 | 0 | 2,241 |
+| Terra | 2003-12-17 | 2003-12-23 | 7 | 0 | 959 |
 | SNPP | 2012-03-24 | 2012-03-26 | 3 | 16 | 1,432 |
 | Terra | 2016-02-22 | 2016-02-25 | 4 | 0 | 208 |
-| Aqua | 2020-08-16 | 2020-08-18 | 3 | 21 | 1,075 |
-| Aqua | 2020-08-20 | 2020-08-23 | 4 | 21 | 1,017 |
-| Aqua | 2020-08-27 | 2020-08-30 | 4 | 19 | 1,886 |
+| Aqua | 2020-08-16 | 2020-08-18 | 3 | 21 | 1,074 |
+| Aqua | 2020-08-20 | 2020-08-23 | 4 | 21 | 1,015 |
+| Aqua | 2020-08-27 | 2020-08-30 | 4 | 19 | 1,884 |
 | Aqua | 2022-03-31 | 2022-04-02 | 3 | 5 | 190 |
 | Aqua | 2022-04-04 | 2022-04-11 | 8 | 0 | 557 |
 | SNPP | 2022-07-27 | 2022-08-10 | 15 | 0 | 40,063 |
-| Terra | 2022-10-10 | 2022-10-22 | 13 | 33 | 9,159 |
+| Terra | 2022-10-10 | 2022-10-22 | 13 | 33 | 9,140 |
 | N20 | 2023-07-19 | 2023-07-22 | 4 | 0 | 9,447 |
 | SNPP | 2024-05-30 | 2024-06-03 | 5 | 0 | 3,688 |
 | SNPP | 2024-07-10 | 2024-07-16 | 7 | 0 | 10,162 |
@@ -77,7 +84,7 @@ observed. Found in 2003–2026 (expected = detections implied by the other satel
 | SNPP | 2026-04-28 | 2026-04-30 | 3 | 0 | 580 |
 | SNPP | 2026-07-11 | 2026-07-16 | 6 | 0 | 1,813 |
 
-Incomplete months: Terra 2003-12, SNPP 2012-01, Terra 2016-02, Aqua 2020-08, Aqua 2022-04, SNPP 2022-07, SNPP 2022-08, Terra 2022-10, N20 2023-07, SNPP 2024-07, SNPP 2024-11, SNPP 2026-07, N20 2026-11, SNPP 2026-11. Months in which Aqua or S-NPP is incomplete are left out of calibration and out
+Incomplete months: Terra 2000-10, Terra 2000-12, Terra 2001-06, Terra 2002-01, Terra 2002-03, Aqua 2002-07, Aqua 2002-08, Terra 2003-12, SNPP 2012-01, Terra 2016-02, Aqua 2020-08, Aqua 2022-04, SNPP 2022-07, SNPP 2022-08, Terra 2022-10, N20 2023-07, SNPP 2024-07, SNPP 2024-11, SNPP 2026-07, N20 2026-11, SNPP 2026-11. Months in which Aqua or S-NPP is incomplete are left out of calibration and out
 of the main validation scores (scores on all months are kept in the JSON). Single low days are not gaps:
 MODIS swaths leave uncovered strips at low latitudes on some days and VIIRS does not. Dates are derived
 from the data and still need to be checked against the instrument notices.
@@ -328,11 +335,72 @@ against a median of 22,785 for the same days (range 12,602 to 47,748). Other par
 an instrument artifact unlikely, but the 2026 files come from the API and the earlier years from the archive,
 and we have not compared the two sources on the same dates.
 
+### Sensitivity to the confidence filter
+
+Calibration and the development-year validation were rerun with three definitions of a counted detection
+(all of type 0), with the method and its selection rules unchanged (`scripts/filter_sensitivity.py`;
+`artifacts/metrics/filter_sensitivity.md`). The final test years were not used.
+
+| Filter | VIIRS / Aqua | Model chosen | MAE cell-month (best baseline) | RMSE (best baseline) | Bias | MAE regional month (best baseline) | Passes the rule | Interval coverage |
+|---|---:|---|---:|---:|---:|---:|---|---:|
+| Nominal and high (main) | 6.52 | l1, K=50, M=5, Terra-aware, λ=0.75 | 3.07 (3.66) | 10.15 (12.85) | +0.8% | 2,283 (2,371) | yes | 94.2% |
+| All confidence classes | 7.13 | l1, K=50, M=5, Terra-aware, λ=0.75 | 3.32 (4.00) | 10.86 (13.38) | +2.6% | 2,867 (2,880) | yes | 94.3% |
+| High only | 1.43 | l1, K=100, M=20, Terra-aware, λ=1 | 0.370 (0.372) | 1.75 (1.89) | -4.4% | 362 (361) | yes, by a margin of 0.6% | 97.8% |
+
+- Including low-confidence detections changes the sensor ratio (7.1 instead of 6.5) but not the conclusion:
+  the same model is chosen and it beats the baselines by the same margin.
+- With high confidence only, the advantage over the baselines almost disappears and the model leans fully on
+  the regional ratio. High confidence is not the same thing on the two sensors (0–100 on MODIS, tied to
+  detector saturation on VIIRS), so this filter compares unlike detections. It supports keeping the main
+  filter and not treating confidence as equivalent across sensors.
+
+### Extending the record before 2003
+
+**Added: Aqua from its first months.** The calendar now starts in July 2002. September–December 2002 are
+estimated with the frozen Aqua factors (same sensor, same overpass time, same assumption as 2003–2011);
+July and August 2002 are marked partial (Aqua outage, July 30 to August 7).
+
+**Not added: the Terra-only months (November 2000 to June 2002).** We fitted the frozen method with Terra as
+the source (`scripts/terra_source_factors.py`). On the development years it passes the rule comfortably:
+cell-month MAE 3.83 against 4.89 for the best baseline, regional MAE 3,695 against 4,044, bias +1.9%, 94.4%
+interval coverage (`artifacts/metrics/validation_terra_source_dev_2020-2021.md`). **We still do not use it,
+because the relation it relies on was different in the years it would be applied to:**
+
+| Daytime Terra / Aqua detections | 2002–2006 | 2007–2011 | 2012–2021 |
+|---|---:|---:|---:|
+| Range of yearly values | 0.26–0.35 | 0.33–0.42 | 0.48–0.52 |
+
+- Terra recorded about half as many daytime detections relative to Aqua in the early 2000s as in the
+  calibration years. Terra factors fitted on 2012–2019 would therefore put the Terra-only months roughly 45%
+  too low by day. Night is stable (2.2 to 2.7 throughout).
+- It is not an instrument or processing artifact that we can find: MODIS product version is 6.2 for every
+  year from 2000 to 2017; both overpass times are constant until 2021; and the strength of the detections
+  did not change for either satellite (Aqua median FRP 28–33 MW, Terra 21–26 MW, in every year 2003–2021).
+  The change is concentrated in the fire-season months. The reading that fits these facts is a change in
+  what was burning at 10:30 relative to 13:30, which a three-hour difference in overpass makes visible.
+- **What this means for the main series.** Aqua and S-NPP cross at the same local time, so the Aqua → VIIRS
+  relation does not depend on the time of day of burning; that is why the pair was chosen. The two MODIS
+  records do disagree on the long-term trend: Aqua's yearly detections fall by about a third from 2003–2011
+  to 2012–2021, Terra's do not fall (49 thousand per year in both periods). The harmonized series follows
+  Aqua, the afternoon view, which is the one VIIRS has. It should be read as activity at the early-afternoon
+  overpass, not as all-day activity.
+- Terra is used in the main method only as a witness for the background. In the reconstructed years it marks
+  5.6% of the zero-Aqua cell-months as active, against 6.9% in the calibration years, and replacing the
+  Terra-aware background with the static one changes the 2003–2011 total by 0.1%. The shift does not
+  propagate into the series.
+- The lesson for the method as a whole: passing a forward test does not prove a relation held in the past.
+  For Aqua the support is physical (same overpass as VIIRS, constant orbit until 2021, unchanged detection
+  strength), not statistical.
+
+Possible later: convert Terra to Aqua-equivalent with the relation of the nearest years (2002–2004) and
+then apply the Aqua factors. Not done: it stacks two estimates and assumes the early Terra–Aqua relation
+held back to 2000.
+
 ### Still to fill in
 
 | Item | Status |
 |------|--------|
-| Sensitivity to the confidence filter; Terra-only 2000-11 → 2002-06 | Not done (H12) |
+| Terra-only 2000-11 → 2002-06 | Fitted and checked, **not used** (relation not stable backward) |
 | API files compared with archive files on the same dates (2026 looks unusually low) | Not done |
 | Uncertainty band on the before/after chart (regional annual totals) | Not done |
 | Gap dates checked against instrument notices | Not done |

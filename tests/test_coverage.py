@@ -137,3 +137,26 @@ def test_a_month_that_has_not_finished_is_partial():
         ("B", 10, 31, 31, 0, True, False),
         ("B", 11, 30, 14, 16, False, True),   # data up to Nov 14: the month is not finished
     ]
+
+
+def test_a_satellite_flying_alone_is_compared_with_its_own_usual_day():
+    """One satellite, three years. A ten-day silence in a quiet month is a gap; a quiet two days is not."""
+    con = duckdb.connect()
+    con.execute(
+        """
+        CREATE TABLE daily AS
+        SELECT 'T' AS satellite, d::DATE AS date_local, 8 AS n_all
+        FROM generate_series(DATE '2000-01-01', DATE '2002-12-31', INTERVAL 1 DAY) t(d)
+        WHERE NOT d BETWEEN DATE '2001-03-10' AND DATE '2001-03-19'   -- outage: 10 days x 8 expected = 80
+          AND NOT d BETWEEN DATE '2002-06-05' AND DATE '2002-06-06'   -- two days: too short
+        """
+    )
+    coverage.flag_days(con, "daily")
+    assert coverage.gap_runs(con, "coverage_daily") == [
+        {"satellite": "T", "first_day": "2001-03-10", "last_day": "2001-03-19", "days": 10,
+         "detections": 0, "expected": pytest.approx(73, abs=3)}
+    ]
+    # Three silent days at 8 a day expect only 24 detections: not enough evidence to call it a gap.
+    con.execute("DELETE FROM daily WHERE date_local BETWEEN DATE '2002-09-01' AND DATE '2002-09-03'")
+    coverage.flag_days(con, "daily")
+    assert len(coverage.gap_runs(con, "coverage_daily")) == 1
