@@ -161,10 +161,11 @@ def test_ingest_api_cell_mask_drops_rows_outside_listed_l3_cells(tmp_path, monke
     box = "-48.8_-18.4_-34.7_-1.0"
     head = ("latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,"
             "version,bright_ti5,frp,daynight,type\n")
-    path = tmp_path / "raw/firms/api/VIIRS_SNPP_SP" / box / "2026-01-01_5d.csv"
-    path.parent.mkdir(parents=True)
-    path.write_text(head + "-9.37,-45.62,330,0.4,0.4,2026-01-05,1630,N,VIIRS,n,2,290,5.0,D,0\n"
-                           "-9.30,-45.62,330,0.4,0.4,2026-01-05,1630,N,VIIRS,n,2,290,5.0,D,0\n")
+    for source, sat in (("VIIRS_SNPP_SP", "N"), ("VIIRS_NOAA20_SP", "N20")):  # two sources, one connection
+        path = tmp_path / "raw/firms/api" / source / box / "2026-01-01_5d.csv"
+        path.parent.mkdir(parents=True)
+        path.write_text(head + f"-9.37,-45.62,330,0.4,0.4,2026-01-05,1630,{sat},VIIRS,n,2,290,5.0,D,0\n"
+                               f"-9.30,-45.62,330,0.4,0.4,2026-01-05,1630,{sat},VIIRS,n,2,290,5.0,D,0\n")
     mask = tmp_path / "mask.parquet"
     with duckdb.connect() as con:
         con.execute(f"COPY (SELECT 'G080134.10.11' AS cell_l3) TO '{mask}' (FORMAT PARQUET)")
@@ -173,11 +174,12 @@ def test_ingest_api_cell_mask_drops_rows_outside_listed_l3_cells(tmp_path, monke
         batch.ingest_api(get_settings(astro_data_root=str(tmp_path)), 2026)
     monkeypatch.setenv("ASTRO_CELL_MASK", str(mask))
     result = batch.ingest_api(get_settings(astro_data_root=str(tmp_path)), 2026)
-    assert result["hotspot_rows"] == 1
+    assert result["hotspot_rows"] == 2
     assert result["cell_mask"] == str(mask)
     assert result["sources"]["VIIRS_SNPP"]["rows_outside_cell_mask_dropped"] == 1
+    assert result["sources"]["VIIRS_NOAA20"]["rows_outside_cell_mask_dropped"] == 1
     with duckdb.connect() as con:
         cells = con.execute(
             f"SELECT cell_l3 FROM read_parquet('{tmp_path}/processed/hotspots/v1/**/*.parquet')"
         ).fetchall()
-    assert cells == [("G080134.10.11",)]
+    assert cells == [("G080134.10.11",), ("G080134.10.11",)]

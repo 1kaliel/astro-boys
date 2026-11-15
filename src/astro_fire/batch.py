@@ -383,11 +383,11 @@ def ingest_api(settings: Settings, year: int) -> dict:
                     "COPY (SELECT * FROM read_parquet(?) WHERE cell_l3 IN "
                     "(SELECT cell_l3 FROM read_parquet(?))) TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
                     [str(unmasked), mask, str(shard)],
-                )
+                ).fetchall()
                 summary[prefix]["rows_outside_cell_mask_dropped"] = con.execute(
                     "SELECT (SELECT count(*) FROM read_parquet(?)) - (SELECT count(*) FROM read_parquet(?))",
                     [str(unmasked), str(shard)],
-                ).fetchone()[0]
+                ).fetchall()[0][0]
         if not summary:
             raise ValueError("no FIRMS area-API files under raw/firms/api")
         inputs = str(shards / "*.parquet")
