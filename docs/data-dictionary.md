@@ -77,6 +77,11 @@ Rules for consumers:
 - **A null estimate is not zero.** If `count_harmonized` is null in any cell of the month, the sum for that month has
   no value (`None`/null): a sum of the cells that have one would understate the month. Show it as "No estimate",
   never as 0 and never as a low value.
+- **An unfinished month is compared with the same days of earlier years, never with full months.** Use
+  `processed/month_to_date/v1`: for the area, sum `n_hotspots` over its cells for each earlier year (days 1..`days`),
+  count a year with no row in the area as 0 (up to `n_years` values), and take the median and the MAD of those values.
+  Compare the month so far with that median. Only an observed partial month that covers exactly `days` days of the
+  layer's month qualifies (the same rule as `same_window` in `harmonize`).
 - Never add `raw_*` columns of different satellites together.
 - An absent row means no detection in that cell-month by the source satellite, **not** a confirmed absence of fire.
 

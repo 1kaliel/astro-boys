@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CalendarMonth } from "../data/calendarSource";
-import { busiestMonth, estimatedShare, inYears, percentChange, yearToDate } from "./metrics";
+import { busiestMonth, estimatedShare, inYears, latestComparison, percentChange, yearToDate } from "./metrics";
 
 function month(year: number, m: number, value: number, extra: Partial<CalendarMonth> = {}): CalendarMonth {
   const estimated = year < 2012 || (year === 2012 && m < 2);
@@ -18,6 +18,9 @@ function month(year: number, m: number, value: number, extra: Partial<CalendarMo
     anomalyAbs: value - 100,
     anomalyPct: value - 100,
     anomalyZ: null,
+    comparison: null,
+    comparisonDays: null,
+    comparisonYears: null,
     ...extra,
   };
 }
@@ -53,5 +56,42 @@ describe("metrics", () => {
   it("percent change is undefined when the base is zero", () => {
     expect(percentChange(150, 100)).toBe(50);
     expect(percentChange(5, 0)).toBeNull();
+  });
+});
+
+describe("latestComparison", () => {
+  it("compares a complete month with the median of that month", () => {
+    const full = month(2025, 11, 80, { medianHist: 100, comparison: "month" });
+    expect(latestComparison(full)).toEqual({ kind: "month", base: 100 });
+  });
+
+  it("compares an unfinished month with the same days of earlier years (like for like)", () => {
+    const partial = month(2026, 11, 20, {
+      isPartial: true,
+      daysObserved: 14,
+      medianHist: 22.5,
+      comparison: "same_days",
+      comparisonDays: 14,
+      comparisonYears: 13,
+    });
+    expect(latestComparison(partial)).toEqual({ kind: "same_days", base: 22.5, days: 14, years: 13 });
+  });
+
+  it("never sets an unfinished month against full months: with no same-days history there is no comparison", () => {
+    // the API may still send a full-month median for a partial month ("month"); it must not be used
+    const partial = month(2026, 11, 20, { isPartial: true, daysObserved: 14, medianHist: 100, comparison: "month" });
+    expect(latestComparison(partial)).toEqual({ kind: "none" });
+    expect(latestComparison({ ...partial, comparison: null, medianHist: null })).toEqual({ kind: "none" });
+  });
+
+  it("does not compare when the same-days median is missing", () => {
+    const partial = month(2026, 11, 20, {
+      isPartial: true,
+      medianHist: null,
+      comparison: "same_days",
+      comparisonDays: 14,
+      comparisonYears: 13,
+    });
+    expect(latestComparison(partial)).toEqual({ kind: "none" });
   });
 });

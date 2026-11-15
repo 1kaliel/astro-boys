@@ -29,6 +29,9 @@ function month(overrides: Partial<CalendarMonth>): CalendarMonth {
     anomalyAbs: null,
     anomalyPct: null,
     anomalyZ: null,
+    comparison: null,
+    comparisonDays: null,
+    comparisonYears: null,
     ...overrides,
   };
 }
@@ -261,6 +264,9 @@ describe("parseFixture", () => {
       anomalyAbs: null,
       anomalyPct: null,
       anomalyZ: null,
+      comparison: null,
+      comparisonDays: null,
+      comparisonYears: null,
     });
     expect(dataset.period).toBeNull();
     expect([dataset.firstYear, dataset.lastYear]).toEqual([2003, 2003]);
@@ -340,6 +346,18 @@ describe("parseApiResponse", () => {
     const [row] = buildSeries(dataset.months, "N", 2010, 2010);
     expect(row.data[7].y).toBeNull();
     expect(row.data[7].entry).not.toBeNull();
+  });
+
+  it("reads what the median is the median of: whole months, or the same days of an unfinished month", () => {
+    const [full] = parseApiResponse({ ...doc, months: [{ ...apiMonth, median_n_years: 23, median_days: null }] }).months;
+    expect([full.comparison, full.comparisonDays, full.comparisonYears]).toEqual(["month", null, 23]);
+
+    const sameDays = { ...apiMonth, is_partial: true, days_observed: 14, median_n_years: 13, median_days: 14 };
+    const [partial] = parseApiResponse({ ...doc, months: [sameDays] }).months;
+    expect([partial.comparison, partial.comparisonDays, partial.comparisonYears]).toEqual(["same_days", 14, 13]);
+
+    const [none] = parseApiResponse({ ...doc, months: [{ ...apiMonth, median_hist: null }] }).months;
+    expect(none.comparison).toBeNull();
   });
 
   it("rejects an answer that is not a calendar", () => {
