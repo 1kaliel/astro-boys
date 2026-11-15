@@ -25,6 +25,8 @@ export type DailyDay = {
   status: "observed" | "no_data";
   count: number | null;
   passes: DailyPass[];
+  /** Rows of `count` without an acquisition time: counted, but in no pass. */
+  untimed: number;
 };
 
 export type DailyResponse = {

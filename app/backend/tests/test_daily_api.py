@@ -3,6 +3,7 @@ hand-made calendar and hotspots/v1."""
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from pathlib import Path
 
 import duckdb
@@ -32,6 +33,7 @@ ROWS = [
     # 2013-09-07: day/night changes within a minute: two passes.
     (CELL, "2013-09-07", "2013-09-07 16:00:00", "SNPP", "VIIRS", "D", True),
     (CELL, "2013-09-07", "2013-09-07 16:01:00", "SNPP", "VIIRS", "N", True),
+    (CELL, "2013-09-07", None, "SNPP", "VIIRS", "D", True),  # no acquisition time: counted, in no pass
     (OUTSIDE, "2013-09-10", "2013-09-10 16:00:00", "SNPP", "VIIRS", "D", True),  # outside the area
     (CELL, "2013-09-20", "2013-09-20 05:30:00", "SNPP", "VIIRS", "N", True),  # last S-NPP date of 2013
     (CELL, "2013-09-25", "2013-09-25 15:00:00", "N20", "VIIRS", "D", True),  # N20 goes on later
@@ -40,6 +42,21 @@ ROWS = [
     *[(CELL, "2005-03-02", "2005-03-02 16:40:00", "Aqua", "MODIS", "D", True)] * 2,
     *[(CELL, "2005-03-02", "2005-03-02 13:30:00", "Terra", "MODIS", "D", True)] * 3,
 ]
+
+
+def _coverage(satellite: str, instrument: str, first: date, last: date, gaps: set[date]) -> list[tuple]:
+    """One low-confidence row outside the area per day: the satellite has data that day, the area has none."""
+    days = [first + timedelta(days=i) for i in range((last - first).days + 1)]
+    return [
+        (OUTSIDE, d.isoformat(), f"{d.isoformat()} 12:00:00", satellite, instrument, "D", False)
+        for d in days
+        if d not in gaps
+    ]
+
+
+GAP = date(2013, 9, 15)  # an archive gap of S-NPP inside the month
+ROWS += _coverage("SNPP", "VIIRS", date(2013, 8, 1), date(2013, 9, 20), {GAP})
+ROWS += _coverage("Aqua", "MODIS", date(2005, 3, 2), date(2005, 3, 31), set())  # first record 2005-03-02
 
 # (year, month, source satellite) of the calendar.
 MONTHS = [(2005, 3, "Aqua"), (2013, 8, "SNPP"), (2013, 9, "SNPP"), (2014, 1, "SNPP")]  # no hotspots in 2014
@@ -115,9 +132,9 @@ def test_counts_per_day_of_one_satellite(client: TestClient) -> None:
     days = _days(body)
     # Only main-filter S-NPP rows of the area: not low confidence, N20, Aqua, the other cell or August.
     assert days["2013-09-05"]["count"] == 4 + 2
-    assert days["2013-09-07"]["count"] == 2
+    assert days["2013-09-07"]["count"] == 3
     assert days["2013-09-20"]["count"] == 1
-    assert sum(d["count"] or 0 for d in body["days"]) == 9
+    assert sum(d["count"] or 0 for d in body["days"]) == 10
 
 
 def test_zero_day_is_observed_and_days_after_last_date_are_no_data(client: TestClient) -> None:
@@ -125,11 +142,33 @@ def test_zero_day_is_observed_and_days_after_last_date_are_no_data(client: TestC
     days = _days(body)
 
     assert body["last_date"] == "2013-09-20"
-    assert days["2013-09-10"] == {"date": "2013-09-10", "status": "observed", "count": 0, "passes": []}
+    zero = {"date": "2013-09-10", "status": "observed", "count": 0, "passes": [], "untimed": 0}
+    assert days["2013-09-10"] == zero
     assert days["2013-09-20"]["status"] == "observed"
-    assert days["2013-09-21"] == {"date": "2013-09-21", "status": "no_data", "count": None, "passes": []}
+    no_data = {"date": "2013-09-21", "status": "no_data", "count": None, "passes": [], "untimed": 0}
+    assert days["2013-09-21"] == no_data
     assert all(d["status"] == "no_data" for d in body["days"][20:])
-    assert all(d["status"] == "observed" and d["count"] is not None for d in body["days"][:20])
+    observed = [d for d in body["days"][:20] if d["date"] != GAP.isoformat()]
+    assert all(d["status"] == "observed" and d["count"] is not None for d in observed)
+
+
+def test_a_gap_day_of_the_satellite_is_no_data_not_zero(client: TestClient) -> None:
+    gap = _days(_get(client).json())[GAP.isoformat()]
+    assert (gap["status"], gap["count"], gap["passes"]) == ("no_data", None, [])
+
+
+def test_days_before_the_first_record_are_no_data(client: TestClient) -> None:
+    days = _days(_get(client, year=2005, month=3).json())
+    assert (days["2005-03-01"]["status"], days["2005-03-01"]["count"]) == ("no_data", None)
+    assert (days["2005-03-02"]["status"], days["2005-03-02"]["count"]) == ("observed", 2)
+    assert (days["2005-03-03"]["status"], days["2005-03-03"]["count"]) == ("observed", 0)
+
+
+def test_untimed_rows_are_counted_but_in_no_pass(client: TestClient) -> None:
+    day = _days(_get(client).json())["2013-09-07"]
+    assert (day["count"], day["untimed"]) == (3, 1)
+    assert sum(p["count"] for p in day["passes"]) == day["count"] - day["untimed"]
+    assert _days(_get(client).json())["2013-09-05"]["untimed"] == 0
 
 
 def test_a_month_before_the_last_date_is_all_observed(client: TestClient) -> None:
