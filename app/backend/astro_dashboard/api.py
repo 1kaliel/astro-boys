@@ -3,7 +3,9 @@
 `GET /api/calendar` returns the monthly series of an area: the harmonized counts of its cells summed, with the
 origin of each month, the historical median and the anomalies of the sum. See calendar.py for the rules.
 `GET /api/hotspots/count` and `GET /api/hotspots.csv` give the native hotspots of the same cells and dates
-(hotspots.py).
+(hotspots.py). `GET /api/weather` is a separate context layer: ERA5 temperature and wind for the area and
+a month,
+from Open-Meteo (weather.py). It never feeds the hotspot numbers.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -21,6 +23,17 @@ from pydantic import BaseModel
 from astro_dashboard import hotspots
 from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
+from astro_dashboard.weather import (
+    MODEL as WEATHER_MODEL,
+)
+from astro_dashboard.weather import (
+    SOURCE as WEATHER_SOURCE,
+)
+from astro_dashboard.weather import (
+    WeatherOutOfRange,
+    WeatherService,
+    WeatherUnavailable,
+)
 
 log = logging.getLogger("astro_dashboard")
 
@@ -165,6 +178,78 @@ def calendar(
         last_year=result.last_year,
         months=[MonthOut(**asdict(m)) for m in result.months],
     )
+
+
+_DEFAULT_WEATHER = WeatherService()
+
+
+def get_weather(request: Request) -> WeatherService:
+    """The weather service of this server; tests put a fake one on `app.state.weather`."""
+    service: WeatherService | None = getattr(request.app.state, "weather", None)
+    return service or _DEFAULT_WEATHER
+
+
+class WeatherOut(BaseModel):
+    source: str
+    model: str
+    year: int
+    month: int
+    # UTC days asked for (the whole month, or up to today for the current one) and the days that have values.
+    start: date
+    end: date
+    available_from: date | None
+    available_through: date | None
+    days_available: int
+    days_requested: int
+    # "ok": every requested day has values. "partial": the latest days are not published yet.
+    # "unavailable": none.
+    status: Literal["ok", "partial", "unavailable"]
+    # ERA5 grid points inside the box, and the regular sub-grid actually asked for.
+    points_in_area: int
+    points_used: int
+    temperature_mean_c: float | None
+    wind_speed_mean_kmh: float | None
+    wind_direction_from_deg: float | None
+    wind_direction_from: str | None
+    wind_direction_steadiness: float | None
+
+
+@router.get("/weather", response_model=WeatherOut, tags=["weather"])
+def weather(
+    service: Annotated[WeatherService, Depends(get_weather)],
+    year: int = Query(..., ge=1940, le=2200),
+    month: int = Query(..., ge=1, le=12),
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+) -> WeatherOut:
+    """Context only: ERA5 reanalysis for the area and month. It says nothing about causes of hotspots."""
+    if west >= east or south >= north:
+        raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
+    try:
+        summary = service.month_summary(Bounds(west=west, south=south, east=east, north=north), year, month)
+    except WeatherOutOfRange as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    if summary.days_available == 0:
+        status = "unavailable"
+    elif summary.days_available < summary.days_requested or summary.end < _month_end(year, month):
+        status = "partial"
+    else:
+        status = "ok"
+    return WeatherOut(
+        source=WEATHER_SOURCE,
+        model=WEATHER_MODEL,
+        status=status,
+        **{k: getattr(summary, k) for k in WeatherOut.model_fields if hasattr(summary, k)},
+    )
+
+
+def _month_end(year: int, month: int) -> date:
+    following = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    return following - timedelta(days=1)
 
 
 @router.get("/version", tags=["meta"])

@@ -13,6 +13,7 @@ import { TREND_UNIT, TrendChart } from "../charts/TrendChart";
 import { AppBar } from "./AppBar";
 import { FilterBar } from "./FilterBar";
 import { KpiRow } from "./KpiRow";
+import { WeatherContext } from "./WeatherContext";
 
 // The map (MapLibre, ~300 KB gzip) is a separate chunk: phones download it only when they open the map.
 const MapPanel = lazy(() => import("../../components/map/MapPanel"));
@@ -41,6 +42,8 @@ export function DashboardPage() {
   // The mock calendar is labeled by its model version; the offline fixture by its own flag.
   const simulated = dataset ? dataset.synthetic || /^mock/i.test(dataset.modelVersion) : false;
   const showMap = !narrow || mapOpen;
+  const lastRow = dataset?.months.at(-1);
+  const latestMonth = lastRow ? { year: lastRow.year, month: lastRow.month } : null;
   // The seasonal profile draws the year of the month picked in the calendar, or the latest year of the data.
   const profileYear = dataset ? Math.min(state.selected?.year ?? dataset.lastYear, dataset.lastYear) : null;
 
@@ -91,6 +94,8 @@ export function DashboardPage() {
             baselineYears={dataset.baselineYears}
           />
         )}
+
+        {dataset && latestMonth && <WeatherContext month={state.selected ?? latestMonth} />}
 
         <Card
           className="dash-calendar calendar-theme"

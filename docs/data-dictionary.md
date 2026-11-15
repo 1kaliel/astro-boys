@@ -190,6 +190,32 @@ It writes `data/processed/calendar/mock/year=YYYY/*.parquet` (git-ignored) with 
 only and must never appear in a figure, the demo or the submission. Switching to real data means pointing the
 app at `processed/calendar/v1/` instead; the schema is the same.
 
+## 6b. Weather context (`GET /api/weather`, proof of concept)
+
+A separate, optional layer: ERA5 temperature and wind for an area and one month, from the Open-Meteo Historical
+Weather API (`models=era5`, never `best_match`). It is **context**. It never enters `calendar/v1`, the harmonization
+model or any hotspot count, and it does not say that weather causes hotspots.
+
+Request: `year`, `month`, `west`, `south`, `east`, `north`. Answer: `source`, `model`, the UTC days asked for
+(`start`, `end`) and the days that have values (`available_from`, `available_through`, `days_available`,
+`days_requested`), `status` (`ok`, `partial` when the latest days are not published yet, `unavailable`),
+`points_in_area`, `points_used`, `temperature_mean_c`, `wind_speed_mean_kmh`, `wind_direction_from_deg`,
+`wind_direction_from` and `wind_direction_steadiness`.
+
+Rules:
+
+- **Spatial match.** ERA5 points sit at multiples of 0.25°, which are the corners of four L2 cells, not cell centers.
+  The area takes the ERA5 points inside the box, with no interpolation; a box too small for a point takes the nearest
+  one. A large box is sampled on a regular grid of at most 36 points (the answer says how many were inside and how many
+  were used). Ocean points are included: there is no land mask.
+- **Time.** UTC days. ERA5 is published a few days late: days without values are left out of the means and reported in
+  `days_available`; they are never filled and never counted as zero.
+- **Means.** Temperature and wind speed are means of the daily means over the days and points that have values. The wind
+  direction is where the wind blows **from**, taken from the mean wind vector (so opposite winds cancel);
+  `wind_direction_steadiness` is the length of that mean vector over the mean speed (1 = always the same direction).
+- **Terms.** Free use is non-commercial, fewer than 10,000 calls a day, with attribution (CC BY 4.0). The backend
+  caches each (area, month) in memory: for ever once the month is more than 60 days old, six hours before that.
+
 ## API shape (if the app has a backend)
 
 Suggested, not mandatory; the functional contract is what matters ([spec/dashboard.md](spec/dashboard.md)).

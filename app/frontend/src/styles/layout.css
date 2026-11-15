@@ -277,6 +277,71 @@
   color: var(--color-text-secondary);
 }
 
+/* Weather context (ERA5): quiet, secondary to the hotspots. Values in the ink color: no hue says "more" or "alert". */
+.weather-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.weather-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.weather-stat > dd {
+  margin: 0;
+}
+
+.weather-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.weather-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  line-height: var(--line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-unit {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}
+
+.weather-note,
+.weather-method,
+.weather-status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.weather-method {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 56rem) {
+  .weather-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 30rem) {
+  .weather-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Burning calendar heatmap */
 .heatmap-wrap {
   overflow-x: auto;

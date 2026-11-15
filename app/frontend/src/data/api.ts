@@ -88,3 +88,43 @@ export function cellsUrl(period: Period, selected: { year: number; month: number
   }
   return `/api/cells?${params}`;
 }
+
+/** ERA5 weather context for an area and a month (`/api/weather`). Context only: it never feeds a hotspot number. */
+export type WeatherResponse = {
+  source: string;
+  model: string;
+  year: number;
+  month: number;
+  start: string;
+  end: string;
+  available_from: string | null;
+  available_through: string | null;
+  days_available: number;
+  days_requested: number;
+  /** "partial": the latest days are not published yet. "unavailable": none of them. */
+  status: "ok" | "partial" | "unavailable";
+  points_in_area: number;
+  points_used: number;
+  temperature_mean_c: number | null;
+  wind_speed_mean_kmh: number | null;
+  /** Where the wind blows FROM (meteorological convention). */
+  wind_direction_from_deg: number | null;
+  wind_direction_from: string | null;
+  /** 1 = always the same direction, near 0 = it keeps changing. */
+  wind_direction_steadiness: number | null;
+};
+
+export function weatherUrl(
+  area: { west: number; south: number; east: number; north: number },
+  month: { year: number; month: number },
+): string {
+  const params = new URLSearchParams({
+    year: String(month.year),
+    month: String(month.month),
+    west: String(area.west),
+    south: String(area.south),
+    east: String(area.east),
+    north: String(area.north),
+  });
+  return `/api/weather?${params}`;
+}
