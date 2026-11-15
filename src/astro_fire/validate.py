@@ -67,8 +67,9 @@ def _score_years(con, settings: Settings, test_years: Sequence[int], season: Seq
 
 
 def _table(result: dict, years: Sequence[int], label: str, k: float, m: float, pool: str,
-           m_witness: float | None = None) -> str:
+           m_witness: float | None = None, lam: float = 0.0) -> str:
     extra = "" if m_witness is None else f", Terra-aware background with M = {m_witness:g}"
+    extra += f", reconciled to the regional ratio with λ = {lam:g}" if lam else ""
     span = f"{result['test_years'][0]}–{result['test_years'][-1]}"
     left_out = ", ".join(f"{y}-{mo:02d}" for y, mo in result["incomplete_months_left_out"]) or "none"
     title = (
@@ -95,6 +96,7 @@ def run(
     m: float | None = None,
     pool: str | None = None,
     witness: bool | None = None,
+    reconcile: float | None = None,
     counts_location: str | None = None,
 ) -> dict:
     """Score the methods on held-out years.
@@ -128,18 +130,18 @@ def run(
     excluded, _, _ = months_to_exclude(con, settings, years)
     cal.build_panel(con, "counts", years, exclude_months=excluded,
                     witness_gap_months=witness_gap_months(con, settings, years))
-    choice = choose_model(con, "panel", k=k, m=m, pool=pool, witness=witness)
+    choice = choose_model(con, "panel", k=k, m=m, pool=pool, witness=witness, reconcile=reconcile)
     k, m, pool = choice["k"], choice["m"], choice["pool"]
-    witness, m_witness = choice["witness"], choice["m_witness"]
-    version_name = model_version(pool, witness)
+    witness, m_witness, lam = choice["witness"], choice["m_witness"], choice["reconcile_lambda"]
+    version_name = model_version(pool, witness, lam)
     cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name,
-                    witness=witness, m_witness=m_witness)
+                    witness=witness, m_witness=m_witness, reconcile_lambda=lam)
     season = val.high_season_months(con, "panel")
 
     # Held-out years: touched only from here on, and only to score.
     label = "final test" if final else "development years"
     main = _score_years(con, settings, test_years, season, "main")
-    table = _table(main, years, label, k, m, pool, m_witness)
+    table = _table(main, years, label, k, m, pool, m_witness, lam)
     report = {
         "run_id": run_id,
         "stage": "final test" if final else "development",
@@ -147,7 +149,8 @@ def run(
         "calibration_years": list(years),
         "excluded_calibration_months": [list(ym) for ym in excluded],
         "weights": {"k": k, "m": m, "pool": pool, "chosen_by": choice["chosen_by"],
-                    "background": "witness" if witness else "static", "m_witness": m_witness},
+                    "background": "witness" if witness else "static", "m_witness": m_witness,
+                    "reconcile_lambda": lam},
         "high_season_months": season,
         "methods": [{"key": key, "label": lab, "role": role} for key, lab, role in val.METHODS],
         **main,
@@ -155,7 +158,7 @@ def run(
     if final:
         late = _score_years(con, settings, LATE_YEARS, season, "late")
         report["late_years"] = late
-        table += "\n" + _table(late, years, "late years (reported separately)", k, m, pool, m_witness)
+        table += "\n" + _table(late, years, "late years (reported separately)", k, m, pool, m_witness, lam)
     decision = main["verdict"]
 
     target = storage.uri(settings, "artifacts", run_id)
@@ -188,7 +191,7 @@ def run(
         "report": f"{target}/metrics/validation.json",
         "table": f"{target}/reports/validation.md",
         "manifest": manifest.save(settings),
-        "k": k, "m": m, "pool": pool, "witness": witness, "m_witness": m_witness,
+        "k": k, "m": m, "pool": pool, "witness": witness, "m_witness": m_witness, "reconcile_lambda": lam,
         "incomplete_months_left_out": main["incomplete_months_left_out"],
         "verdict": decision,
         "summary": table,

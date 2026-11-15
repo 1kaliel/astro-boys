@@ -24,7 +24,7 @@ Living document, owned by Team Harmonization. It feeds the project page's detail
 Source: NASA FIRMS archive detections, MODIS Aqua and Terra, VIIRS S-NPP and NOAA-20 375 m, clipped to the pilot
 bounding box, `type = 0` (presumed vegetation fire), nominal and high confidence, gridded at 0.25° by local
 solar month. Runs: ingest `20261114T235633Z_ingest_d60f88`, aggregate `20261115T001222Z_aggregate_aebb70`,
-coverage `20261115T010717Z_coverage_fa7b98`, calibrate `20261115T011427Z_calibrate_e00a2a`, validate `20261115T011432Z_validate_6c33d2`. Reproduce with `uv run astro-fire coverage`,
+coverage `20261115T010717Z_coverage_fa7b98`, calibrate `20261115T013659Z_calibrate_2a1585`, validate `20261115T013707Z_validate_b9a70c`. Reproduce with `uv run astro-fire coverage`,
 `calibrate` and `validate`. Full tables: [artifacts/metrics/](../artifacts/metrics/).
 
 ### Validation protocol
@@ -32,7 +32,7 @@ coverage `20261115T010717Z_coverage_fa7b98`, calibrate `20261115T011427Z_calibra
 | Years | Role | Status |
 |-------|------|--------|
 | 2012–2019 | Calibration: factors, pooling level, weights, background type | Used |
-| 2020–2021 | Development set: scored three times while the method was built | Used; **not a blind test** |
+| 2020–2021 | Development set: scored four times while the method was built | Used; **not a blind test** |
 | 2022–2023 | **Final test**: scored once with `validate --final`, after the method is frozen | **Not opened yet** |
 | 2024–2025 | Reported with the final test, separately (MODIS orbits drift in these years) | Not opened yet |
 
@@ -90,6 +90,22 @@ from the data and still need to be checked against the instrument notices.
 - Chosen by leave-one-year-out Poisson deviance, calibration years only: pooling to the 1° parent cell,
   `K = 50`, `M = 5`, Terra-aware background (`M = 5`). On zero-Aqua months the out-of-year deviance is 2.74
   with whole-extent pooling, 2.56 with parent pooling and 2.19 with the Terra-aware background.
+- **Reconciliation with the regional ratio.** Each month's cell estimates are scaled so that their sum
+  moves a fraction λ of the way toward `regional Aqua × ratio for that month and day/night`. The cells keep
+  their spatial pattern; the regional total borrows the stability of the simple ratio. Not applied when the
+  region has fewer than 30 Aqua detections in that month and period. Out-of-year scores on 2012–2019
+  (rule set before running: lowest cell-month deviance, and no reconciliation unless it gains 0.5%):
+
+  | λ | Cell-month deviance | Cell-month MAE | Regional monthly MAE |
+  |---:|---:|---:|---:|
+  | 0 | 3.616 | 3.273 | 2,963 |
+  | 0.25 | 3.589 | 3.255 | 2,449 |
+  | 0.5 | 3.573 | 3.242 | 2,046 |
+  | **0.75** | **3.566** | 3.234 | **1,853** |
+  | 1 | 3.570 | 3.232 | 1,872 |
+
+  λ = 0.75 is chosen (deviance 1.4% lower than without). The ratio alone scores 1,872 on regional totals in
+  the same folds.
 
 Ratio of S-NPP to Aqua filtered detections by year, complete months only (stability check for the
 assumption that the sensor relation holds over time):
@@ -114,35 +130,39 @@ per month (23 months).
 | Ratio by month × day/night, no cell term | baseline | 3.66 | 12.85 | +0.3% | 0.884 | 2370.8 | +0.3% |
 | F with pooling, no background | ablation | 3.10 | 10.51 | -15.1% | 0.909 | 5513.0 | -15.1% |
 | F + static background B | ablation | 3.19 | 10.33 | +1.6% | 0.911 | 2846.0 | +1.6% |
-| F + background B, Terra-aware where fitted | candidate | 3.11 | 10.27 | +2.0% | 0.912 | 2612.2 | +2.0% |
+| F + Terra-aware background B, not reconciled | ablation | 3.11 | 10.27 | +2.0% | 0.912 | 2612.2 | +2.0% |
+| Final: F + background B, as fitted (Terra-aware, reconciled) | candidate | 3.07 | 10.15 | +0.8% | 0.914 | 2283.4 | +0.8% |
 
 What this shows, and what it does not:
 
-- **Per cell the final method is better than every baseline:** MAE 15% lower and RMSE 20% lower than the
+- **Per cell the final method is better than every baseline:** MAE 16% lower and RMSE 21% lower than the
   best baseline (ratio by month × day/night).
-- **On region-wide monthly totals the best baseline is still ahead:** MAE 2,371 against 2,612 (10% higher
-  for the final method). The paired difference averages +241 detections per month with a 90% interval of
-  −233 to +695, so the two are not distinguishable on 23 months; the final method is closer in 8 of them.
-- The Terra-aware background halves that regional gap (the static background is 20% behind) and improves
-  the zero-Aqua months per cell (RMSE 3.25 → 3.00).
-- **Remaining weakness: night totals are 8.7% high** and low-season months are less accurate than the
-  baseline (MAE 1,295 against 917). The Terra witness did not fix the night bias.
+- **On region-wide monthly totals it is now level with the best baseline, slightly ahead:** MAE 2,283
+  against 2,371. The paired difference averages −87 detections per month with a 90% interval of −254 to +68,
+  so on 23 months the two are not distinguishable; the final method is closer in 11 of them.
+- Each step moved the regional error: static background 2,846, Terra-aware 2,612, reconciled 2,283.
+- Remaining weaknesses: night totals are 4.0% high (8.7% before reconciliation), and in low-season months
+  the baseline is still slightly closer (MAE 917 against 975).
 - Without any background the series is 15% low: it leaves out every month in which Aqua saw nothing.
 - Removing the instrument effect is the large gain for every method: raw Aqua is 85% below S-NPP.
+- This is the development set. It has been scored four times and every step was prompted by it, so these
+  numbers are optimistic by construction. The claim rests on 2022–2023.
 
-### How these numbers were reached (three looks at 2020–2021)
+### How these numbers were reached (four looks at 2020–2021)
 
 1. Weights by leave-one-year-out absolute error, pooling to the whole extent (`K = 50`, `M = 0`), all 24
    months: cell MAE 3.34, regional MAE 3,264, bias +1.0%.
 2. Weights by Poisson deviance, wider grid, pooling to the 1° parent, all 24 months: cell MAE 3.27, regional
    MAE 3,252, bias +0.1%. Table: `artifacts/metrics/validation_dev_2020-2021_run2_static_background.md`.
    Absolute error had picked `M = 0` because for counts that are mostly zero it rewards predicting zero.
-3. Gap mask and Terra-aware background (the table above). With August 2020 removed, the static background
+3. Gap mask and Terra-aware background: cell MAE 3.11, regional MAE 2,612, bias +2.0%
+   (`validation_dev_2020-2021_run3_terra_background.md`). With August 2020 removed, the static background
    turned out further behind on regional totals than run 2 suggested: part of the earlier near-tie came from
    the background compensating for the Aqua outage.
+4. Reconciliation with the regional ratio, λ = 0.75 (the table above).
 
-Every change was chosen on 2012–2019 evidence, but each was prompted by what 2020–2021 showed. That is why
-2020–2021 is a development set and the claim rests on 2022–2023.
+Every change was chosen on 2012–2019 evidence, by a rule stated before the run, but each was prompted by
+what 2020–2021 showed. That is why 2020–2021 is a development set and the claim rests on 2022–2023.
 
 ### Still to fill in
 

@@ -164,6 +164,13 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
   (`b_witness1`, `b_witness0`) with the same pooling formula. Terra is a witness only: it is never added to
   Aqua and never decides which cells exist. When Terra is unknown for a month (outage, or before its
   record), the plain `b` applies. Kept because it lowers the out-of-year deviance on 2012–2019.
+- **Reconciliation with the regional ratio (owner decision, Sun Nov 15).** After the cell estimates are
+  computed, each month and day/night period is scaled by `(1 − λ) + λ × (regional Aqua × r_total) / Σ cell
+  estimates`, with `r_total` the ratio of all S-NPP to all Aqua detections for that month of year and period
+  in the calibration years. Not applied when the region has fewer than 30 Aqua detections. λ is chosen by
+  out-of-year deviance on the calibration years and used only if it gains at least 0.5%. Consequence: the
+  estimates of a month depend on the whole pilot extent, so they must always be computed for the whole
+  extent, never for a subset of cells.
 - **Observation gaps** come from `astro-fire coverage` (region-wide daily counts per satellite; rule in
   [methodology.md](../methodology.md#observation-gaps)). Months in which Aqua or S-NPP was not fully
   observing are left out of calibration and of the main validation scores; they are never read as zero.

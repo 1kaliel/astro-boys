@@ -78,6 +78,8 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
     static = [s for s in report["leave_one_year_out"] if s["background"] == "static"]
     assert len(static) == tried and len(report["region_by_month_period"]) == 24
     assert report["weights"]["background"] in ("static", "witness")
+    assert [s["lambda"] for s in report["weights"]["reconcile_scores"]] == list(calibrate.cal.RECONCILE_GRID)
+    assert report["weights"]["reconcile_lambda"] in calibrate.cal.RECONCILE_GRID
     assert "Poisson deviance" in report["weights"]["chosen_by"]
     assert 3 < report["panel"]["overall_ratio"] < 6
     manifest = json.loads(open(result["manifest"]).read())
@@ -87,12 +89,13 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
 
 def test_fixed_weights_are_used_as_given(tmp_path):
     write_counts(tmp_path)
-    result = calibrate.run(settings_for(tmp_path), k=20, m=2, pool="region", witness=False)
+    result = calibrate.run(settings_for(tmp_path), k=20, m=2, pool="region", witness=False, reconcile=0)
     assert (result["k"], result["m"], result["pool"], result["witness"]) == (20, 2, "region", False)
-    assert result["weights_chosen_by"].endswith("fixed on the command line: k, m, pool, witness")
-    assert result["model_version"] == "fb-region-3"
-    with_terra = calibrate.run(settings_for(tmp_path), pool="l1", witness=True)
-    assert with_terra["witness"] is True and with_terra["model_version"] == "fb-l1-terra-3"
+    assert result["weights_chosen_by"].endswith("fixed on the command line: k, m, pool, witness, reconcile")
+    assert result["model_version"] == "fb-region-4" and result["reconcile_lambda"] == 0
+    with_terra = calibrate.run(settings_for(tmp_path), pool="l1", witness=True, reconcile=0.5)
+    assert with_terra["witness"] is True and with_terra["model_version"] == "fb-l1-terra-rec-4"
+    assert with_terra["reconcile_lambda"] == 0.5
     assert with_terra["m_witness"] in calibrate.cal.WEIGHT_GRID
 
 
