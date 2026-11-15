@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
+import type React from "react";
 import { cellsUrl, useRemote, type CellsResponse } from "../../data/api";
 import { MONTHS_LONG } from "../../lib/format";
 import { cellIdAt } from "../../lib/grid";
@@ -27,6 +28,8 @@ export default function MapPanel() {
   const [state, dispatch] = useDashboard();
   const mapRef = useRef<MapRef | null>(null);
   const [projection, setProjection] = useState<Projection>("mercator");
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  useAreaFraming(mapRef, stageRef, state.area, projection === "mercator" && state.drillCell === null);
   const [drawing, setDrawing] = useState(false);
   // Coordinate search: "Pick on map" turns the next map click into a point instead of a drill-down.
   const [picking, setPicking] = useState(false);
@@ -143,7 +146,7 @@ export default function MapPanel() {
             />
           }
         />
-        <div className="map-stage">
+        <div className="map-stage" ref={stageRef}>
           <CellMap
             mapRef={mapRef}
             cells={cells}
@@ -188,6 +191,9 @@ export default function MapPanel() {
             </div>
           )}
           {drillData && <DrillLegend data={drillData} breaks={l3Breaks} />}
+          <p className="card-caption map-caption">
+            Source: NASA FIRMS · native detections per 0.0625° sub-cell · basemap © OpenStreetMap contributors
+          </p>
         </>
       ) : (
         <>
@@ -206,13 +212,9 @@ export default function MapPanel() {
           )}
           {data && (
             <>
-            <Legend
-              mode="sequential"
-              breaks={breaks}
-              unit={`${layerUnit(state.sensor)} per 0.25° cell and month`}
-              showMarking={false}
-            />
+            <Legend mode="sequential" breaks={breaks} unit={`${layerShortUnit(state.sensor)} per 0.25° cell`} showMarking={false} />
             <Fold summary="How to read the map">
+              <p className="map-note">{`${layerUnit(state.sensor)} per 0.25° cell and month.`}</p>
               <p className="map-note">An empty cell has no detection (not zero). Click a cell for its sub-cells.</p>
               <p className="map-note">
                 Classes are the same for every month, so a quiet month looks quiet. Cells with no detection that month are
@@ -220,17 +222,131 @@ export default function MapPanel() {
                 closer in, the colors turn translucent so the basemap reads through (same classes), and the cell at the
                 center, or under the mouse, is outlined and described.
               </p>
+              <p className="card-caption map-caption">
+                {drillCell
+                  ? "Source: NASA FIRMS · native detections per 0.0625° sub-cell · basemap © OpenStreetMap contributors"
+                  : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"}
+              </p>
             </Fold>
             </>
           )}
         </>
       )}
-        <p className="card-caption map-caption">
-          {drillCell
-            ? "Source: NASA FIRMS · native detections per 0.0625° sub-cell · basemap © OpenStreetMap contributors"
-            : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"}
-        </p>
       </div>
     </div>
   );
+}
+/** Short unit for the legend over the map; the full description is in "How to read the map". */
+function layerShortUnit(sensor: string): string {
+  return sensor === "harmonized" ? "VIIRS-equivalent hotspots" : "native detections";
+}
+
+/** Room the floating parts take over the map, so the fitted area is not hidden under them. */
+function overlayPadding(stage: HTMLElement) {
+  const box = stage.getBoundingClientRect();
+  const panel = stage.closest(".map-panel");
+  let top = 16;
+  let bottom = 16;
+  for (const selector of [".map-head", ".map-tools", ".map-sub"]) {
+    const el = panel?.querySelector<HTMLElement>(selector);
+    if (!el || getComputedStyle(el).position !== "absolute") continue;
+    const r = el.getBoundingClientRect();
+    if (r.bottom > box.top && r.top < box.top + box.height / 2) top = Math.max(top, r.bottom - box.top + 8);
+  }
+  const info = panel?.querySelector<HTMLElement>(".map-info");
+  if (info && getComputedStyle(info).position === "absolute") {
+    const r = info.getBoundingClientRect();
+    bottom = Math.max(bottom, box.bottom - r.top + 8);
+  }
+  // Never more than half the map: on a short map the area still shows, a little under the panels.
+  const limit = box.height / 2 - 20;
+  return { top: Math.min(top, limit), bottom: Math.min(bottom, limit), left: 16, right: 56 };
+}
+
+/**
+ * Frames the selected area in the map's container: on first load, when the area changes, and when the container
+ * changes size (window, sidebar or panel), until the user pans or zooms the map themselves.
+ */
+function useAreaFraming(
+  mapRef: React.RefObject<MapRef | null>,
+  stageRef: React.RefObject<HTMLDivElement | null>,
+  area: { west: number; south: number; east: number; north: number },
+  enabled: boolean,
+) {
+  const userMoved = useRef(false);
+  const areaRef = useRef(area);
+  const enabledRef = useRef(enabled);
+  areaRef.current = area;
+  enabledRef.current = enabled;
+
+  const fit = useCallback(
+    (duration: number) => {
+      const map = mapRef.current?.getMap();
+      const stage = stageRef.current;
+      if (!map || !stage || !enabledRef.current || stage.clientWidth === 0 || stage.clientHeight === 0) return;
+      map.resize();
+      const b = areaRef.current;
+      map.fitBounds(
+        [
+          [b.west, b.south],
+          [b.east, b.north],
+        ],
+        { padding: overlayPadding(stage), duration },
+      );
+    },
+    [mapRef, stageRef],
+  );
+
+  // First load: wait for the map (it mounts after its style, and again when the basemap style changes with the
+  // theme), then fit it and watch for user moves.
+  useEffect(() => {
+    let current: unknown = null;
+    const timer = window.setInterval(() => {
+      const map = mapRef.current?.getMap();
+      if (!map || map === current) return;
+      current = map;
+      userMoved.current = false;
+      const ready = () => {
+        map.on("movestart", (event: { originalEvent?: unknown }) => {
+          if (event.originalEvent) userMoved.current = true;
+        });
+        fit(0);
+      };
+      if (map.loaded()) ready();
+      else map.once("load", ready);
+    }, 300);
+    return () => window.clearInterval(timer);
+  }, [mapRef, fit]);
+
+  // A new area: frame it, and the user's own view is forgotten.
+  const firstArea = useRef(true);
+  useEffect(() => {
+    if (firstArea.current) {
+      firstArea.current = false;
+      return;
+    }
+    userMoved.current = false;
+    fit(400);
+  }, [area, fit]);
+
+  // The container changes size: resize the map, and frame again unless the user moved it.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+        if (userMoved.current) map.resize();
+        else fit(0);
+      });
+    });
+    observer.observe(stage);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
+  }, [mapRef, stageRef, fit]);
 }
