@@ -4,6 +4,7 @@
 origin of each month, the historical median and the anomalies of the sum. See calendar.py for the rules.
 `GET /api/hotspots/count` and `GET /api/hotspots.csv` give the native hotspots of the same cells and dates
 (hotspots.py). `GET /api/drilldown` splits one L2 cell into its L3 cells for one month (drilldown.py, D11).
+`GET /api/daily` gives the native detections of one satellite per day of a month, with its passes (daily.py).
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from astro_dashboard import drilldown, hotspots
+from astro_dashboard import daily, drilldown, hotspots
 from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
 
@@ -335,6 +336,89 @@ def drilldown_cell(
         neighbors=[CellCountOut(id=c, count=n) for c, n in result.neighbors],
         l3=[CellCountOut(id=c, count=n) for c, n in result.l3],
         total=result.total,
+    )
+
+
+class DailyPassOut(BaseModel):
+    satellite: str
+    daynight: Literal["D", "N"]
+    # First and last acquisition time of the pass, UTC "HH:MM".
+    start_utc: str
+    end_utc: str
+    # Same times in local solar time "HH:MM" (UTC + longitude/15 of the area centre).
+    start_local: str
+    end_local: str
+    count: int
+
+
+class DailyDayOut(BaseModel):
+    date: date
+    # "observed": inside the data, count may be 0 (no detection, not "no fire"). "no_data": after last_date,
+    # count is None, never 0.
+    status: Literal["observed", "no_data"]
+    count: int | None
+    passes: list[DailyPassOut]
+
+
+class DailyOut(BaseModel):
+    year: int
+    month: int
+    period: Literal["ALL", "D", "N"]
+    # Satellite counted: the month's source satellite unless `satellite` was asked. Never two added together.
+    satellite: str
+    instrument: Literal["MODIS", "VIIRS"]
+    cells: int
+    # Last local solar date of that satellite in the partition read.
+    last_date: date
+    days: list[DailyDayOut]
+
+
+@router.get("/daily", response_model=DailyOut, tags=["hotspots"])
+def daily_days(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+    year: int = Query(..., ge=FIRST_DATE.year, le=2200),
+    month: int = Query(..., ge=1, le=12),
+    period: Literal["ALL", "D", "N"] = "ALL",
+    satellite: Literal["Aqua", "Terra", "SNPP", "N20"] | None = Query(
+        None, description="Satellite counted; default the month's source satellite"
+    ),
+) -> DailyOut:
+    if west >= east or south >= north:
+        raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
+    cells = store.cells_in(Bounds(west=west, south=south, east=east, north=north))
+    if not cells:
+        raise HTTPException(status_code=422, detail="The selected area overlaps no 0.25 degree cell.")
+    satellite = satellite or store.source_satellite(year, month, period)
+    if satellite is None or satellite not in drilldown.INSTRUMENTS:
+        raise HTTPException(status_code=422, detail=f"The calendar has no data for {year}-{month:02d}.")
+    try:
+        result = daily.daily(cells, year, month, satellite, period, center_lon=(west + east) / 2)
+    except daily.NoSatelliteData as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except hotspots.HotspotsUnavailable as error:
+        log.warning("Daily failed: %s", error)
+        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+    return DailyOut(
+        year=year,
+        month=month,
+        period=period,
+        satellite=result.satellite,
+        instrument=result.instrument,
+        cells=len(cells),
+        last_date=result.last_date,
+        days=[
+            DailyDayOut(
+                date=d.date,
+                status=d.status,
+                count=d.count,
+                passes=[DailyPassOut(**asdict(p)) for p in d.passes],
+            )
+            for d in result.days
+        ],
     )
 
 
