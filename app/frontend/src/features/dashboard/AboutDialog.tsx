@@ -34,16 +34,17 @@ export function AboutDialog() {
           2012–2019, when both sensors were observing. These months are marked as estimated and carry a 90% interval.
         </li>
         <li>
-          Only detections that FIRMS classes as presumed vegetation fire, with nominal or high confidence, are counted.
-          Months are local solar months.
+          The main filter keeps presumed vegetation-fire detections with nominal or high confidence, using each sensor's
+          own confidence scale. Provisional 2026 near-real-time counts also include nominal- or high-confidence
+          detections whose type is unavailable. Months are local solar months.
         </li>
       </ul>
 
       <h3>Reading the calendar</h3>
       <ul>
-        <li>One row per year, one square per month. A darker square has more hotspots.</li>
+        <li>One row per year, one square per month. In Count mode, a darker square has more hotspots.</li>
         <li>
-          The colors are steps that each hold about the same number of months, so the ranges in the legend are not
+          In Count mode, the colors are steps that each hold about the same number of months, so the legend ranges are not
           evenly spaced. They are recomputed for the months on screen.
         </li>
         <li>
@@ -62,8 +63,9 @@ export function AboutDialog() {
         </li>
         <li>
           <strong>Harmonized or Raw by sensor.</strong> Raw shows what each satellite counted, with no adjustment. VIIRS
-          detects several times more hotspots than MODIS over the same fire activity, so the raw record jumps in 2012.
-          That jump is the change of instrument. Use Harmonized to compare years.
+          can detect more hotspots than MODIS over the same fire activity. Switching sensors can therefore create an
+          artificial jump in the raw record around 2012; real activity can also change. Use Harmonized to compare years,
+          while keeping the model's limitations in mind.
         </li>
         <li>
           <strong>All, Day or Night</strong> keeps the detections of the daytime or the nighttime overpasses.
@@ -81,8 +83,8 @@ export function AboutDialog() {
           have a total.
         </li>
         <li>
-          <strong>CSV.</strong> The original detections of the area and years, as delivered by NASA FIRMS, with sensor,
-          satellite and product version in every row.
+          <strong>CSV.</strong> Native NASA FIRMS detections for the selected area's grid cells and years, normalized and filtered by this
+          pipeline, with sensor, satellite and product version in every row. These are not harmonized estimates.
         </li>
       </ul>
 
