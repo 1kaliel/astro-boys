@@ -171,18 +171,6 @@
   color: var(--color-text-secondary);
 }
 
-/* 44 px touch targets on narrow screens (the buttons are 24 px minimum elsewhere). */
-.download-bar {
-  --download-target-touch: 44px;
-}
-
-@media (max-width: 56rem) {
-  .download-bar .button {
-    min-width: var(--download-target-touch);
-    min-height: var(--download-target-touch);
-  }
-}
-
 .download-error {
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);

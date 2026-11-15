@@ -203,8 +203,8 @@ labels scroll with it.
   (CSS variables and `currentColor` resolved), so the file needs no stylesheet and keeps the theme on screen (dark, light,
   the calendar's light island). Title, series, legend, unit, area, period, source, model version and the "not fires"
   sentence are written as text. PNG is the same SVG drawn at 2x.
-- Real `<button>`s with labels (`Button`), keyboard operable; under 56rem the targets are 44 px
-  (`--download-target-touch`, `styles/charts.css`).
+- Real `<button>`s with labels (`Button`), keyboard operable; under 56rem and on touch the targets are 44 px through
+  `--control-size`, like every other button.
 
 ## Words
 
