@@ -4,8 +4,8 @@
  *
  * Adapted from "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (21st.dev), MIT License. Changes for this
  * project: no generated sample data (the view only draws the detections it is given), hotspot wording, the colour
- * palettes are the project's own ramp, and days the sensor was not observing are "no data", never zero. See
- * docs/resources.md.
+ * palettes are the project's own ramp, and days the sensor was not observing are "no data", never zero. Copyright and
+ * permission notice: components/viz/ContributionSkyline.LICENSE.txt. See docs/resources.md.
  */
 
 export type DayCount = { date: string; count: number };

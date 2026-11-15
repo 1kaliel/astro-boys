@@ -1,7 +1,8 @@
 /*
  * Skyline (components/viz/ContributionSkyline.tsx): the daily hotspot view of the calendar. Tokens only, no raw values.
- * Adapted from the MIT-licensed "GitHub Contribution Graph 3D Heatmap" (see docs/resources.md); the Tailwind classes of
- * the original are written here with the project's own tokens.
+ * Adapted from the MIT-licensed "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (notice in
+ * components/viz/ContributionSkyline.LICENSE.txt, credit in docs/resources.md); the Tailwind classes of the original
+ * are written here with the project's own tokens.
  */
 .skyline {
   display: grid;
