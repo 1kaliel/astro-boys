@@ -110,5 +110,483 @@
     },
     "full_page": false,
     "sha256": "70ab9e974cb7c15b19e0d678565f28fec6dd88f178c70485d228f21985e7903d"
+  },
+  {
+    "path": "artifacts/screenshots/09-final-overview-desktop.jpg",
+    "bytes": 459764,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 2379
+    },
+    "full_page": true,
+    "sha256": "d73cdbb8fbc63aeff4d49ca578fa21599ec34877ee16869998e056b193256a3d",
+    "state": "Harmonized / Count / light: app bar, hero KPI, calendar, map, seasonal profile, trend",
+    "capture": "full page",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:55:15.421Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)",
+      "map": "Flat, fitted to the study area"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/10-final-overview-dark-desktop.jpg",
+    "bytes": 464609,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 2379
+    },
+    "full_page": true,
+    "sha256": "9d98e0db1e568b9a80f4f30989c3147d4811a290c8d747f7df4113e1743dfb45",
+    "state": "Harmonized / Count / dark (OS color scheme dark); calendar card stays light by design",
+    "capture": "full page",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:55:23.158Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "dark",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)",
+      "map": "Flat, fitted to the study area"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/11-drilldown-desktop.jpg",
+    "bytes": 85565,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 406,
+      "height": 1240
+    },
+    "full_page": false,
+    "sha256": "f855e694cfc8acae21605bf857b7570e20dc5f26fb07ff1223769f867e343e06",
+    "state": "Map card: September 2013 picked in the calendar, cell G083135.16 clicked: 16 L3 sub-cells (S-NPP VIIRS native, 639 detections), 8 neighbor counts, 'not harmonized' legend",
+    "capture": "full-page render clipped to the card",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:59:52.433Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": "2013-09",
+      "drill_cell": "G083135.16",
+      "map": "Flat; centered on the cell at zoom 7 through the MapLibre API, then a real mouse click on the cell (the app then frames the 3 x 3 block, zoom ≈ 8.16)"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/12-zoom-focus-desktop.jpg",
+    "bytes": 77537,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 406,
+      "height": 1240
+    },
+    "full_page": false,
+    "sha256": "0c87f1a478f952f59158e4e9e485e2ec8810e655499b0443aaed6cede63698c3",
+    "state": "Map card zoomed in: place labels above translucent cells, focus outline and info chip on cell G087133.14 (132 VIIRS-equivalent hotspots, November 2026, partial)",
+    "capture": "full-page render clipped to the card",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T17:00:10.275Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)",
+      "map": "Flat; centered on G087133.14 (-46.625, -2.125) at zoom 9 through the MapLibre API; no mouse over the map"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/13-globe-desktop.jpg",
+    "bytes": 70143,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 406,
+      "height": 1240
+    },
+    "full_page": false,
+    "sha256": "323e8012c52ffe4922f48344565865f2df71c9e47e25c0614bed7e3cc4360c98",
+    "state": "Map card, Globe view: whole globe turned to the study area, study-area box with its label and the globe note",
+    "capture": "full-page render clipped to the card",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T17:00:33.438Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)",
+      "map": "Globe button clicked; zoom ≈ 1.03 set by the app"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/14-raw-by-sensor-desktop.jpg",
+    "bytes": 454596,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 2405
+    },
+    "full_page": true,
+    "sha256": "215b494049bc68a9fe040bba788c63b4b1a59f2c75d7fe4e2f0b14a3e7297e01",
+    "state": "Raw by sensor / Count / light, with the raw-view notice",
+    "capture": "full page",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:56:42.837Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "raw",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/15-anomaly-desktop.jpg",
+    "bytes": 468869,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 2433
+    },
+    "full_page": true,
+    "sha256": "eb0fbb75ffc9f2cee1cf87363bb51a4d8051aa84692b88e2c872417d72e47585",
+    "state": "Harmonized / Anomaly / light, with the diverging legend and anomaly notice",
+    "capture": "full page",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:56:52.158Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "anomaly",
+      "theme": "light",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)"
+    }
+  },
+  {
+    "path": "artifacts/screenshots/16-final-phone-top.jpg",
+    "bytes": 53592,
+    "viewport_recorded": {
+      "width": 390,
+      "height": 844
+    },
+    "image_pixels": {
+      "width": 390,
+      "height": 844
+    },
+    "full_page": false,
+    "sha256": "bcf1f47c57bc16b53635dc53faa394ee35e30ac568b4b73323ca86df7e01dadd",
+    "state": "Phone, first screen: app bar, filters, hero KPI",
+    "capture": "viewport",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:56:56.354Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "mobile_emulation": true
+    }
+  },
+  {
+    "path": "artifacts/screenshots/17-final-phone-full.jpg",
+    "bytes": 312666,
+    "viewport_recorded": {
+      "width": 390,
+      "height": 844
+    },
+    "image_pixels": {
+      "width": 390,
+      "height": 4126
+    },
+    "full_page": true,
+    "sha256": "7709a8256057fb585dbdd074f3447458ffbe4dd466969e52d97cc93b61abffdd",
+    "state": "Phone, whole page at 390 px (map collapsed behind 'Show map', as designed on phones)",
+    "capture": "full page",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:56:56.930Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "mobile_emulation": true
+    }
+  },
+  {
+    "path": "artifacts/screenshots/18-phone-charts.jpg",
+    "bytes": 41158,
+    "viewport_recorded": {
+      "width": 390,
+      "height": 844
+    },
+    "image_pixels": {
+      "width": 366,
+      "height": 565
+    },
+    "full_page": false,
+    "sha256": "2db1e324d11f3682dcc8211ea965a077596519c0c237d23d338e4a0376085c61",
+    "state": "Phone, seasonal profile card: Jan–Dec axis, usual range, median, 2026 line with the Sep–Nov peak",
+    "capture": "full-page render clipped to the card",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T17:00:41.843Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "profile_year": 2026,
+      "mobile_emulation": true
+    }
+  },
+  {
+    "path": "artifacts/screenshots/19-how-to-read-phone.jpg",
+    "bytes": 60511,
+    "viewport_recorded": {
+      "width": 390,
+      "height": 844
+    },
+    "image_pixels": {
+      "width": 390,
+      "height": 844
+    },
+    "full_page": false,
+    "sha256": "83b725ca46f9284aea4ebbc560ff0d51a0464ab613e7386e1b18eb97145c8522",
+    "state": "Phone, 'How to read this dashboard' dialog open, title and first section",
+    "capture": "viewport",
+    "revision": "astro-dashboard-00008-m2v",
+    "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T16:57:02.603Z",
+    "browser": "Headless Chrome (Playwright, playwright-core), deviceScaleFactor 1, swiftshader WebGL, real internet (basemap from OpenFreeMap)",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "mobile_emulation": true
+    }
+  },
+  {
+    "path": "artifacts/screenshots/20-offline-local.jpg",
+    "bytes": 468900,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 2256
+    },
+    "full_page": true,
+    "sha256": "14f615584f17953bce5768173aad4e75523b311ae66968a30405303dbdc71a88",
+    "state": "Offline fallback: local container (image astro-dashboard:offline-local) with the browser's external network blocked; basemap unavailable, cells only. Built from branch docs/d12-offline-test (PR 58), before the FIREWATCHER name. NOT revision 00008",
+    "capture": "full page",
+    "revision": "local container run of PR 58 (not Cloud Run)",
+    "url": "http://localhost:8080/",
+    "model_version": "fb-l1-terra-rec-4",
+    "captured_at": "2026-11-15T11:35:17Z",
+    "captured_at_note": "modification time of the source PNG",
+    "source": "after-desktop-1280-full.png from the offline test (kept outside the repository), PNG converted to JPEG quality 85",
+    "source_png_sha256": "61347aa793c42f3de83198e55ebdead176462be8229b41b923ff48b679457ceb",
+    "browser": "Headless Chromium (Playwright), every non-localhost request aborted",
+    "jpeg_quality": 85,
+    "settings": {
+      "area": {
+        "name": "Northeast Brazil (study area)",
+        "west": -48.8,
+        "south": -18.4,
+        "east": -34.7,
+        "north": -1,
+        "l2_cells": 4060
+      },
+      "years": "2002–2026",
+      "period": "ALL (day and night)",
+      "scale": "harmonized",
+      "metric": "count",
+      "theme": "light",
+      "selected_month": null,
+      "map_month": "November 2026 (latest, partial)",
+      "record": "docs/d12-offline-test.md"
+    }
   }
 ]
