@@ -16,10 +16,27 @@ TAG="${TAG:-$(git -C "$REPO_DIR" rev-parse --short HEAD)}"
 IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPOSITORY}/${RUN_SERVICE}:${TAG}"
 
 [[ -f "$APP_DIR/Dockerfile" ]] || { echo "No Dockerfile in $APP_DIR yet (Dashboard team chooses the stack first)." >&2; exit 1; }
-confirm "build $IMAGE and deploy Cloud Run service $RUN_SERVICE in $GCP_REGION"
+
+# D8: the calendar is baked into the image from a local copy (git-ignored data/), as a named build context.
+# Only the calendar; the native hotspots stay in the bucket (D6).
+DATASET_VERSION="${ASTRO_DATASET_VERSION:-v1}"
+CALENDAR_DIR="${CALENDAR_DIR:-$REPO_DIR/data/processed/calendar/$DATASET_VERSION}"
+if ! find "$CALENDAR_DIR" -name '*.parquet' -print -quit 2>/dev/null | grep -q .; then
+  echo "No calendar under $CALENDAR_DIR: the image needs it baked in (D8). Pull it first:" >&2
+  echo "  APPLY=1 ./scripts/sync_data.sh pull processed calendar/$DATASET_VERSION" >&2
+  exit 1
+fi
+MODEL_VERSION="$(cd "$APP_DIR/backend" && uv run --quiet --project "$APP_DIR" --frozen \
+  python -m astro_dashboard.bake --print-model-version "$CALENDAR_DIR")"
+[[ -n "$MODEL_VERSION" && "$MODEL_VERSION" != *,* ]] || { echo "Calendar model_version unclear: '$MODEL_VERSION'" >&2; exit 1; }
+echo "Calendar: $CALENDAR_DIR, model $MODEL_VERSION"
+
+confirm "build $IMAGE (calendar model $MODEL_VERSION) and deploy Cloud Run service $RUN_SERVICE in $GCP_REGION"
 
 run gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
-run docker build --platform linux/amd64 -t "$IMAGE" "$APP_DIR"
+run docker build --platform linux/amd64 \
+  --build-context "calendar=$CALENDAR_DIR" --build-arg "MODEL_VERSION=$MODEL_VERSION" \
+  -t "$IMAGE" "$APP_DIR"
 run docker push "$IMAGE"
 
 env_args=()

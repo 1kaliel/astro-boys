@@ -21,7 +21,8 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
 - D2 data access: `GET /api/calendar` reads `calendar/v1` from `ASTRO_DATA_ROOT`, sums the cells of an area and adds
   the historical median and anomalies of the sum (see [Calendar API](#calendar-api)).
 - D4 burning calendar: year × month heatmap that reads the API.
-- Not done: map and area selection (D3), "this month vs median" card (D5), CSV (D6), reading `gs://` directly (D8).
+- D8 (image): the calendar is baked into the image at build time, with its `model_version` (see [Container](#container-same-contract-as-cloud-run)).
+- Not done: map and area selection (D3), "this month vs median" card (D5), CSV (D6, reads `hotspots/v1` from the bucket).
 
 ## Calendar API
 
@@ -46,7 +47,7 @@ Rules (docs/data-dictionary.md, and the diary `DECISION`s of D2):
 
 Data: `$ASTRO_DATA_ROOT/processed/calendar/$ASTRO_DATASET_VERSION` (defaults `data` and `v1`), loaded once at startup
 (about 3 s, 290 MiB for 1.7 M rows). If it is missing the app still starts, `/healthz` answers and the calendar says 503.
-`gs://` roots are not read yet (task D8).
+`gs://` roots are not read for the calendar: in the image it is baked in at `/app/data` (D8).
 
 ```bash
 # real data: pull the calendar from the bucket (read-only copy into data/, which git ignores)
@@ -109,19 +110,29 @@ are added to CI (open decision for the team).
 
 Full runbook: [deploy/cloudrun/README.md](../deploy/cloudrun/README.md).
 
+The calendar is **baked into the image** (D8). It comes in as a named build context from the git-ignored `data/`,
+so it never enters git or the `app/` build context. Only the calendar (~24 MB); `hotspots/v1` stays in the bucket.
+
 ```bash
-docker build -t astro-dashboard app/
+APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1        # from the repo root
+MODEL=$(cd app/backend && uv run --project .. python -m astro_dashboard.bake --print-model-version \
+  ../../data/processed/calendar/v1)
+docker build -t astro-dashboard --build-context calendar=data/processed/calendar/v1 \
+  --build-arg MODEL_VERSION="$MODEL" app/
 docker run --rm -p 8080:8080 -e PORT=8080 --memory 1g astro-dashboard
 curl http://localhost:8080/healthz          # {"status":"ok"}
-
-# with the real calendar (data stays outside the image, mounted read-only)
-docker run --rm -p 8080:8080 -e PORT=8080 --memory 1g -e ASTRO_DATA_ROOT=/data -v "$PWD/data:/data:ro" astro-dashboard
+curl http://localhost:8080/api/version      # model_version loaded, model_version of the image, build record
 ```
 
-The image runs as a non-root user, contains no `.env` or data files, and listens on `0.0.0.0:$PORT`. Data is read
-read-only from `ASTRO_DATA_ROOT`. Measured with the real `calendar/v1` (23.6 MiB of Parquet): healthy in about 3 s,
-about 290 MiB of the 1 GiB limit, an area query in about 70 ms. Without data the app is healthy and the calendar
-answers 503. How the data reaches Cloud Run (bucket read or baked into the image) is decided in D8.
+The build loads the calendar the way the app does and **fails** if it is missing or its `model_version` is not
+`MODEL_VERSION`; it records what was baked in `/app/data/build-info.json` and in the label `astro.model_version`.
+An image without data, for skeleton checks: `docker build --build-arg ALLOW_NO_CALENDAR=1 app/` (the calendar then
+answers 503). Mounting other data over it still works (`-e ASTRO_DATA_ROOT=/data -v "$PWD/data:/data:ro"`); the
+app logs a warning when its model differs from the image's.
+
+The image runs as a non-root user, contains no `.env`, and listens on `0.0.0.0:$PORT`. Measured with the real
+`calendar/v1` (23.6 MiB of Parquet): healthy in about 3 s, about 290 MiB of the 1 GiB limit, an area query in
+about 70 ms.
 
 ## Deploy
 

@@ -16,6 +16,12 @@ Whatever the stack (Python, Node, static site behind a tiny server…), the imag
    - **B. Bake a small extract into the image** (e.g. aggregated Parquet/JSON of a few MB). Simplest, fastest,
      works offline too. Rebuild the image when the data version changes.
    Option B is recommended for the demo if the aggregates are small; A if users query raw hotspots over large areas.
+
+   **Chosen (D8):** the calendar (`processed/calendar/v1`, ~24 MB) is **baked in (B)**; the native hotspots for the
+   CSV download (`hotspots/v1`, 883 MB) are **read from the bucket (A)** in D6. Conditions agreed with Kali: the
+   calendar enters only at build time (a named build context from the git-ignored `data/`, never git), the image
+   records its `model_version` (label `astro.model_version`, env `ASTRO_MODEL_VERSION`, `/api/version`), and
+   nothing but the calendar is baked.
 4. **Start fast** (under ~10 s) and **use ≤ 1 GiB RAM** by default (raise `--memory` in `deploy.sh` if needed).
 5. **Have a `/healthz` (or `/`) route** that returns 200 quickly.
 6. Contain **no secrets and no `.env`**. Add a `.dockerignore` excluding `.env`, `data/`, `.venv/`, `node_modules/`.
@@ -25,11 +31,18 @@ Put the app in [`app/`](../../app/) with its `Dockerfile` there (or set `APP_DIR
 ## Run the container locally first
 
 ```bash
-docker build -t astro-dashboard app/
-docker run --rm -p 8080:8080 -e PORT=8080 -e ASTRO_DATA_ROOT=/data -v "$PWD/data:/data:ro" astro-dashboard
+APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1        # local copy in data/ (git-ignored), ~24 MB
+MODEL=$(cd app/backend && uv run --project .. python -m astro_dashboard.bake --print-model-version \
+  ../../data/processed/calendar/v1)
+docker build -t astro-dashboard --build-context calendar=data/processed/calendar/v1 \
+  --build-arg MODEL_VERSION="$MODEL" app/
+docker run --rm -p 8080:8080 -e PORT=8080 --memory 1g astro-dashboard
+curl http://localhost:8080/api/version                             # model_version of the baked calendar
 ```
 
-If it works here, it will work on Cloud Run (same image, same `$PORT`).
+The build fails if the calendar is missing or its `model_version` is not `MODEL_VERSION`. For an image without
+data (skeleton checks only) add `--build-arg ALLOW_NO_CALENDAR=1`. If it works here, it will work on Cloud Run
+(same image, same `$PORT`). `deploy.sh` does the same build from `data/processed/calendar/v1` (or `CALENDAR_DIR`).
 
 ## Deploy
 
@@ -38,7 +51,8 @@ Artifact Registry repo, dashboard service account, and your account granted `art
 `run.developer` and `iam.serviceAccountUser` on the dashboard service account.
 
 ```bash
-cp deploy/cloudrun/service.env.example deploy/cloudrun/service.env   # fill in the bucket
+cp deploy/cloudrun/service.env.example deploy/cloudrun/service.env   # no ASTRO_DATA_ROOT: the calendar is baked
+APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1            # the calendar to bake (D8)
 ./deploy/cloudrun/deploy.sh                                          # dry run: read the commands
 APPLY=1 ./deploy/cloudrun/deploy.sh                                  # build, push, deploy
 ```
