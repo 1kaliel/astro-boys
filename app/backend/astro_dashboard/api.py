@@ -627,7 +627,17 @@ _DAILY_ENTRIES = 64
 
 class DailyPointOut(BaseModel):
     date: date
-    # Native detections of the one sensor on that local solar day; days without any are left out.
+    # Native detections of the one sensor on that local solar day, on the days it was observing; days
+    # without any are left out (a measured zero only when coverage_checked is true and the day is not in
+    # missing_days).
+    count: int
+
+
+class MissingDayOut(BaseModel):
+    date: date
+    # Why the sensor was not observing that day (coverage_daily, whole extent): an outage, or not operating.
+    status: Literal["missing", "not_operating"]
+    # Detections recorded that day anyway (a partial pass during an outage). Not in `days`, never counted.
     count: int
 
 
@@ -640,6 +650,11 @@ class DailyOut(BaseModel):
     cells: int
     # Native (not harmonized) counts of one sensor: a chart of this must say so.
     days: list[DailyPointOut]
+    # Days of the range on which the sensor was not observing: no data, never zero (AGENTS.md); they are
+    # never in `days`. Empty when coverage_checked is false (the coverage could not be read): then a day that
+    # is not in `days` is not a verified zero either.
+    missing_days: list[MissingDayOut]
+    coverage_checked: bool
 
 
 @router.get("/hotspots/daily", response_model=DailyOut, tags=["hotspots"])
@@ -654,7 +669,8 @@ def hotspots_daily(
     north: float = Query(..., ge=-90, le=90),
     period: Literal["ALL", "D", "N"] = "ALL",
 ) -> DailyOut:
-    """Daily native detections of one sensor in an area (the Skyline view), cached six hours per request."""
+    """Daily native detections of one sensor in an area (the Skyline view), cached six hours per request, and
+    the days the sensor was not observing (coverage_daily): those are no data, not zero."""
     import time as _time
 
     query = _hotspot_query(store, west, south, east, north, start, end, period, False)
@@ -673,6 +689,17 @@ def hotspots_daily(
         if len(_DAILY_CACHE) >= _DAILY_ENTRIES:
             _DAILY_CACHE.pop(next(iter(_DAILY_CACHE)))
         _DAILY_CACHE[key] = (now, days)
+    # Not part of the six-hour cache: the coverage table has its own, so a failed read is retried soon.
+    try:
+        gaps = hotspots.unobserved_days(sensor, start, end)
+        coverage_checked = True
+    except hotspots.CoverageUnavailable as error:
+        log.warning("Coverage of the daily hotspots could not be read: %s", error)
+        gaps, coverage_checked = [], False
+    counts = {d["date"]: d["count"] for d in days}
+    missing = [{"date": d, "status": s, "count": counts.get(d, 0)} for d, s in gaps]
+    unobserved = {m["date"] for m in missing}
+    observed = [d for d in days if d["date"] not in unobserved]
     return DailyOut(
         sensor=sensor,
         sensor_name=hotspots.SENSORS[sensor],
@@ -680,7 +707,9 @@ def hotspots_daily(
         start=start,
         end=end,
         cells=len(query.cells),
-        days=[DailyPointOut(**d) for d in days],
+        days=[DailyPointOut(**d) for d in observed],
+        missing_days=[MissingDayOut(**m) for m in missing],
+        coverage_checked=coverage_checked,
     )
 
 

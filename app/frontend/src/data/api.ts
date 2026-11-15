@@ -32,6 +32,9 @@ export type CellsResponse = {
   available_satellites?: Satellite[];
   /** "none": the series has no data at all in this month (for example VIIRS before February 2012). */
   coverage?: "ok" | "none";
+  /** Native series only: false when the days the satellite observed (coverage_daily) could not be read; the cells of a
+   * satellite other than the month's source are then flagged partial, since their coverage is not verified. */
+  coverage_checked?: boolean;
   reason?: string | null;
   cells: CellValue[];
 };
@@ -299,8 +302,15 @@ export type DailyHotspotsResponse = {
   start: string;
   end: string;
   cells: number;
-  /** Native (not harmonized) counts of one sensor. Days without detections are not listed: they are zero days. */
+  /**
+   * Native (not harmonized) counts of one sensor, on the days it was observing. A day of the range that is in neither
+   * list is a measured zero, but only when `coverage_checked` is true.
+   */
   days: { date: string; count: number }[];
+  /** Days the sensor was not observing (coverage_daily): no data, never zero. `count`: detections recorded anyway. */
+  missing_days: { date: string; status: "missing" | "not_operating"; count: number }[];
+  /** False when the coverage could not be read: then no day without detections is a verified zero. */
+  coverage_checked: boolean;
 };
 
 export function hotspotsDailyUrl(

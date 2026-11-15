@@ -14,10 +14,13 @@ from __future__ import annotations
 import math
 import os
 import re
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 
 import duckdb
+
+from astro_dashboard import hotspots
 
 MAP_QUANTILES = (0.5, 0.7, 0.8, 0.9, 0.95, 0.98)
 Z_90 = 1.645
@@ -214,18 +217,44 @@ def _native(con, year: int, month: int, period: str, series: str, satellite: str
         }
     column = SATELLITES[chosen][0]
     rows = con.execute(
-        f"""SELECT cell_l2, {column}, is_partial FROM {_source()}
+        f"""SELECT cell_l2, {column}, is_partial, source_satellite FROM {_source()}
             WHERE year = ? AND month = ? AND period = ? AND {column} IS NOT NULL ORDER BY cell_l2""",
         [year, month, period],
     ).fetchall()
+    # `is_partial` of calendar/v1 is the coverage of the row's SOURCE satellite (S-NPP, NOAA-20 or Aqua),
+    # not of the satellite shown here: Aqua in an S-NPP month, or S-NPP in an outage month carried by
+    # NOAA-20, would lose their partial flag. The chosen satellite's coverage comes from coverage_daily.
+    complete = native_month_complete(chosen, year, month)
     return {
         **base,
         "satellite": chosen,
         "breaks": raw_breaks(column, period),
         "coverage": "ok",
+        "coverage_checked": complete is not None,
         "reason": None,
         "cells": [
-            {"id": cell, "value": value, "estimated": False, "partial": partial, "satellite": chosen}
-            for cell, value, partial in rows
+            {
+                "id": cell,
+                "value": value,
+                "estimated": False,
+                # Unknown coverage: keep the row flag only where it is the chosen satellite's own; else say
+                # partial, since a count over unverified days must not read as a full month.
+                "partial": (not complete) if complete is not None else (partial or source != chosen),
+                "satellite": chosen,
+            }
+            for cell, value, partial, source in rows
         ],
     }
+
+
+def native_month_complete(satellite: str, year: int, month: int) -> bool | None:
+    """Whether `satellite` observed at least 90% of the days of the month (the `is_complete` rule of
+    coverage_monthly), from coverage_daily. None when the coverage table cannot be read."""
+    first = date(year, month, 1)
+    last = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    try:
+        gaps = hotspots.unobserved_days(satellite, first, last)
+    except hotspots.CoverageUnavailable:
+        return None
+    days = last.day
+    return days - len(gaps) >= 0.9 * days

@@ -1,7 +1,8 @@
 /*
  * Skyline (components/viz/ContributionSkyline.tsx): the daily hotspot view of the calendar. Tokens only, no raw values.
- * Adapted from the MIT-licensed "GitHub Contribution Graph 3D Heatmap" (see docs/resources.md); the Tailwind classes of
- * the original are written here with the project's own tokens.
+ * Adapted from the MIT-licensed "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (notice in
+ * components/viz/ContributionSkyline.LICENSE.txt, credit in docs/resources.md); the Tailwind classes of the original
+ * are written here with the project's own tokens.
  */
 .skyline {
   display: grid;
@@ -112,8 +113,20 @@
 
 .skyline-legend {
   display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.skyline-legend-item {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/* Zero and no data reuse the calendar's chips (calendar.css), so the Skyline and the calendar share one key. */
+.skyline-chip {
+  font-style: normal;
 }
 
 .skyline-swatch {

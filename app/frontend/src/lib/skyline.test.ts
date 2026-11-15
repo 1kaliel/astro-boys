@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { DAY_MS, barHeight, buildGrid, camera, computeStats, dayMs, levelOf, project, toKey } from "./skyline";
+import {
+  DAY_MS,
+  barHeight,
+  buildGrid,
+  camera,
+  computeStats,
+  dayMs,
+  levelOf,
+  markOf,
+  project,
+  readDay,
+  toKey,
+} from "./skyline";
 
 const END = Date.UTC(2016, 10, 8); // a Tuesday
 
@@ -97,5 +109,101 @@ describe("heights and the camera", () => {
   it("parses dates without timezone drift", () => {
     expect(dayMs("2016-11-08")).toBe(Date.UTC(2016, 10, 8));
     expect(Number.isNaN(dayMs("nope"))).toBe(true);
+  });
+});
+
+describe("days the sensor was not observing", () => {
+  const YEAR_END = Date.UTC(2022, 11, 31);
+  const YEAR_START = Date.UTC(2022, 0, 1);
+  // The S-NPP outage of 2022 (coverage_daily: 27 July to 10 August, 15 days), around a run of busy days.
+  const outage = Array.from({ length: 15 }, (_, i) => ({
+    date: toKey(Date.UTC(2022, 6, 27) + i * DAY_MS),
+    status: "missing" as const,
+  }));
+  const busy = Array.from({ length: 40 }, (_, i) => ({ date: toKey(Date.UTC(2022, 6, 7) + i * DAY_MS), count: 5 }));
+  const grid = () => buildGrid(busy, YEAR_END, 0, { startMs: YEAR_START, missing: outage });
+
+  it("marks them as no data: no count, no level, a hatched tile and not a zero slab", () => {
+    const g = grid();
+    const day = g.cells.find((c) => c.date === "2022-08-01");
+    expect(day).toMatchObject({ status: "nodata", reason: "missing", count: 0, level: 0 });
+    expect(markOf(day!, g.max)).toEqual({ kind: "nodata" });
+    const zero = g.cells.find((c) => c.date === "2022-03-01")!;
+    expect(zero.status).toBe("observed");
+    expect(markOf(zero, g.max)).toEqual({ kind: "bar", height: barHeight(0, g.max), level: 0 });
+  });
+
+  it("a count given for a no-data day is never drawn or counted", () => {
+    const g = grid(); // busy has 5 detections on every outage day too
+    const s = computeStats(g.cells);
+    expect(s.total).toBe(25 * 5); // 40 busy days minus the 15 outage days
+    expect(s.noData).toBe(15);
+  });
+
+  it("they end a run instead of joining two runs or counting as zero days", () => {
+    const s = computeStats(grid().cells);
+    expect(s.longest).toEqual({ days: 20, start: "2022-07-07", end: "2022-07-26" });
+  });
+
+  it("they take no part in the level thresholds", () => {
+    const data = [
+      { date: "2022-05-01", count: 10 },
+      { date: "2022-05-02", count: 1000 },
+    ];
+    const withGap = buildGrid(data, YEAR_END, 0, {
+      startMs: YEAR_START,
+      missing: [{ date: "2022-05-02", status: "missing" }],
+    });
+    expect(withGap.max).toBe(10);
+    expect(withGap.cells.find((c) => c.date === "2022-05-01")?.level).toBe(4);
+  });
+
+  it("not operating is no data too, and the readings say why", () => {
+    const g = buildGrid([], YEAR_END, 0, {
+      startMs: YEAR_START,
+      missing: [
+        { date: "2022-01-02", status: "not_operating" },
+        { date: "2022-01-03", status: "missing" },
+      ],
+    });
+    const opts = { unit: "hotspot detection", plural: "hotspot detections", sensor: "VIIRS S-NPP", format: String };
+    const at = (d: string) => readDay(g.cells.find((c) => c.date === d)!, opts);
+    expect(at("2022-01-02")).toBe("No data: VIIRS S-NPP was not operating");
+    expect(at("2022-01-03")).toBe("No data: VIIRS S-NPP was not observing (outage)");
+    expect(at("2022-01-04")).toBe("No hotspot detections (a measured zero)");
+  });
+
+  it("when the coverage could not be checked, a day without detections is not a verified zero", () => {
+    const g = buildGrid([{ date: "2022-06-01", count: 3 }], YEAR_END, 0, {
+      startMs: YEAR_START,
+      coverageChecked: false,
+    });
+    expect(g.cells.find((c) => c.date === "2022-06-01")).toMatchObject({ status: "observed", count: 3 });
+    const empty = g.cells.find((c) => c.date === "2022-06-02")!;
+    expect(empty).toMatchObject({ status: "nodata", reason: "unverified" });
+    expect(computeStats(g.cells)).toMatchObject({ total: 3, noData: 364 });
+  });
+
+  it("the days before the first day asked for are not drawn and not counted", () => {
+    const g = grid();
+    expect(g.cells[0].date).toBe("2021-12-26"); // the Sunday of the week of 1 January 2022
+    expect(g.cells.slice(0, 6).every((c) => c.status === "outside")).toBe(true);
+    expect(markOf(g.cells[0], g.max)).toEqual({ kind: "none" });
+    const s = computeStats(g.cells);
+    expect(s.first).toBe("2022-01-01");
+    expect(s.noData).toBe(15);
+  });
+
+  it("a run cannot reach the last day across a day with no data", () => {
+    const data = [
+      { date: "2022-12-29", count: 1 },
+      { date: "2022-12-30", count: 1 },
+      { date: "2022-12-31", count: 1 },
+    ];
+    const g = buildGrid(data, YEAR_END, 0, {
+      startMs: YEAR_START,
+      missing: [{ date: "2022-12-31", status: "missing" }],
+    });
+    expect(computeStats(g.cells).current.days).toBe(0);
   });
 });
