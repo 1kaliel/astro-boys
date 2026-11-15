@@ -273,6 +273,10 @@ API_2026_WINDOWS = {
     "VIIRS_NOAA20_SP": (dt.date(2026, 1, 1), dt.date(2026, 7, 31)),
     "VIIRS_NOAA20_NRT": (dt.date(2026, 8, 1), dt.date(2026, 11, 14)),
 }
+# Optional: a Parquet file of `cell_l3` values. The area API returns every country inside the box, while the
+# historical files are per country; for a box that crosses borders (all of Brazil) the API rows are kept only
+# in L3 cells that hold historical detections of that country.
+CELL_MASK_ENV = "ASTRO_CELL_MASK"
 API_ELIGIBLE_TYPE = "type = 0 OR (type IS NULL AND version LIKE '%NRT')"
 
 
@@ -305,7 +309,8 @@ def ingest_api(settings: Settings, year: int) -> dict:
 
     Standard-processing (`_SP`) files are used where they exist; near-real-time (`_NRT`) files only for
     later dates. The 2026 request windows must be complete. Untyped NRT detections retain null type and
-    enter the provisional counts when confidence is nominal or high.
+    enter the provisional counts when confidence is nominal or high. With `ASTRO_CELL_MASK` set, rows
+    outside the listed L3 cells are dropped and counted in the manifest.
 
     Writes `processed/hotspots/<v>/instrument=VIIRS/year=<year>/` and
     `processed/cell_month_counts/<v>/year=<year>/`, replacing those partitions only.
@@ -323,6 +328,9 @@ def ingest_api(settings: Settings, year: int) -> dict:
     manifest = Manifest(new_run_id("ingest-api"), "ingest-api", settings.redacted())
     bbox = clip_box()
     west, south, east, north = bbox
+    mask = os.environ.get(CELL_MASK_ENV, "").strip() or None
+    if mask is not None and not Path(mask).is_file():
+        raise ValueError(f"{CELL_MASK_ENV} must name a Parquet file with a cell_l3 column: {mask}")
     summary: dict[str, dict] = {}
     with tempfile.TemporaryDirectory(prefix="astro_api_") as temp, storage.connect(settings) as con:
         staging = Path(temp)
@@ -363,9 +371,23 @@ def ingest_api(settings: Settings, year: int) -> dict:
                 INGEST_SQL.format(mir="bright_ti4", tir="bright_ti5", eligible_type=API_ELIGIBLE_TYPE),
                 params=[name, west, east, south, north, satellites, instrument, year, year, name],
             )
-            rows.write_parquet(str(shards / f"{sensor}.parquet"), compression="zstd")
             summary[prefix] = {"files_sp": len(sp), "files_nrt": len(nrt), "raw_rows": raw_rows,
                                "raw_rows_nrt": nrt_rows, "exact_duplicates_dropped": int(duplicates)}
+            shard = shards / f"{sensor}.parquet"
+            if mask is None:
+                rows.write_parquet(str(shard), compression="zstd")
+            else:
+                unmasked = staging / f"{sensor}_unmasked.parquet"
+                rows.write_parquet(str(unmasked), compression="zstd")
+                con.execute(
+                    "COPY (SELECT * FROM read_parquet(?) WHERE cell_l3 IN "
+                    "(SELECT cell_l3 FROM read_parquet(?))) TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
+                    [str(unmasked), mask, str(shard)],
+                )
+                summary[prefix]["rows_outside_cell_mask_dropped"] = con.execute(
+                    "SELECT (SELECT count(*) FROM read_parquet(?)) - (SELECT count(*) FROM read_parquet(?))",
+                    [str(unmasked), str(shard)],
+                ).fetchone()[0]
         if not summary:
             raise ValueError("no FIRMS area-API files under raw/firms/api")
         inputs = str(shards / "*.parquet")
@@ -401,7 +423,7 @@ def ingest_api(settings: Settings, year: int) -> dict:
     manifest.add_output(hotspots_dir.as_posix(), rows=hotspot_rows)
     manifest.add_output(counts_dir.as_posix(), rows=sum(int(c[3]) for c in coverage))
     manifest.checks = {
-        "year": year, "bbox": bbox, "sources": summary,
+        "year": year, "bbox": bbox, "cell_mask": mask, "sources": summary,
         "hotspot_rows": hotspot_rows, "passing_main_filter": passing,
         "months_by_satellite": [list(c) for c in coverage],
         "nrt_type_rule": "Missing type stays null; nominal/high confidence NRT counts are provisional",
