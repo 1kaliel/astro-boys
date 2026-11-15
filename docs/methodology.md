@@ -209,6 +209,31 @@ One run, `20261115T014038Z_validate-final_1f4753`, after the method was frozen a
   the final method (+6.3%), and the reconciliation is what brings the regional error back down (3,073 →
   2,700). Nothing was changed after seeing this.
 
+**Why the bias appears after 2021: Aqua's overpass time drifted.** Median local solar time of the daytime
+detections in the pilot extent, by year (`uv run python scripts/overpass_time.py`; full table in
+`artifacts/metrics/overpass_time_by_year.json`):
+
+| Satellite | 2003–2011 | 2012–2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| Aqua, day | 13:35–13:40 | 13:37–13:39 | 13:38 | 13:38 | 13:43 | 13:56 | 14:19 | 14:56 |
+| Terra, day | 10:26–10:30 | 10:27–10:29 | 10:28 | 10:25 | 10:15 | 10:01 | 09:42 | 09:13 |
+| S-NPP, day | | 13:33–13:43 | 13:37 | 13:37 | 13:37 | 13:38 | 13:36 | 13:39 |
+| NOAA-20, day | | 13:36 (2018–19) | 13:35 | 13:36 | 13:37 | 13:37 | 13:34 | 13:35 |
+
+- Aqua crossed at the same local time, within five minutes, in every year from 2003 to 2021, and then moved
+  later each year: 5 minutes in 2022, 18 in 2023, 41 in 2024, 78 in 2025. The VIIRS satellites did not move.
+  A later afternoon overpass sees more of the daily fire cycle, so Aqua records more relative to VIIRS and
+  factors fitted on 2012–2019 over-predict: by 4% in 2022, 8% in 2023 and about 20% in 2024–2025, by day only.
+  The night bias is near zero, as expected if the cause is the afternoon fire cycle.
+- **The years we reconstruct (2003–2011) have the same Aqua overpass time as the calibration years.** The one
+  identified cause of the shift is absent there. This does not prove the relation was identical before 2012,
+  but it removes the known reason for it to differ.
+- The final test (2022–2023) was therefore run under conditions that had already started to drift, which is
+  harder than the reconstruction task. We report its bias as measured.
+- Terra, the witness, was stable until 2020 and drifted earlier from 2021; it is used as a witness only for
+  2003–2011 in the product.
+- Still to do: confirm the dates on which orbit maintenance ended in the mission notices.
+
 Late years, 2024–2025 (22 months; 2024-07 and 2024-11 left out as S-NPP gaps):
 
 | Method | Role | MAE, cell-month | RMSE, cell-month | Bias | Correlation | MAE, regional month | Bias, regional |
