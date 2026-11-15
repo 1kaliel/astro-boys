@@ -119,13 +119,12 @@ def daily(
     first = date(year, month, 1)
     last = date(year, month, _calendar.monthrange(year, month)[1])
     source = _partition_source(root, instrument, year)
-    clauses = [
-        "date_local BETWEEN ? AND ?",
-        "satellite = ?",  # never two satellites, even of the same instrument
-        "passes_main_filter",
-        "list_contains(?, cell_l2)",
-    ]
-    params: list = [first, last, satellite, list(cells)]
+    # One read of the partition for the month and satellite (the slow part on gs://), kept in memory; every count
+    # and the passes come from it. Only the archive's last date needs a second, two-column read of the year.
+    month_filter = ["satellite = ?", "date_local BETWEEN ? AND ?"]
+    month_params: list = [satellite, first, last]
+    clauses = ["passes_main_filter", "list_contains(?, cell_l2)"]
+    params: list = [list(cells)]
     if period != "ALL":
         clauses.append("daynight = ?")
         params.append(period)
@@ -133,24 +132,27 @@ def daily(
 
     con = hotspots._connect(root)
     try:
-        present = {
-            r[0]
-            for r in con.execute(
-                f"SELECT DISTINCT date_local FROM {source} WHERE satellite = ? AND date_local IS NOT NULL",
-                [satellite],
-            ).fetchall()
-        }
-        counts_sql = (
-            f"SELECT date_local, count(*), count(*) FILTER (WHERE acq_ts_utc IS NULL) "
-            f"FROM {source} WHERE {where} GROUP BY 1"
+        con.execute(
+            f"CREATE TEMP TABLE month_rows AS SELECT date_local, daynight, acq_ts_utc, cell_l2, passes_main_filter "
+            f"FROM {source} WHERE {' AND '.join(month_filter)}",
+            month_params,
         )
-        counted = con.execute(counts_sql, params).fetchall()
+        last_row = con.execute(
+            f"SELECT max(date_local) FROM {source} WHERE satellite = ?", [satellite]
+        ).fetchone()
+        # Days of the month on which the satellite recorded anything, anywhere: the others are gaps (no data).
+        present = {r[0] for r in con.execute("SELECT DISTINCT date_local FROM month_rows").fetchall()}
+        counted = con.execute(
+            "SELECT date_local, count(*), count(*) FILTER (WHERE acq_ts_utc IS NULL) "
+            f"FROM month_rows WHERE {where} GROUP BY 1",
+            params,
+        ).fetchall()
         per_day = {r[0]: int(r[1]) for r in counted}
         untimed = {r[0]: int(r[2]) for r in counted}
         rows: list[tuple[date, str, float]] = []
         if sum(per_day.values()) <= MAX_PASS_ROWS:
             rows = con.execute(
-                f"SELECT date_local, daynight, epoch(acq_ts_utc) FROM {source} "
+                "SELECT date_local, daynight, epoch(acq_ts_utc) FROM month_rows "
                 f"WHERE {where} AND acq_ts_utc IS NOT NULL ORDER BY 3",
                 params,
             ).fetchall()
@@ -159,10 +161,11 @@ def daily(
     finally:
         con.close()
 
-    if not present:
+    archive_last = last_row[0] if last_row else None
+    if archive_last is None:
         raise NoSatelliteData(f"hotspots/v1 has no {satellite} detection in {year}.")
 
-    last_date = max(present)
+    last_date = archive_last
     per_day_rows: dict[date, list[tuple[str, float]]] = {}
     for day, daynight, seconds in rows:
         per_day_rows.setdefault(day, []).append((daynight, float(seconds)))
