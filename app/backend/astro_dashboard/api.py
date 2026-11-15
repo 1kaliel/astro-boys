@@ -85,8 +85,9 @@ class AreaOut(BaseModel):
 class MonthOut(BaseModel):
     year: int
     month: int
-    # VIIRS-equivalent hotspot detections, summed over the cells of the area (never "fires").
-    count_harmonized: float
+    # VIIRS-equivalent hotspot detections, summed over the cells of the area (never "fires"). None = the month
+    # has no estimate (the estimated partial months of 2002); never zero.
+    count_harmonized: float | None
     # Approximate 90% interval (summed variance widened by n_cells ** 0.32). None = a contributing cell has no
     # variance yet; never zero.
     ci_low: float | None
@@ -96,7 +97,11 @@ class MonthOut(BaseModel):
     days_observed: int
     origin: str
     source_satellite: str
+    # Median of the same month over `median_n_years` years. For the unfinished month it is the median of the
+    # same days (1..`median_days`) of earlier years, from month_to_date/v1; other partial months have none.
     median_hist: float | None
+    median_n_years: int | None
+    median_days: int | None
     anomaly_abs: float | None
     anomaly_pct: float | None
     anomaly_z: float | None
@@ -106,6 +111,8 @@ class CalendarResponse(BaseModel):
     area: AreaOut
     period: Literal["ALL", "D", "N"]
     model_version: str
+    # True when the interval of the sum is the area approximation (sum(var) x n^0.32, more than one cell).
+    interval_is_approximate: bool
     # Years the median is computed over (complete months only). None if there is no complete month.
     baseline_years: tuple[int, int] | None
     first_year: int
@@ -144,6 +151,7 @@ def calendar(
         area=AreaOut(west=west, south=south, east=east, north=north, cells=result.cells),
         period=period,
         model_version=result.model_version,
+        interval_is_approximate=result.cells > 1,
         baseline_years=result.baseline_years,
         first_year=result.first_year,
         last_year=result.last_year,

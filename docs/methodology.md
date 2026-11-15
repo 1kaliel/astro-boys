@@ -324,9 +324,10 @@ How the observed series is assembled from February 2012:
   `source_satellite = N20`.
 
 2026 comes from the FIRMS area API (`astro-fire ingest-api`): standard-processing files to July,
-near-real-time files from August (`is_nrt`). **Near-real-time files have no `type` field, so every NRT
-detection is treated as type 0**; in the standard files of January–July 2026, 1.4% to 4.5% of detections per
-month had another type and were removed, so the NRT months are slightly high by that order.
+near-real-time files from August (`is_nrt`). Ingest checks file coverage for every requested UTC day.
+**Near-real-time detections have unknown `type`**. Nominal and high confidence detections enter the
+provisional counts. In the standard files of January–July 2026, 1.4% to 4.5% of detections per month
+had another type and were removed, so the NRT months are slightly high by that order.
 
 **The current month.** The data ends on 2026-11-14. November 2026 is marked partial (14 of 30 days) and is
 compared like for like: its history is the S-NPP detections on days 1–14 of November in each earlier year

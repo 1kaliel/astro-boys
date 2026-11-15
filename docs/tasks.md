@@ -53,7 +53,7 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 | D5 | This month vs historical median card; date-range selector | Cleber | Sun 02:00 | ⬜ | |
 | D6 | CSV download of native hotspots for area + dates | Guilherme + Cleber | Sun 02:00 | 🔄 | **Checkpoint B**. `GET /api/hotspots.csv` reads `hotspots/v1` from the bucket (Guilherme); live once Kali confirms the service account can read `processed/` |
 | D7 | Map ↔ calendar linked by one shared state | Guilherme | Sun 02:00 | ⬜ | |
-| D8 | First Cloud Run deploy ([runbook](../deploy/cloudrun/README.md)); Kali approves the deploy | Guilherme + Cleber; Kali approves | Sun 09:00 | 🔄 | Image ready: calendar baked in with its `model_version` (Guilherme). Deploy and public URL pending Kali |
+| D8 | First Cloud Run deploy ([runbook](../deploy/cloudrun/README.md)); Kali approves the deploy | Guilherme + Cleber; Kali approves | Sun 09:00 | ✅ | Deployed 2026-11-15 03:55 UTC, approved by Kali: <https://astro-dashboard-301238386836.us-central1.run.app> (revision `astro-dashboard-00001-ktn`, image `b9f02c6`, calendar `fb-l1-terra-rec-4` and `month_to_date/v1` baked in). Built on Cloud Build. `/healthz` is not reachable on the run.app URL (reserved by Cloud Run); use `/api/version` |
 | D9 | Should-haves: raw vs harmonized toggle + trend; uncertainty; day/night; anomaly mode; seasonal profile | Cleber + Guilherme | Sun 15:00 | ⬜ | **Checkpoint C** = must-haves live |
 | D10 | "How to read / limitations / sources" panel; all text in English | Jean | Sun 13:00 | ⬜ | |
 | D11 | Stretch (only if "go" at Checkpoint C): AGGS drill-down to L3 with neighbors | Guilherme | Sun 15:00 | ⬜ | |

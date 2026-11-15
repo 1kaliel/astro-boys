@@ -1,13 +1,18 @@
 # Dashboard container: one image serves the API and the built frontend on $PORT (Cloud Run contract).
 #
-# The calendar is baked into the image (D8). It comes in as a named build context, never from git or app/:
+# The calendar is baked into the image (D8), with the small month_to_date table (60 KB) the unfinished month is
+# compared with. They come in as named build contexts, never from git or app/:
 #   docker build -t astro-dashboard \
-#     --build-context calendar=data/processed/calendar/v1 --build-arg MODEL_VERSION=<model_version> app/
-# deploy/cloudrun/deploy.sh does this. Only the calendar (~71 MB): hotspots/v1 (883 MB) stays in the bucket (D6).
+#     --build-context calendar=data/processed/calendar/v1 \
+#     --build-context month_to_date=data/processed/month_to_date/v1 \
+#     --build-arg MODEL_VERSION=<model_version> app/
+# deploy/cloudrun/deploy.sh does this. hotspots/v1 (883 MB) stays in the bucket (D6).
 # An image without data (skeleton checks only): docker build --build-arg ALLOW_NO_CALENDAR=1 app/
 
 # Stage 0: the calendar files. Empty unless --build-context calendar=<folder> replaces this stage.
 FROM scratch AS calendar
+# Same for month_to_date; without it the unfinished month has no median (the build warns).
+FROM scratch AS month_to_date
 
 # Stage 1: build the single-page frontend.
 FROM node:24-slim AS frontend
@@ -45,6 +50,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 COPY --from=calendar / ./data/processed/calendar/v1/
+COPY --from=month_to_date / ./data/processed/month_to_date/v1/
 COPY backend/ ./backend/
 COPY --from=frontend /build/dist ./frontend/dist
 

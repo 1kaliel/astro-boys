@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import date
 from pathlib import Path
 
 import duckdb
@@ -12,6 +13,7 @@ from fastapi.testclient import TestClient
 from test_calendar_api import CELLS, FULL_BOX, _write_calendar
 
 from astro_dashboard import hotspots
+from astro_dashboard.calendar import Bounds
 from astro_dashboard.main import app
 
 # (id, cell, utc timestamp, local date, satellite, instrument, daynight, passes_main_filter)
@@ -135,6 +137,32 @@ def test_a_second_export_at_the_same_time_is_a_429(client: TestClient) -> None:
     assert response.status_code == 429
     # The slot is free again once the other export ends.
     assert client.get("/api/hotspots.csv", params=_params()).status_code == 200
+
+
+def _query(client: TestClient) -> hotspots.HotspotQuery:
+    cells = client.app.state.calendar.cells_in(Bounds(**FULL_BOX))
+    return hotspots.HotspotQuery(cells=cells, start=date(2005, 1, 1), end=date(2013, 12, 31))
+
+
+def test_an_export_that_is_never_read_gives_its_slot_back(client: TestClient) -> None:
+    # The client left before the first byte: the body was made and never read.
+    body = hotspots.export_csv(_query(client))
+    assert client.get("/api/hotspots.csv", params=_params()).status_code == 429  # the slot is taken
+
+    del body
+
+    assert client.get("/api/hotspots.csv", params=_params()).status_code == 200
+
+
+def test_an_export_closed_halfway_gives_its_slot_back(client: TestClient) -> None:
+    body = hotspots.export_csv(_query(client))
+    next(body)
+    body.close()
+    body.close()  # closing twice does not free a second slot
+
+    assert client.get("/api/hotspots.csv", params=_params()).status_code == 200
+    assert hotspots._EXPORTS.acquire(blocking=False)
+    hotspots._EXPORTS.release()
 
 
 def test_bad_dates_or_area_are_422(client: TestClient) -> None:

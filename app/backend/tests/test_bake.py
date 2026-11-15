@@ -70,3 +70,21 @@ def test_api_version_without_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         body = client.get("/api/version").json()
 
     assert body == {"model_version": None, "image_model_version": None, "build": None}
+
+
+def test_check_records_month_to_date_and_fails_when_it_covers_other_days(tmp_path: Path) -> None:
+    from test_calendar_api import TO_DATE_ROWS, _write_month_to_date
+
+    _write_calendar(tmp_path)  # unfinished month: February 2007, 10 days
+    assert bake.check(tmp_path, "v1", expect="test-model", allow_empty=False)["month_to_date"] is None
+
+    _write_month_to_date(tmp_path, TO_DATE_ROWS)
+    info = bake.check(tmp_path, "v1", expect="test-model", allow_empty=False)
+    assert info["month_to_date"] == {
+        "rows": len(TO_DATE_ROWS),
+        "windows": [{"month": 2, "days": 10, "n_years": 4, "last_year": 2006}],
+    }
+
+    _write_month_to_date(tmp_path, TO_DATE_ROWS, days=9)
+    with pytest.raises(SystemExit, match="Pull calendar and month_to_date again"):
+        bake.check(tmp_path, "v1", expect="test-model", allow_empty=False)

@@ -175,28 +175,54 @@ def export_csv(query: HotspotQuery, root: str | None = None, limit: int | None =
     except BaseException:
         _EXPORTS.release()
         raise
-    return _stream(cursor, con)
+    return _Export(cursor, con)
 
 
-def _stream(cursor: duckdb.DuckDBPyConnection, con: duckdb.DuckDBPyConnection) -> Iterator[bytes]:
-    try:
-        buffer = io.StringIO()
-        writer = csv.writer(buffer, lineterminator="\n")
-        writer.writerow(COLUMNS)
-        while True:
-            block = cursor.fetchmany(FETCH_ROWS)
-            if not block:
-                break
-            writer.writerows([[_cell(v) for v in row] for row in block])
-            yield buffer.getvalue().encode("utf-8")
-            buffer.seek(0)
-            buffer.truncate()
-        tail = buffer.getvalue()
-        if tail:
-            yield tail.encode("utf-8")
-    finally:
-        con.close()
-        _EXPORTS.release()
+class _Export(Iterator[bytes]):
+    """The CSV in blocks. It holds the export slot and the connection, and gives them back when the rows end,
+    when it is closed, or when it is dropped without ever being read (the client left before the first byte:
+    a plain generator would never run its `finally` then, and every later export would answer 429)."""
+
+    def __init__(self, cursor: duckdb.DuckDBPyConnection, con: duckdb.DuckDBPyConnection) -> None:
+        self._con = con
+        self._blocks = _blocks(cursor)
+        self._closed = False
+
+    def __iter__(self) -> _Export:
+        return self
+
+    def __next__(self) -> bytes:
+        try:
+            return next(self._blocks)
+        except BaseException:  # the end of the rows (StopIteration) or a read error: free the slot either way
+            self.close()
+            raise
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            self._con.close()
+            _EXPORTS.release()
+
+    def __del__(self) -> None:
+        self.close()
+
+
+def _blocks(cursor: duckdb.DuckDBPyConnection) -> Iterator[bytes]:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(COLUMNS)
+    while True:
+        block = cursor.fetchmany(FETCH_ROWS)
+        if not block:
+            break
+        writer.writerows([[_cell(v) for v in row] for row in block])
+        yield buffer.getvalue().encode("utf-8")
+        buffer.seek(0)
+        buffer.truncate()
+    tail = buffer.getvalue()
+    if tail:
+        yield tail.encode("utf-8")
 
 
 def _cell(value: object) -> object:

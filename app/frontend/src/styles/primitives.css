@@ -33,6 +33,41 @@
   --blue-600: #184f95;
   --blue-700: #0d366b;
 
+  /*
+   * Magma: the sequential ramp of the heatmap and the map (hotspot counts). Sampled from the perceptually uniform
+   * magma colormap at even lightness steps (L* 94 to 18), palest first like the blue ramp.
+   * Checked by `uv run python scripts/check_viz_ramp.py` (lightness order, color vision deficiencies, no-data, surfaces).
+   */
+  --magma-100: #fcf0b2;
+  --magma-200: #febf84;
+  --magma-300: #fc8961;
+  --magma-400: #e85362;
+  --magma-500: #b2357b;
+  --magma-600: #752181;
+  --magma-700: #3b0f70;
+
+  /*
+   * Calendar theme (an island inside the dashboard, see calendar.css). Ember: cream, peach, orange, terracotta and
+   * earth red, even lightness steps (L* 97 to 22). Petrol: the ink and the active controls. Ash: the light gray plane.
+   * Checked by `uv run python scripts/check_viz_ramp.py --theme calendar`.
+   */
+  --ember-100: #fdf7e8;
+  --ember-200: #f7cca3;
+  --ember-300: #f09f5d;
+  --ember-400: #dc7436;
+  --ember-500: #c14a2a;
+  --ember-600: #92321d;
+  --ember-700: #661b10;
+  --ember-zero: #fffcf4; /* a valid zero: paler than the first step, and always printed as "0" */
+
+  --petrol-700: #0e4a54; /* ink, selection and focus */
+  --petrol-600: #176773; /* active controls */
+  --petrol-500: #3f6b73; /* secondary ink */
+  --ash-50: #f3f5f5;
+  --ash-100: #e8ebec; /* the calendar plane */
+  --ash-200: #d3d9da; /* hairlines */
+  --ash-300: #aab6b9; /* hatching of months with no data */
+
   /* Orange: positive diverging arm, derived at the OKLCH lightness of blue 300-600 */
   --orange-300: #ff743d;
   --orange-400: #e15000;

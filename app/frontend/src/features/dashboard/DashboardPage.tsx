@@ -66,7 +66,7 @@ export function DashboardPage() {
         )}
 
         <Card
-          className="dash-calendar"
+          className="dash-calendar calendar-theme"
           title="Burning calendar"
           actions={
             <span className="card-meta">

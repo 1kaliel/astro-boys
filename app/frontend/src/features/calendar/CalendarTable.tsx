@@ -1,4 +1,4 @@
-import { MONTHS_SHORT, formatCount } from "../../lib/format";
+import { formatCount } from "../../lib/format";
 import type { CalendarSerie } from "./calendarModel";
 
 /** The same numbers as the chart, as a table: exact values, keyboard and screen-reader friendly. */
@@ -10,9 +10,9 @@ export function CalendarTable({ series, unit }: { series: ReadonlyArray<Calendar
         <thead>
           <tr>
             <th scope="col">Year</th>
-            {MONTHS_SHORT.map((label) => (
-              <th key={label} scope="col">
-                {label}
+            {(series[0]?.data ?? []).map((cell) => (
+              <th key={cell.month} scope="col">
+                {cell.x}
               </th>
             ))}
           </tr>
@@ -23,7 +23,7 @@ export function CalendarTable({ series, unit }: { series: ReadonlyArray<Calendar
               <th scope="row">{row.id}</th>
               {row.data.map((cell) => (
                 <td key={cell.month}>
-                  {formatCount(cell.y)}
+                  {cell.entry && cell.y === null ? "No estimate" : formatCount(cell.y)}
                   {cell.entry?.isEstimated ? " est." : ""}
                   {cell.entry?.isPartial ? " partial" : ""}
                 </td>
