@@ -28,6 +28,7 @@ import {
 } from "../../lib/grid";
 import { LABELS_STYLE_URL, ON_IMAGERY, ON_IMAGERY_HALO, satelliteStyle } from "../../lib/basemap";
 import { contains, loadBrazil, type Outline } from "../../lib/brazil";
+import { pixelSizeM, pointsGeoJSON, radiusByZoom, type PointsResponse } from "../../lib/detections";
 import { prefersReducedMotion, readTokens, useColorScheme } from "../../lib/hooks";
 import { FEELS_LIKE_BREAKS, centroidPoints, joinWeather } from "../../lib/municipalities";
 import { rampStep } from "../../lib/scale";
@@ -35,11 +36,14 @@ import { LAYER_LABEL, breaksOf, unitOf, weatherGeoJSON, type MapLayer } from "..
 import { WindField } from "../../lib/windField";
 import { CompassRing } from "./CompassRing";
 import { WindParticles } from "./WindParticles";
+import { EXTENT } from "../../lib/extent";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 
 setWorkerUrl(workerUrl);
 
 const STYLE_TIMEOUT_MS = 5000;
+/** A bright fire orange that reads on the satellite imagery (green, brown and the dark ocean). */
+const DETECTION_COLOR = "#ff7a1a";
 
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
 const WX_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--wx-seq-${i}`);
@@ -75,8 +79,8 @@ function windArrow(): {
   return { width: size, height: size, data: image.data };
 }
 
-/** Pan limits in the flat view, [west, south, east, north]: the pilot extent with a margin. */
-const MERCATOR_LIMITS: [number, number, number, number] = [-80, -40, -20, 14];
+/** Pan limits in the flat view, [west, south, east, north]: the extent with a margin. */
+const MERCATOR_LIMITS = EXTENT.limits;
 /** The region of the live wind lattice (wider than Brazil), framed until the outline of Brazil is loaded. */
 /** How far the map is tilted while the municipalities are shown (degrees; MapLibre allows up to 60). */
 const MUNI_PITCH = 50;
@@ -147,6 +151,8 @@ type CellMapProps = {
   live?: LiveWindResponse | null;
   /** A state's municipalities (IBGE) colored by the current feels-like temperature: a tilted view with a compass. */
   municipal?: { geo: MunicipalitiesGeoJSON; weather: MunicipalitiesWeather | null } | null;
+  /** The native detections of the month (one platform), for the "Detections" layer. */
+  detections?: PointsResponse | null;
 };
 
 type Hover = { lng: number; lat: number; cell: CellFeatureProps };
@@ -161,6 +167,7 @@ export function CellMap({
   weather = null,
   live = null,
   municipal = null,
+  detections = null,
 }: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap();
@@ -173,8 +180,17 @@ export function CellMap({
     props: Record<string, unknown>;
   } | null>(null);
   const muniOn = layer === "municipalities";
+  const detectionsOn = layer === "detections";
   const hideCells = layer !== "hotspots";
-  const showWeather = layer !== "hotspots" && !muniOn;
+  const showWeather = layer !== "hotspots" && !muniOn && !detectionsOn;
+  const detectionData = useMemo(() => pointsGeoJSON(detections), [detections]);
+  const detectionRadius = useMemo(
+    () => radiusByZoom(pixelSizeM(detections?.satellite ?? "SNPP"), (area.south + area.north) / 2),
+    [detections?.satellite, area.south, area.north],
+  );
+  const [detHover, setDetHover] = useState<{ lng: number; lat: number; props: Record<string, unknown> } | null>(
+    null,
+  );
   const liveOn = layer === "live-wind";
   // Every wind layer is clipped to Brazil: the live lattice is a rectangle much wider than the country, and the ERA5
   // points of the selected area include ocean and neighbors.
@@ -287,6 +303,15 @@ export function CellMap({
     );
   };
 
+  const onDetectionPointer = (event: MapLayerMouseEvent) => {
+    const feature = event.features?.[0];
+    setDetHover(
+      feature
+        ? { lng: event.lngLat.lng, lat: event.lngLat.lat, props: feature.properties as Record<string, unknown> }
+        : null,
+    );
+  };
+
   const onWeatherPointer = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     setWxHover(
@@ -319,7 +344,8 @@ export function CellMap({
         projection={projection}
         maxBounds={projection === "mercator" ? MERCATOR_LIMITS : undefined}
         minZoom={projection === "globe" ? 1 : 3}
-        maxZoom={10}
+        // 14 lets a single VIIRS pixel (375 m) be seen as its own dot on the Detections layer.
+        maxZoom={14}
         dragRotate={muniOn}
         pitchWithRotate={muniOn}
         touchPitch={muniOn}
@@ -327,11 +353,20 @@ export function CellMap({
         fadeDuration={0}
         attributionControl={{ compact: true }}
         interactiveLayerIds={
-          muniOn ? ["muni-fill"] : liveStreaks ? [] : showWeather ? [arrows ? "wx-arrow" : "wx-circle"] : ["cells-fill"]
+          muniOn
+            ? ["muni-fill"]
+            : detectionsOn
+              ? ["detections-dot"]
+              : liveStreaks
+                ? []
+                : showWeather
+                  ? [arrows ? "wx-arrow" : "wx-circle"]
+                  : ["cells-fill"]
         }
-        onMouseMove={muniOn ? onMuniPointer : showWeather ? onWeatherPointer : onPointer}
-        onClick={muniOn ? onMuniPointer : showWeather ? onWeatherPointer : onPointer}
+        onMouseMove={muniOn ? onMuniPointer : detectionsOn ? onDetectionPointer : showWeather ? onWeatherPointer : onPointer}
+        onClick={muniOn ? onMuniPointer : detectionsOn ? onDetectionPointer : showWeather ? onWeatherPointer : onPointer}
         onMouseLeave={() => {
+          setDetHover(null);
           setMuniHover(null);
           setHover(null);
           setWxHover(null);
@@ -394,6 +429,21 @@ export function CellMap({
                 }}
               />
             )}
+          </Source>
+        )}
+        {detectionsOn && (
+          <Source id="detections" type="geojson" data={detectionData}>
+            <Layer
+              id="detections-dot"
+              type="circle"
+              paint={{
+                "circle-color": DETECTION_COLOR,
+                "circle-radius": detectionRadius,
+                "circle-opacity": 0.85,
+                "circle-stroke-color": ON_IMAGERY_HALO,
+                "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 6, 0, 9, 0.6],
+              }}
+            />
           </Source>
         )}
         {muniOn && muniShapes && muniPoints && (
@@ -494,7 +544,27 @@ export function CellMap({
               `Wind blows toward ${Math.round(Number(wxHover.props.toward))}° (from ${Math.round(Number(wxHover.props.from))}°), ${Number(wxHover.props.speed).toFixed(1)} km/h`}
           </Popup>
         )}
-        {!showWeather && hover && (
+        {detectionsOn && detHover && detections?.satellite && (
+          <Popup
+            longitude={detHover.lng}
+            latitude={detHover.lat}
+            closeButton={false}
+            closeOnClick={false}
+            anchor="bottom"
+            offset={10}
+            className="map-popup"
+          >
+            <strong>One native detection</strong> · {detections.satellite}
+            <br />
+            {detHover.props.night === true || detHover.props.night === "true" ? "Night" : "Day"} overpass
+            {detHover.props.frp !== null && detHover.props.frp !== undefined && detHover.props.frp !== "null"
+              ? ` · FRP ${Number(detHover.props.frp).toFixed(1)} MW`
+              : ""}
+            <br />
+            Pixel centre {detHover.lat.toFixed(3)}, {detHover.lng.toFixed(3)}
+          </Popup>
+        )}
+        {!showWeather && !detectionsOn && hover && (
           <Popup
             longitude={hover.lng}
             latitude={hover.lat}

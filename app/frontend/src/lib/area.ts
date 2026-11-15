@@ -1,3 +1,4 @@
+import { EXTENT } from "./extent";
 import { cellsInBounds, clampBounds, type Bounds } from "./grid";
 
 export type AreaCheck = { ok: true; area: Bounds; cells: number } | { ok: false; message: string };
@@ -9,7 +10,7 @@ export type AreaCheck = { ok: true; area: Bounds; cells: number } | { ok: false;
 export function checkArea(candidate: Bounds, frame: Bounds): AreaCheck {
   const area = clampBounds(candidate, frame);
   if (!(area.west < area.east && area.south < area.north)) {
-    return { ok: false, message: "The area must overlap the pilot extent (Northeast Brazil)." };
+    return { ok: false, message: `The area must overlap the extent of the data (${EXTENT.name}).` };
   }
   const cells = cellsInBounds(area).length;
   if (cells === 0) {

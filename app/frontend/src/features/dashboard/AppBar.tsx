@@ -6,6 +6,7 @@ import { applyTheme } from "../../lib/theme";
 import logoDark from "../../assets/brand/firewatcher-logo-horizontal-compacto-negativo.svg";
 import logoLight from "../../assets/brand/firewatcher-logo-horizontal-compacto.svg";
 import { AboutDialog } from "./AboutDialog";
+import { EXTENT } from "../../lib/extent";
 
 const API_TEXT = {
   checking: "Checking API…",
@@ -34,7 +35,7 @@ export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
         </span>
         {/* The signature names the app, so the page title is not drawn; it stays for screen readers. */}
         <h1 className="sr-only">Firewatcher: hotspot calendar</h1>
-        <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
+        <p className="app-subtitle">{EXTENT.name} · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
       </div>
       <div className="app-actions">
         <span className="api-status" role="status" aria-live="polite">

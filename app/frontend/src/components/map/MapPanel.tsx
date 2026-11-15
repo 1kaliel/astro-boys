@@ -12,7 +12,8 @@ import {
   type MunicipalitiesWeather,
   type WeatherGridResponse,
 } from "../../data/api";
-import { MONTHS_LONG } from "../../lib/format";
+import { SATELLITE_LABEL, pointsUrl, type PointsResponse } from "../../lib/detections";
+import { MONTHS_LONG, formatCount } from "../../lib/format";
 import { sequentialEdges } from "../../lib/scale";
 import { LAYER_LABEL, type MapLayer } from "../../lib/weatherLayers";
 import { useDashboard } from "../../state/dashboard";
@@ -28,7 +29,7 @@ import { MapTools, type Projection } from "./MapTools";
 const EMPTY: CellsResponse["cells"] = [];
 
 const LAYER_OPTIONS: ReadonlyArray<SegmentOption<MapLayer>> = (
-  ["hotspots", "temperature", "wind-speed", "wind-direction", "live-wind", "municipalities"] as const
+  ["hotspots", "detections", "temperature", "wind-speed", "wind-direction", "live-wind", "municipalities"] as const
 ).map((value) => ({ value, label: LAYER_LABEL[value] }));
 
 /** The 3D view and MapLibre both need WebGL; without it the flat map is the only choice that can still try. */
@@ -64,7 +65,12 @@ export default function MapPanel() {
   );
   // The weather layers are ERA5 context for the month on screen: asked only while one of them is open.
   const weatherLayer =
-    layer !== "hotspots" && layer !== "live-wind" && layer !== "municipalities" && projection !== "3d" && data !== null
+    layer !== "hotspots" &&
+    layer !== "detections" &&
+    layer !== "live-wind" &&
+    layer !== "municipalities" &&
+    projection !== "3d" &&
+    data !== null
       ? layer
       : null;
   const weatherOn = weatherLayer !== null;
@@ -85,6 +91,11 @@ export default function MapPanel() {
   const muniOn = layer === "municipalities" && projection !== "3d";
   const muniGeo = useRemote<MunicipalitiesGeoJSON>(muniOn ? municipalitiesUrl("ce") : null);
   const muniWeather = useRemote<MunicipalitiesWeather>(muniOn ? municipalitiesWeatherUrl("ce") : null);
+  // The native detections of the month on screen, in the selected area: asked only while that layer is open.
+  const detectionsOn = layer === "detections" && projection !== "3d";
+  const detections = useRemote<PointsResponse>(
+    detectionsOn && data ? pointsUrl(state.area, { year: data.year, month: data.month }, state.period) : null,
+  );
   const estimated = cells.some((cell) => cell.estimated);
   const partial = cells.some((cell) => cell.partial);
 
@@ -125,6 +136,7 @@ export default function MapPanel() {
             weather={weatherOn ? weather.data : null}
             live={liveOn ? live.data : null}
             municipal={muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data } : null}
+            detections={detectionsOn ? detections.data : null}
           />
         )}
         <MapTools
@@ -155,7 +167,22 @@ export default function MapPanel() {
       )}
       {muniOn && <MunicipalLegend geo={muniGeo} weather={muniWeather} />}
       {liveOn && <LiveWindLegend data={live.data} loading={live.loading} error={live.error} onRetry={live.retry} />}
-      {data && !weatherLayer && !liveOn && !muniOn && (
+      {detectionsOn && (
+        <p className="map-note" role="status">
+          {detections.error
+            ? `Could not load the detections: ${detections.error}`
+            : detections.loading && !detections.data
+              ? "Loading the detections…"
+              : detections.data && detections.data.satellite
+                ? `${formatCount(detections.data.rows)} native detections of ${SATELLITE_LABEL[detections.data.satellite]} in the area` +
+                  (detections.data.sampled
+                    ? ` (a fixed sample of ${formatCount(detections.data.points.length)} is drawn)`
+                    : "") +
+                  ". One dot per detection, at the pixel centre and the size of the pixel when zoomed in. Raw counts of one satellite, not harmonized: the harmonized view is the Hotspots layer."
+                : "No native detection in this month and area. No detection does not mean no fire."}
+        </p>
+      )}
+      {data && !weatherLayer && !liveOn && !muniOn && !detectionsOn && (
         <Legend
           mode="sequential"
           breaks={breaks}

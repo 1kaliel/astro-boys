@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { InfoDialog } from "../../components/ui/InfoDialog";
+import { EXTENT } from "../../lib/extent";
 
 function External({ href, children }: { href: string; children: ReactNode }) {
   return (
@@ -20,7 +21,7 @@ export function AboutDialog() {
       <h3>What is shown</h3>
       <p>
         Monthly counts of <strong>hotspots</strong>: places where a satellite sensor detected heat on the ground, from
-        July 2002 to the current month, for Northeast Brazil. Counts are per 0.25° grid cell and are summed over the area
+        July 2002 to the current month, for {EXTENT.name}. Counts are per 0.25° grid cell and are summed over the area
         you select. Every month is on one scale, the <strong>VIIRS-equivalent</strong> scale, so years before and after
         the change of sensor in 2012 can be compared.
       </p>

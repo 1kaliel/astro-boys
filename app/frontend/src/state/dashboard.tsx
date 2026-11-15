@@ -1,3 +1,4 @@
+import { EXTENT } from "../lib/extent";
 import { createContext, useContext, useMemo, useReducer, type Dispatch, type ReactNode } from "react";
 
 /** Day, night or both, as in the data contract (`period` column). */
@@ -7,8 +8,11 @@ export type Scale = "harmonized" | "raw";
 export type Metric = "count" | "anomaly";
 export type Bounds = { west: number; south: number; east: number; north: number };
 
-/** Pilot extent: Northeast Brazil MVP clip (docs/spec/harmonization.md). */
-export const PILOT_BOUNDS: Bounds = { west: -48.8, south: -18.4, east: -34.7, north: -1.0 };
+/**
+ * The extent of the data: the Northeast pilot box (docs/spec/harmonization.md), or all of Brazil when the build
+ * sets VITE_ASTRO_EXTENT=brazil (lib/extent.ts). The name is kept from the pilot.
+ */
+export const PILOT_BOUNDS: Bounds = EXTENT.bounds;
 // calendar/v1 starts in July 2002 (Aqua); the months before it show as "no data".
 export const FIRST_YEAR = 2002;
 export const LAST_YEAR = 2026;

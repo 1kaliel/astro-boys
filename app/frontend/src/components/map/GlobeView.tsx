@@ -17,6 +17,7 @@ import {
 import { L2_SIZE, type Bounds } from "../../lib/grid";
 import { prefersReducedMotion, readTokens, useColorScheme } from "../../lib/hooks";
 import { Button } from "../ui/Button";
+import { EXTENT } from "../../lib/extent";
 
 type GlobeViewProps = {
   cells: readonly CellValue[];
@@ -29,8 +30,8 @@ type GlobeViewProps = {
 
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
 const TOKENS = [...SEQ_TOKENS, "--viz-selection", "--color-border-strong"] as const;
-/** Where the camera starts: the pilot extent, Northeast Brazil. Altitude is a fraction of the globe radius. */
-const HOME = { lat: -10, lng: -41, altitude: 1.4 };
+/** Where the camera starts: over the extent of the data. Altitude is a fraction of the globe radius. */
+const HOME = EXTENT.home;
 const TRANSPARENT = "rgba(0,0,0,0)";
 
 /**
@@ -197,7 +198,7 @@ export default function GlobeView({ cells, breaks, area, onArea }: GlobeViewProp
       )}
 
       <div className="globe-tools">
-        <Button onClick={goHome}>Center on the Northeast</Button>
+        <Button onClick={goHome}>{EXTENT.id === "brazil" ? "Center on Brazil" : "Center on the Northeast"}</Button>
         {first && <Button onClick={() => setFirst(null)}>Cancel selection</Button>}
       </div>
       <div className="globe-notes">

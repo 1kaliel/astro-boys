@@ -7,6 +7,7 @@ import { checkArea, sameBounds } from "../../lib/area";
 import { cellsInBounds, type Bounds } from "../../lib/grid";
 import { PILOT_BOUNDS, useDashboard, type Metric, type Scale } from "../../state/dashboard";
 import { DownloadCsv } from "./DownloadCsv";
+import { EXTENT } from "../../lib/extent";
 
 const SCALE_OPTIONS: ReadonlyArray<SegmentOption<Scale>> = [
   { value: "harmonized", label: "Harmonized" },
@@ -59,7 +60,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
   useEffect(() => setFields(area), [area]);
 
   const cells = cellsInBounds(area).length;
-  const summary = `${sameBounds(area, PILOT_BOUNDS) ? "Northeast Brazil (pilot)" : "Custom area"} · ${cells.toLocaleString(
+  const summary = `${sameBounds(area, PILOT_BOUNDS) ? EXTENT.id === "brazil" ? "Brazil" : "Northeast Brazil (pilot)" : "Custom area"} · ${cells.toLocaleString(
     "en-US",
   )} L2 cells`;
 
@@ -126,7 +127,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
           <Button className="button-primary" type="submit" form={formId}>
             Apply
           </Button>
-          <Button onClick={() => apply(PILOT_BOUNDS)}>Reset to pilot</Button>
+          <Button onClick={() => apply(PILOT_BOUNDS)}>{EXTENT.id === "brazil" ? "Reset to Brazil" : "Reset to pilot"}</Button>
         </div>
       </Popover>
     </div>

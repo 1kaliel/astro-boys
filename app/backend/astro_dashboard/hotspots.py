@@ -147,6 +147,65 @@ def count(query: HotspotQuery, root: str | None = None) -> int:
     return int(row[0]) if row else 0
 
 
+# The platform drawn by default on the detections layer, best first: the calendar's source satellites
+# (S-NPP, then NOAA-20 in its outages), then the MODIS ones. One platform at a time: two satellites see
+# the same fire twice.
+POINT_SATELLITES = ("SNPP", "N20", "N21", "Aqua", "Terra")
+DEFAULT_MAX_POINTS = 100_000
+
+
+def max_points() -> int:
+    return int(os.environ.get("ASTRO_POINTS_MAX") or DEFAULT_MAX_POINTS)
+
+
+@dataclass(frozen=True)
+class PointsResult:
+    satellite: str | None  # the platform drawn (None: no detection at all)
+    available: dict[str, int]  # detections per platform in the area and dates
+    rows: int  # detections of `satellite`
+    # [longitude, latitude, frp_mw, is_night] per detection; a deterministic sample when rows > the limit
+    points: list[tuple[float, float, float | None, bool]]
+
+
+def points(
+    query: HotspotQuery, satellite: str | None = None, root: str | None = None, limit: int | None = None
+) -> PointsResult:
+    """Native detections (pixel centres) of one platform in the area and dates, for the map.
+
+    Without `satellite`, the first of POINT_SATELLITES that has detections is drawn. Above `limit`, a
+    sample chosen by a hash of `hotspot_id` is returned (the same sample on every call), and `rows` says
+    how many there are.
+    """
+    root = root or hotspots_root()
+    limit = limit if limit is not None else max_points()
+    con = _connect(root)
+    where, params = _where(query)
+    try:
+        counts = con.execute(
+            f"SELECT satellite, count(*) FROM {_source(root)} WHERE {where} GROUP BY satellite", params
+        ).fetchall()
+        available = {str(sat): int(n) for sat, n in counts}
+        if satellite is None:
+            satellite = next((s for s in POINT_SATELLITES if available.get(s)), None)
+        rows = available.get(satellite, 0) if satellite else 0
+        found: list[tuple[float, float, float | None, bool]] = []
+        if rows:
+            sql = (
+                f"SELECT round(longitude, 4), round(latitude, 4), round(frp_mw, 1), daynight = 'N' "
+                f"FROM {_source(root)} WHERE {where} AND satellite = ? "
+                "ORDER BY hash(hotspot_id) LIMIT ?"
+            )
+            found = [
+                (float(lon), float(lat), None if frp is None else float(frp), bool(night))
+                for lon, lat, frp, night in con.execute(sql, [*params, satellite, limit]).fetchall()
+            ]
+    except duckdb.Error as error:
+        raise HotspotsUnavailable(f"hotspots/v1 could not be read: {error}") from error
+    finally:
+        con.close()
+    return PointsResult(satellite=satellite, available=available, rows=rows, points=found)
+
+
 def export_csv(query: HotspotQuery, root: str | None = None, limit: int | None = None) -> Iterator[bytes]:
     """Check the row count, then stream the CSV in blocks (Cloud Run caps unstreamed responses at 32 MiB).
 

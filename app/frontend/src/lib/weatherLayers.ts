@@ -6,11 +6,22 @@ export type WeatherSample = Pick<
   "lat" | "lon" | "temperature_c" | "wind_speed_kmh" | "wind_from_deg"
 >;
 
-/** What the map shows. "hotspots" is the science of the project; the others are ERA5 context. */
-export type MapLayer = "hotspots" | "temperature" | "wind-speed" | "wind-direction" | "live-wind" | "municipalities";
+/**
+ * What the map shows. "hotspots" (harmonized cells) is the science of the project; "detections" are the native
+ * detections behind it; the others are weather context.
+ */
+export type MapLayer =
+  | "hotspots"
+  | "detections"
+  | "temperature"
+  | "wind-speed"
+  | "wind-direction"
+  | "live-wind"
+  | "municipalities";
 
 export const LAYER_LABEL: Record<MapLayer, string> = {
   hotspots: "Hotspots",
+  detections: "Detections",
   temperature: "Temperature",
   "wind-speed": "Wind speed",
   "wind-direction": "Wind direction",

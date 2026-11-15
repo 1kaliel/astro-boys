@@ -534,6 +534,52 @@ def hotspots_count(
     )
 
 
+class HotspotPointsOut(BaseModel):
+    # Native detections (NASA FIRMS pixel centres) of one platform, NOT harmonized: the map's precise view.
+    year: int
+    month: int
+    period: Literal["ALL", "D", "N"]
+    satellite: str | None
+    available: dict[str, int]
+    rows: int
+    max_points: int
+    sampled: bool
+    # [lon, lat, frp_mw or null, night]
+    points: list[tuple[float, float, float | None, bool]]
+
+
+@router.get("/hotspots/points", response_model=HotspotPointsOut, tags=["hotspots"])
+def hotspots_points(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    year: int = Query(..., ge=2000, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+    period: Literal["ALL", "D", "N"] = "ALL",
+    satellite: Literal["SNPP", "N20", "N21", "Aqua", "Terra"] | None = None,
+) -> HotspotPointsOut:
+    start, end = date(year, month, 1), _month_end(year, month)
+    query = _hotspot_query(store, west, south, east, north, start, end, period, False)
+    try:
+        result = hotspots.points(query, satellite)
+    except hotspots.HotspotsUnavailable as error:
+        log.warning("Hotspot points failed: %s", error)
+        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+    return HotspotPointsOut(
+        year=year,
+        month=month,
+        period=period,
+        satellite=result.satellite,
+        available=result.available,
+        rows=result.rows,
+        max_points=hotspots.max_points(),
+        sampled=result.rows > len(result.points),
+        points=result.points,
+    )
+
+
 @router.get("/hotspots.csv", tags=["hotspots"], response_class=StreamingResponse)
 def hotspots_csv(
     store: Annotated[CalendarStore, Depends(get_store)],

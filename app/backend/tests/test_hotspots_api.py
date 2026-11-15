@@ -179,3 +179,41 @@ def test_missing_hotspots_is_a_503(
 
     assert client.get("/api/hotspots/count", params=_params()).status_code == 503
     assert client.get("/api/hotspots.csv", params=_params()).status_code == 503
+
+
+def _points(client: TestClient, **extra: object) -> dict:
+    response = client.get("/api/hotspots/points", params={**FULL_BOX, **extra})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_points_are_the_detections_of_one_platform_in_the_month(client: TestClient) -> None:
+    body = _points(client, year=2005, month=3)
+
+    # h1 and h2 (Aqua, cells A and B); not h3 (main filter) or h4 (cell C)
+    assert body["satellite"] == "Aqua"
+    assert body["available"] == {"Aqua": 2}
+    assert body["rows"] == 2 and body["sampled"] is False
+    lat_a, lon_a = CELLS["A"]
+    assert [lon_a + 0.1, lat_a + 0.1, 10.5, False] in body["points"]
+    assert any(p[3] is True for p in body["points"])  # h2 is a night detection
+
+
+def test_points_prefer_viirs_and_honour_the_period(client: TestClient) -> None:
+    body = _points(client, year=2013, month=7)
+    assert body["satellite"] == "SNPP" and body["rows"] == 2  # h5 (day) and h6 (night)
+    assert _points(client, year=2013, month=7, period="N")["rows"] == 1
+
+
+def test_points_of_a_month_with_nothing(client: TestClient) -> None:
+    body = _points(client, year=2010, month=1)
+    assert body["satellite"] is None and body["rows"] == 0 and body["points"] == []
+
+
+def test_points_above_the_limit_are_a_stable_sample(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ASTRO_POINTS_MAX", "1")
+    first = _points(client, year=2005, month=3)
+    assert first["rows"] == 2 and len(first["points"]) == 1 and first["sampled"] is True
+    assert _points(client, year=2005, month=3)["points"] == first["points"]
