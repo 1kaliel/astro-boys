@@ -11,10 +11,10 @@ export const TREND_UNIT = "hotspot detections per year (complete years only)";
 
 type SeriesKey = "harmonized" | "rawAqua" | "rawSnpp";
 
-const SERIES: ReadonlyArray<{ key: SeriesKey; label: string; note: string }> = [
-  { key: "harmonized", label: "Harmonized", note: "VIIRS-equivalent, the series this dashboard uses" },
-  { key: "rawAqua", label: "Aqua MODIS, raw", note: "native count, not harmonized" },
-  { key: "rawSnpp", label: "S-NPP VIIRS, raw", note: "native count, from February 2012" },
+const SERIES: ReadonlyArray<{ key: SeriesKey; label: string; note: string; mark: string }> = [
+  { key: "harmonized", label: "Harmonized", note: "VIIRS-equivalent, the series this dashboard uses", mark: "Solid line" },
+  { key: "rawAqua", label: "Aqua MODIS, raw", note: "native count, not harmonized", mark: "Dashed line" },
+  { key: "rawSnpp", label: "S-NPP VIIRS, raw", note: "native count, from February 2012", mark: "Wide pale line under the harmonized line" },
 ];
 
 type TrendChartProps = {
@@ -66,7 +66,7 @@ export function TrendChart({ months, startYear, endYear, exportContext }: TrendC
     modelVersion: exportContext.modelVersion,
     source: `${SOURCE_TEXT}: Aqua MODIS, S-NPP VIIRS`,
     legend: [
-      ...SERIES.map((s) => `${s.label}: ${s.note}.`),
+      ...SERIES.map((s) => `${s.mark}: ${s.label}, ${s.note}.`),
       "Hollow point: a year with months estimated from MODIS. Dotted vertical line: VIIRS starts (Feb 2012).",
     ],
   };
