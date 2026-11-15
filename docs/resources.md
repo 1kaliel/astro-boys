@@ -7,10 +7,40 @@ Before submitting, check each product's documentation for its required citation 
 
 | Source | What we used | URL | License / citation | Added by |
 |--------|--------------|-----|--------------------|----------|
-| | | | | |
+| NASA FIRMS, MODIS Collection 6 / 6.1 active fire / hotspot detections (MCD14ML, standard processing), Terra and Aqua | Yearly country files 2000–2025 (`modis_{YYYY}_all_countries.zip`), Brazil, clipped to the Northeast | https://firms.modaps.eosdis.nasa.gov/country/ | MODIS Collection 6 / 6.1 Hotspot / Active Fire Detections MCD14ML distributed from NASA FIRMS. https://doi.org/10.5067/FIRMS/MODIS/MCD14ML. The `version` column in the Brazil files reads `6.2` (2003–2017), `6.03` (2018–2022) and `61.03` (2023–2025): Collection 6 until 2022, Collection 6.1 from 2023 (first and last rows of each file checked) | Justino |
+| NASA FIRMS, VIIRS 375 m active fire product, Suomi NPP (VNP14IMG, standard processing; VNP14IMGTDL_NRT, near real time) | Yearly country files 2012–2025; area API 2026 (`VIIRS_SNPP_SP` to 2026-07-31, `VIIRS_SNPP_NRT` to 2026-11-02) | https://firms.modaps.eosdis.nasa.gov/ | NASA VIIRS Land Science Team (2020). VIIRS (S-NPP) I Band 375 m Active Fire Product NRT (Vector data). NASA LANCE MODIS at the MODAPS. https://doi.org/10.5067/FIRMS/VIIRS/VNP14IMGT_NRT.002. Standard product: VNP14IMG V002, https://doi.org/10.5067/VIIRS/VNP14IMG.002 | Justino |
+| NASA FIRMS, VIIRS 375 m active fire product, NOAA-20 / JPSS-1 (VJ114IMG, standard; VJ114IMGTDL_NRT, near real time) | Yearly country files 2018–2025; area API 2026 (`VIIRS_NOAA20_SP` to 2026-07-31, `VIIRS_NOAA20_NRT` to 2026-11-14) | https://firms.modaps.eosdis.nasa.gov/ | NASA VIIRS Land Science Team (2020). VIIRS NOAA-20 (JPSS-1) 375 m I-Band Active Fire Product NRT (Vector Data). NASA LANCE MODIS at the MODAPS. https://doi.org/10.5067/FIRMS/VIIRS/VJ114IMGT_NRT.002. Standard product: Giglio, L. (2024). VIIRS/JPSS1 Active Fires 6-Min L2 Swath 375m V002. NASA LP DAAC. https://doi.org/10.5067/VIIRS/VJ114IMG.002 | Justino |
 
-Planned: NASA FIRMS MODIS + VIIRS active fire (the challenge's listed resource). See [data-access.md](data-access.md).
-At least one NASA data source is required for global judging.
+All three are NASA data, accessed through FIRMS (the challenge's listed resource). Download log with dates:
+`data/raw/SOURCES.md`; input checksums are in the ingest manifests. See [data-access.md](data-access.md).
+
+### How to cite NASA FIRMS (use in the app, the project page and the CSV download)
+
+- **Acknowledgement**, adapted from the FIRMS FAQ (which words it for imagery): We acknowledge the use of data
+  from the NASA LANCE FIRMS (https://earthdata.nasa.gov/firms), part of the NASA Earth Science Data and
+  Information System (ESDIS).
+- **Short credit for captions and the app footer:** "Data: NASA FIRMS (MODIS Collection 6/6.1, VIIRS 375 m
+  Collection 2)", with a link to https://earthdata.nasa.gov/firms.
+- **Disclaimer (required when redistributing FIRMS data, as our CSV download does):** link the
+  [LANCE Disclaimer](https://www.earthdata.nasa.gov/data/projects/lance/disclaimer). In short: the data come
+  without warranty and are not meant for tactical or local-scale decisions. The same text ships in
+  `AttributesReadme.txt` inside every FIRMS yearly zip.
+- **Product DOIs:** as in the table above.
+- NASA does not endorse this project. No NASA logos are used or modified.
+
+Sources for this guidance: [FIRMS FAQ](https://www.earthdata.nasa.gov/data/tools/firms/faq);
+[LANCE Disclaimer](https://www.earthdata.nasa.gov/data/projects/lance/disclaimer);
+[VJ114IMGTDL_NRT catalog entry](https://www.earthdata.nasa.gov/data/catalog/lancemodis-vj114imgtdl-nrt-2);
+[VNP14IMGTDL_NRT catalog entry](https://www.earthdata.nasa.gov/data/catalog/lancemodis-vnp14imgtdl-nrt-2);
+[VNP14IMGTDL_NRT product page](https://modaps.modaps.eosdis.nasa.gov/services/about/products/viirs-land-c2-nrt/vnp14imgtdl_nrt.html).
+
+### Algorithm references (cite in the methodology and the project page)
+
+| Reference | Used for |
+|-----------|----------|
+| Giglio, L., Descloitres, J., Justice, C. O., Kaufman, Y. J. (2003). An enhanced contextual fire detection algorithm for MODIS. *Remote Sensing of Environment*, 87, 273–282. https://doi.org/10.1016/S0034-4257(03)00184-6 | How MODIS detections are made (listed in the FIRMS FAQ) |
+| Schroeder, W., Oliva, P., Giglio, L., Csiszar, I. A. (2014). The New VIIRS 375 m active fire detection data product: algorithm description and initial assessment. *Remote Sensing of Environment*, 143, 85–96. https://doi.org/10.1016/j.rse.2013.12.008 | How VIIRS 375 m detections are made (listed in the FIRMS FAQ) |
+| Twedt, K., Xiong, X., Geng, X., Wilson, T., Mu, Q. (2023). Impact of satellite orbit drift on MODIS Earth scene observations used in calibration of the reflective solar bands. Proc. SPIE. NASA NTRS 20240001409. https://ntrs.nasa.gov/citations/20240001409 | Dates of the last Terra and Aqua orbit maneuvers |
 
 ## Tools and libraries used
 
@@ -97,6 +127,7 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 |------|------|-------|
 | H13 audit of the VM reproduction: logs, manifests and data (`artifacts/h13-reproducibility/vm-audit.md`) and the evidence-status text | Claude (Anthropic) | Read-only checks on the VM and against the bucket, written up for Justino |
 | H13 methodology completion, limitations, local 84-test audit, PR 38 evidence review and integration package | AI assistance | Prepared for Jean Gustavo from existing team work. No new model or production dataset was generated. Full VM reproduction is attributed to its original report; the local audit did not have production inputs. |
+| References list and FIRMS citation guidance (task S3, `docs/resources.md`) | Claude (Anthropic) | Drafted for Justino from the FIRMS FAQ, the LANCE disclaimer and the product catalog pages; every URL and DOI was opened and checked; Justino reviews |
 | Historical FIRMS ingestion and monthly aggregation implementation, regression fixture, and runbook | Codex | Assisted with pipeline code and verification. Historical detections come from NASA FIRMS. See [historical batch](historical-batch.md). |
 | Burning calendar (task D4): `app/frontend/src/features/calendar/`, `src/data/calendarSource.ts`, `src/data/useCalendar.ts`, `src/styles/calendar.css`, unit tests, and the script that builds the fixture | Claude Code (Claude Sonnet 5.5, Anthropic) | Code written with AI assistance for Cleber, the task owner. The solution idea (a year x month heatmap of hotspot counts) comes from the challenge brief, not from AI. The fixture `app/frontend/src/data/fixtures/calendar-mock.json` is **synthetic** (from `astro-fire mock-calendar`), for building screens only |
 | Historical dashboard calendar assembly, regression fixture, and verification | Codex | Implemented the H7 integration using the team's calibration functions, factors and coverage rules. |
@@ -109,3 +140,7 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 | Checking the satellite gaps and orbit dates against official NASA and NOAA notices ([section above](#official-notices-satellite-gaps-and-orbit-changes)) | Claude Code (Anthropic) | Web search and reading of the notices for Justino; every link was opened and its dates compared with our data. The gaps themselves were found by the team's pipeline |
 | D10 wording review: `app/frontend/src/features/dashboard/AboutDialog.tsx`, task-board note and diary entries | AI coding assistant | AI-assisted text corrections for Jean Gustavo: provisional NRT type exception, filtered and normalized native CSV, Count-mode colors, and qualified wording about the 2012 sensor transition. Based on the team's existing data contract and specifications; no new data, model, numerical result or solution idea generated. |
 | Review of the H13 pull requests (51, 52) against the code and artifacts, re-run of the early-years and 2026 ingest commands, republication of the 2026 partition of `hotspots/v1` with the `type` column corrected, and the task-board, methodology and diary records of it | AI coding assistant | Checks run and records written for Kali. No change to the method, the counts or the calendar |
+
+## D12 screenshot evidence assistance
+
+Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. See [D12 validation](d12-validation.md).

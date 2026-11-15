@@ -1,0 +1,40 @@
+[
+  {
+    "endpoint": "/api/version",
+    "status": 200,
+    "body": {
+      "model_version": "fb-l1-terra-rec-4",
+      "image_model_version": "fb-l1-terra-rec-4",
+      "build": {
+        "dataset": "calendar/v1",
+        "built_at": "2026-11-15T09:25:40Z",
+        "model_version": "fb-l1-terra-rec-4",
+        "rows": 1838338,
+        "first_year": 2002,
+        "last_year": 2026,
+        "files": 25,
+        "bytes": 73065028,
+        "month_to_date": {
+          "rows": 36079,
+          "windows": [
+            {
+              "month": 11,
+              "days": 14,
+              "n_years": 13,
+              "last_year": 2025
+            }
+          ]
+        }
+      }
+    },
+    "checked_utc": "2026-11-15T10:53:13.554Z"
+  },
+  {
+    "endpoint": "/api/healthz",
+    "status": 200,
+    "body": {
+      "status": "ok"
+    },
+    "checked_utc": "2026-11-15T10:53:13.898Z"
+  }
+]
