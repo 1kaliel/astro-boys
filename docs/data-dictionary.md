@@ -341,7 +341,10 @@ cells. `modis` and `viirs` are NATIVE counts of ONE satellite (the first availab
 satellites are never added together and the counts are not harmonized. The answer says what it is: `series`,
 `satellite`, `available_satellites`, and `coverage` (`none` + `reason` when the series has no data at all that month,
 for example VIIRS before February 2012: a gap in coverage, not zero). A cell absent from the list has no record for
-that series: it is not a zero. Breaks are fixed per series. A satellite of the other instrument, or a satellite with
+that series: it is not a zero. On native cells `partial` is the coverage of the CHOSEN satellite (fewer than
+90% of the days of the month observed, from `coverage_daily`), not the calendar's `is_partial` (which is the source
+satellite's); `coverage_checked: false` says that table could not be read, and then every cell of a satellite other
+than the month's source is flagged partial. Breaks are fixed per series. A satellite of the other instrument, or a satellite with
 `harmonized`, is a 422.
 
 ### Daily native detections of one sensor (`GET /api/hotspots/daily`)

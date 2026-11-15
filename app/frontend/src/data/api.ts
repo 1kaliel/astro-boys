@@ -32,6 +32,9 @@ export type CellsResponse = {
   available_satellites?: Satellite[];
   /** "none": the series has no data at all in this month (for example VIIRS before February 2012). */
   coverage?: "ok" | "none";
+  /** Native series only: false when the days the satellite observed (coverage_daily) could not be read; the cells of a
+   * satellite other than the month's source are then flagged partial, since their coverage is not verified. */
+  coverage_checked?: boolean;
   reason?: string | null;
   cells: CellValue[];
 };

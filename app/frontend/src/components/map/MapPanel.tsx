@@ -230,6 +230,9 @@ export default function MapPanel() {
                 ? "Harmonized: months before February 2012 are estimated from MODIS (cells marked as estimated carry a 90% interval)."
                 : "Harmonized: observed by VIIRS in this month."
               : `Native counts of ${data?.satellite ? SATELLITE_NAME[data.satellite] : "one satellite"}: they do not add up with the other satellites and are not comparable across MODIS and VIIRS.`}
+            {shownSeries !== "harmonized" && data?.coverage_checked === false && !noCoverage
+              ? " The days this satellite observed could not be checked, so its cells are marked partial: a low count may be missing days, not low activity."
+              : ""}
           </p>
         </div>
       )}
