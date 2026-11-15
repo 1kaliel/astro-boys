@@ -130,10 +130,14 @@ uv run astro-fire --data-root data smoke        # force local storage
 Stages that exist:
 
 ```bash
+uv run astro-fire --data-root data ingest --years 2012-2021 --satellites Aqua SNPP   # FIRMS files → hotspots/v1
+uv run astro-fire --data-root data aggregate                                       # → cell_month_counts/v1
 uv run astro-fire mock-calendar     # SYNTHETIC calendar table for building the app (data-dictionary.md, section 5)
 uv run astro-fire calibrate         # processed/cell_month_counts/v1 → processed/factors/v1 + report + manifest
 uv run astro-fire calibrate --counts path/to/cell_month_counts --years 2012-2019 --k 20 --m 2   # overrides
 ```
+
+`ingest` and `aggregate` are described in the [historical Northeast batch runbook](historical-batch.md).
 
 `calibrate` reads the monthly counts (`cell_l2, year, month, daynight, satellite, n_hotspots`; satellites named
 `Aqua` and `SNPP`), chooses the pooling weights by leave-one-year-out cross-validation unless `--k`/`--m` are
@@ -155,7 +159,7 @@ The JSON holds every method at two levels (cell-month, and regional monthly tota
 season and Aqua = 0 vs Aqua > 0, plus a `verdict`: whether `F + B` beats every baseline at both levels, and
 which method ships if it does not.
 
-Stages to come (`ingest`, `aggregate`, `harmonize`, `export`) are listed in
+Stages to come (`harmonize`, `export`) are listed in
 [spec/harmonization.md](spec/harmonization.md#10-pipeline-commands-to-build).
 
 DuckDB, for quick looks (also works in a notebook with `import duckdb`):
