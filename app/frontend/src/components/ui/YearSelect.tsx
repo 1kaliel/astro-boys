@@ -5,12 +5,14 @@ type YearSelectProps = {
   value: number;
   years: readonly number[];
   onChange: (year: number) => void;
+  /** Keep the label for screen readers only (two selects share one visible label). */
+  hideLabel?: boolean;
 };
 
-export function YearSelect({ label, value, years, onChange }: YearSelectProps) {
+export function YearSelect({ label, value, years, onChange, hideLabel }: YearSelectProps) {
   return (
     <div className="control">
-      <span className="control-label">{label}</span>
+      <span className={hideLabel ? "sr-only" : "control-label"}>{label}</span>
       <Select.Root
         value={value}
         onValueChange={(next) => {

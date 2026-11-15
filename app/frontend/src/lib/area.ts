@@ -88,3 +88,37 @@ export function formatSizeKm(widthKm: number, heightKm: number): string {
   const r = (km: number) => (Math.round(km / 10) * 10).toLocaleString("en-US");
   return `about ${r(widthKm)} × ${r(heightKm)} km`;
 }
+
+/**
+ * The box around a circle of `radiusKm` centered on (lat, lon): lat ± r / 110.57 km, lon ± r / (111.32 km · cos lat).
+ * Not clamped: pass it through `checkArea` to fit it to the study area. A point is not a region; this box is the area
+ * the calendar and KPIs then sum.
+ */
+export function circleBox(lat: number, lon: number, radiusKm: number): Bounds {
+  const dLat = radiusKm / KM_PER_DEG_LAT;
+  // Near a pole the cosine goes to 0: cap the half-width at 180° so the box stays a box.
+  const cos = Math.cos(lat * (Math.PI / 180));
+  const dLon = cos > 1e-9 ? Math.min(180, radiusKm / (KM_PER_DEG_LON * cos)) : 180;
+  return {
+    west: Math.max(-180, lon - dLon),
+    south: Math.max(-90, lat - dLat),
+    east: Math.min(180, lon + dLon),
+    north: Math.min(90, lat + dLat),
+  };
+}
+
+/**
+ * Ring of `steps` points (closed) approximating that circle on the same flat-earth scale as `circleBox`, so the
+ * drawn circle touches the box edges exactly. [lon, lat] pairs, for GeoJSON.
+ */
+export function circleRing(lat: number, lon: number, radiusKm: number, steps = 64): [number, number][] {
+  const dLat = radiusKm / KM_PER_DEG_LAT;
+  const dLon = radiusKm / (KM_PER_DEG_LON * Math.max(1e-9, Math.cos(lat * (Math.PI / 180))));
+  const ring: [number, number][] = [];
+  for (let i = 0; i < steps; i += 1) {
+    const a = (i / steps) * 2 * Math.PI;
+    ring.push([lon + dLon * Math.cos(a), lat + dLat * Math.sin(a)]);
+  }
+  ring.push(ring[0]);
+  return ring;
+}

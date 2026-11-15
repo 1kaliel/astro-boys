@@ -104,3 +104,71 @@ export function latestKpiText(latest: CalendarMonth | null): { detail: string; c
 export function estimatedShare(months: readonly CalendarMonth[]): { estimated: number; total: number } {
   return { estimated: months.filter((m) => m.isEstimated).length, total: months.length };
 }
+
+/**
+ * Total activity of the selected years (KPI 1 of the redesign): the sum of the months that have a count. Months with
+ * no estimate are left out and counted, never read as zero. `complete` compares the complete months with the sum of
+ * their medians (like for like); null when no complete month has both.
+ */
+export function totalActivity(
+  months: readonly CalendarMonth[],
+  start: number,
+  end: number,
+): {
+  value: number;
+  months: number;
+  missing: number;
+  estimated: number;
+  partial: boolean;
+  complete: { value: number; median: number; months: number } | null;
+} | null {
+  const rows = inYears(months, start, end);
+  const counted = rows.filter((m) => m.count != null);
+  if (counted.length === 0) return null;
+  const full = counted.filter((m) => !m.isPartial && m.medianHist != null);
+  return {
+    value: counted.reduce((sum, m) => sum + (m.count ?? 0), 0),
+    months: counted.length,
+    missing: rows.length - counted.length,
+    estimated: counted.filter((m) => m.isEstimated).length,
+    partial: counted.some((m) => m.isPartial),
+    complete:
+      full.length > 0
+        ? {
+            value: full.reduce((sum, m) => sum + (m.count ?? 0), 0),
+            median: full.reduce((sum, m) => sum + (m.medianHist ?? 0), 0),
+            months: full.length,
+          }
+        : null,
+  };
+}
+
+/** The single month of the selected years with the highest count (KPI 2). Partial months take part only if highest. */
+export function peakMonth(months: readonly CalendarMonth[], start: number, end: number): CalendarMonth | null {
+  let best: CalendarMonth | null = null;
+  for (const m of inYears(months, start, end)) {
+    if (m.count == null) continue;
+    if (!best || m.count > (best.count ?? 0)) best = m;
+  }
+  return best;
+}
+
+/** Robust z at or above this flags a month as unusually high (product threshold, not a NASA one). */
+export const UNUSUAL_Z = 2;
+
+/**
+ * Months above usual (KPI 3): complete months of the selected years whose count is above the median of that month of
+ * the year, and how many of them are unusually high (robust z ≥ 2). Partial months are never judged.
+ */
+export function aboveUsual(
+  months: readonly CalendarMonth[],
+  start: number,
+  end: number,
+): { above: number; unusual: number; judged: number } {
+  const judged = inYears(months, start, end).filter((m) => !m.isPartial && m.count != null && m.medianHist != null);
+  return {
+    above: judged.filter((m) => (m.count ?? 0) > (m.medianHist ?? 0)).length,
+    unusual: judged.filter((m) => m.anomalyZ != null && m.anomalyZ >= UNUSUAL_Z).length,
+    judged: judged.length,
+  };
+}

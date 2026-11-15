@@ -61,10 +61,12 @@ def api_cells(
     year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
     month: Annotated[int | None, Query(ge=1, le=12)] = None,
     period: Literal["ALL", "D", "N"] = "ALL",
+    sensor: Literal["harmonized", "aqua", "terra", "snpp", "n20"] = "harmonized",
 ) -> dict:
-    """VIIRS-equivalent hotspot counts per 0.25° cell for one month (the map); latest month by default."""
+    """Hotspot counts per 0.25° cell for one month (the map); latest month by default. The layer is the
+    harmonized VIIRS-equivalent count, or the native count of one satellite (never added together)."""
     try:
-        return cells.cells_for_month(year, month, period)
+        return cells.cells_for_month(year, month, period, sensor)
     except cells.DataNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

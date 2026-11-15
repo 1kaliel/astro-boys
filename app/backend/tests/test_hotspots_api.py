@@ -232,3 +232,26 @@ def test_missing_hotspots_is_a_503(
 
     assert client.get("/api/hotspots/count", params=_params()).status_code == 503
     assert client.get("/api/hotspots.csv", params=_params()).status_code == 503
+
+
+def test_intensity_filter_keeps_detections_at_or_above_the_minimum_frp(client: TestClient) -> None:
+    # every test row has FRP 10.5 MW
+    assert client.get("/api/hotspots/count", params=_params(min_frp=10)).json()["rows"] == 4
+    assert client.get("/api/hotspots/count", params=_params(min_frp=10.5)).json()["rows"] == 4
+    assert client.get("/api/hotspots/count", params=_params(min_frp=20)).json()["rows"] == 0
+    assert _csv(client.get("/api/hotspots.csv", params=_params(min_frp=20))) == []
+
+
+def test_relevance_filter_keeps_the_confidence_class_and_above(client: TestClient) -> None:
+    body = client.get("/api/hotspots/count", params=_params(min_confidence="n")).json()
+    assert body["rows"] == 4 and body["min_confidence"] == "n"
+    assert client.get("/api/hotspots/count", params=_params(min_confidence="h")).json()["rows"] == 0
+    # with include_all the low-confidence row h3 returns, unless a class floor drops it again
+    assert client.get("/api/hotspots/count", params=_params(include_all=True)).json()["rows"] == 5
+    both = _params(include_all=True, min_confidence="n")
+    assert client.get("/api/hotspots/count", params=both).json()["rows"] == 4
+
+
+def test_quality_filters_reject_bad_values(client: TestClient) -> None:
+    assert client.get("/api/hotspots/count", params=_params(min_confidence="x")).status_code == 422
+    assert client.get("/api/hotspots/count", params=_params(min_frp=-1)).status_code == 422

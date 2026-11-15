@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 import { checkArea } from "../../lib/area";
 import { cx } from "../../lib/cx";
 import type { Bounds } from "../../lib/grid";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 import { Button } from "../ui/Button";
+import { Icon } from "../ui/Icon";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 
 export type Projection = "mercator" | "globe";
@@ -24,13 +25,15 @@ type MapToolsProps = {
   onBack: () => void;
   /** Tells the map a rectangle is being drawn, so a click there draws instead of opening a drill-down. */
   onDrawing: (drawing: boolean) => void;
+  /** Search by coordinates (CoordinateSearch), after the area tools; steps aside in the drill-down like them. */
+  coords?: ReactNode;
 };
 
 /**
  * Tools drawn over the map: flat/globe view, draw a rectangle (terra-draw, loaded only when asked) and use the
- * visible map area (easiest on a phone). Typed bounds live in the filter bar.
+ * visible map area (easiest on a phone), and search by coordinates. Typed bounds live in the filter bar.
  */
-export function MapTools({ mapRef, projection, onProjection, onArea, drilled, onBack, onDrawing }: MapToolsProps) {
+export function MapTools({ mapRef, projection, onProjection, onArea, drilled, onBack, onDrawing, coords }: MapToolsProps) {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const drawRef = useRef<{ stop(): void } | null>(null);
@@ -91,7 +94,7 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
 
   return (
     <>
-      <div className="map-tools">
+      <div className="map-tools" role="toolbar" aria-label="Map tools">
         {drilled && (
           <Button className="map-back" onClick={onBack} aria-keyshortcuts="Escape">
             ← Back to L2 cells
@@ -100,11 +103,27 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
         <SegmentedControl label="Map view" options={PROJECTIONS} value={projection} onChange={onProjection} hideLabel />
         {!drilled &&
           (drawing ? (
-            <Button onClick={stopDrawing}>Cancel</Button>
+            <Button className="map-tool" onClick={stopDrawing}>
+              Cancel
+            </Button>
           ) : (
-            <Button onClick={() => void startDrawing()}>Draw area</Button>
+            <Button className="map-tool" onClick={() => void startDrawing()}>
+              <Icon name="draw" />
+              Draw area
+            </Button>
           ))}
-        {!drilled && <Button onClick={applyVisibleArea}>Use visible area</Button>}
+        {!drilled && (
+          <Button
+            className="map-tool"
+            onClick={applyVisibleArea}
+            aria-label="Use view: set the area filter to the visible map"
+            title="Use the visible map area as the area filter"
+          >
+            <Icon name="frame" />
+            Use view
+          </Button>
+        )}
+        {!drilled && coords}
       </div>
       {(drawing || error) && (
         <p className={cx("map-note", "map-hint", error && "map-error")} role={error ? "alert" : undefined}>

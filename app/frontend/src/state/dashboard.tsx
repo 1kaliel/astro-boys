@@ -4,8 +4,21 @@ import { createContext, useContext, useMemo, useReducer, type Dispatch, type Rea
 export type Period = "ALL" | "D" | "N";
 export type Scale = "harmonized" | "raw";
 /** What the calendar colors show: the count of each month, or how unusual it is for that month of the year. */
+/**
+ * Layer of the map. "harmonized" is the VIIRS-equivalent count of the calendar (MODIS months estimated on the VIIRS
+ * scale); the others are native counts of one satellite (MODIS: Aqua, Terra; VIIRS: S-NPP, NOAA-20), never added.
+ */
+export type Sensor = "harmonized" | "aqua" | "terra" | "snpp" | "n20";
+/** Minimum fire radiative power (MW) of a native detection; 0 = no minimum. Intensity filter. */
+export type MinFrp = 0 | 10 | 50 | 100;
+/** Lowest confidence class of a native detection (l < n < h). Relevance filter. */
+export type Relevance = "l" | "n" | "h";
 export type Metric = "count" | "anomaly";
 export type Bounds = { west: number; south: number; east: number; north: number };
+/** Calendar level: every year x 12 months (harmonized), or the days of one month (native detections). */
+export type CalendarView = "years" | "month";
+/** Point search: a center and a radius in km. The area becomes the box around the circle. */
+export type PointSearch = { lat: number; lon: number; radiusKm: number };
 
 /** Pilot extent: Northeast Brazil MVP clip (docs/spec/harmonization.md). */
 export const PILOT_BOUNDS: Bounds = { west: -48.8, south: -18.4, east: -34.7, north: -1.0 };
@@ -18,6 +31,11 @@ export type DashboardState = {
   period: Period;
   scale: Scale;
   metric: Metric;
+  /** Intensity and relevance act on native detections only (drill-down, CSV): the harmonized calendar has neither. */
+  minFrp: MinFrp;
+  relevance: Relevance;
+  /** Layer of the map (and of its drill-down). */
+  sensor: Sensor;
   startYear: number;
   endYear: number;
   /** Months of the year shown (1..12). Empty means every month. */
@@ -29,41 +47,80 @@ export type DashboardState = {
    * map. Cleared whenever the month, the period or the area changes, so it never shows another slice.
    */
   drillCell: string | null;
+  /** Calendar level (redesign): "years" = years x months, "month" = the days of `selected`. */
+  calendarView: CalendarView;
+  /** Day picked in the month view, local solar date YYYY-MM-DD; opens the day details. */
+  day: string | null;
+  /** Name of the area when it came from a preset (e.g. a state, "approximate box"); null = typed or drawn box. */
+  areaLabel: string | null;
+  /** Point search that produced the area, if any. */
+  point: PointSearch | null;
 };
 
 export type DashboardAction =
-  | { type: "setArea"; area: Bounds }
+  | { type: "setArea"; area: Bounds; label?: string | null; point?: PointSearch | null }
   | { type: "setPeriod"; period: Period }
   | { type: "setScale"; scale: Scale }
   | { type: "setMetric"; metric: Metric }
+  | { type: "setSensor"; sensor: Sensor }
+  | { type: "setMinFrp"; minFrp: MinFrp }
+  | { type: "setRelevance"; relevance: Relevance }
   | { type: "setYears"; startYear: number; endYear: number }
   | { type: "setMonths"; months: readonly number[] }
   | { type: "select"; year: number; month: number }
   | { type: "drill"; cell: string }
-  | { type: "undrill" };
+  | { type: "undrill" }
+  | { type: "openMonth"; year: number; month: number }
+  | { type: "showYears" }
+  | { type: "selectDay"; day: string | null };
 
 const initialState: DashboardState = {
   area: PILOT_BOUNDS,
   period: "ALL",
   scale: "harmonized",
   metric: "count",
-  startYear: FIRST_YEAR,
+  minFrp: 0,
+  relevance: "l",
+  sensor: "harmonized",
+  // Opens on the last 10 years: the calendar has one row per year, and 25 rows is a very tall card.
+  startYear: LAST_YEAR - 9,
   endYear: LAST_YEAR,
   months: [],
   selected: null,
   drillCell: null,
+  calendarView: "years",
+  day: null,
+  areaLabel: null,
+  point: null,
 };
 
 export function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
   switch (action.type) {
     case "setArea": {
       const same = sameBounds(state.area, action.area);
-      return { ...state, area: action.area, drillCell: same ? state.drillCell : null };
+      return {
+        ...state,
+        area: action.area,
+        areaLabel: action.label ?? null,
+        point: action.point ?? null,
+        drillCell: same ? state.drillCell : null,
+        day: same ? state.day : null,
+      };
     }
     case "setPeriod":
       return { ...state, period: action.period, drillCell: action.period === state.period ? state.drillCell : null };
     case "setScale":
       return { ...state, scale: action.scale };
+    case "setSensor":
+      return { ...state, sensor: action.sensor, drillCell: action.sensor === state.sensor ? state.drillCell : null };
+    case "setMinFrp":
+      return { ...state, minFrp: action.minFrp, drillCell: action.minFrp === state.minFrp ? state.drillCell : null };
+    case "setRelevance":
+      return {
+        ...state,
+        relevance: action.relevance,
+        drillCell: action.relevance === state.relevance ? state.drillCell : null,
+      };
     case "setMetric":
       return { ...state, metric: action.metric };
     case "setYears": {
@@ -85,6 +142,20 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       return { ...state, drillCell: action.cell };
     case "undrill":
       return { ...state, drillCell: null };
+    case "openMonth": {
+      const same = state.selected?.year === action.year && state.selected.month === action.month;
+      return {
+        ...state,
+        selected: { year: action.year, month: action.month },
+        calendarView: "month",
+        day: same ? state.day : null,
+        drillCell: same ? state.drillCell : null,
+      };
+    }
+    case "showYears":
+      return { ...state, calendarView: "years", day: null };
+    case "selectDay":
+      return { ...state, day: action.day };
   }
 }
 

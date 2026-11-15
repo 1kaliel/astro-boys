@@ -8,6 +8,9 @@ export type HotspotsRequest = {
   period: Period;
   /** Every detection, not only those that pass the main filter (the ones the calendar counts). */
   includeAll: boolean;
+  /** Intensity (minimum FRP, MW) and relevance (lowest confidence class); defaults keep everything. */
+  minFrp?: number;
+  relevance?: "l" | "n" | "h";
 };
 
 /** Answer of `GET /api/hotspots/count` (app/backend/astro_dashboard/api.py). */
@@ -22,6 +25,8 @@ export type HotspotsCount = {
   end: string;
   period: Period;
   include_all: boolean;
+  min_frp?: number | null;
+  min_confidence?: "l" | "n" | "h";
 };
 
 /**
@@ -39,6 +44,8 @@ export function hotspotsQuery(request: HotspotsRequest): string {
     period: request.period,
   });
   if (request.includeAll) params.set("include_all", "true");
+  if (request.minFrp) params.set("min_frp", String(request.minFrp));
+  if (request.relevance && request.relevance !== "l") params.set("min_confidence", request.relevance);
   return params.toString();
 }
 

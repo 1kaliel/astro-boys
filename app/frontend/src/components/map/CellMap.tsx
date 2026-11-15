@@ -27,7 +27,8 @@ import {
 } from "../../lib/grid";
 import { prefersReducedMotion, readTokens, useColorScheme, useMediaQuery, type ColorScheme } from "../../lib/hooks";
 import { drillStep, rampStep } from "../../lib/scale";
-import { PILOT_BOUNDS } from "../../state/dashboard";
+import { PILOT_BOUNDS, type PointSearch } from "../../state/dashboard";
+import { circleGeoJSON, formatPointCoord } from "./coords";
 import { blockBounds, blockGeoJSON, l3GeoJSON, nativeDetections, satelliteName, type DrillCellProps } from "./drill";
 import {
   GLOBE_FLY_IN_BELOW_ZOOM,
@@ -130,8 +131,15 @@ type CellMapProps = {
   onDrill: (cell: string) => void;
   /** "September 2013": the month on the map, for the focus chip. */
   monthLabel: string | null;
+  /** What a cell value counts, for the chips: "VIIRS-equivalent hotspots" or "native Aqua MODIS detections". */
+  countLabel?: string;
   /** True while the user draws an area: no focus chip (the drawing hint takes its place). */
   suppressFocus?: boolean;
+  /** Coordinate search: its point (marker) and circle (dashed). The box is the area, drawn by the area outline. */
+  point?: PointSearch | null;
+  /** "Pick on map": the next click gives its coordinates to `onPick` instead of opening a drill-down. */
+  picking?: boolean;
+  onPick?: (lat: number, lon: number) => void;
 };
 
 type Hover = { lng: number; lat: number } & (
@@ -144,7 +152,7 @@ const isTrue = (value: unknown) => value === true || value === "true";
 /** GeoJSON properties come back from MapLibre serialized: a null may arrive as missing or as "null". */
 const countOf = (value: unknown) => (value == null || value === "null" ? null : Number(value));
 
-export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDrill, monthLabel, suppressFocus }: CellMapProps) {
+export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDrill, monthLabel, countLabel = "VIIRS-equivalent hotspots", suppressFocus, point = null, picking = false, onPick }: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap(scheme);
   // The data layers go under the basemap's place names (the offline style has none: then on top).
@@ -200,6 +208,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
   // Zero detections are not drawn: "no detection" (never "no fire"), and empty areas stay empty.
   const cellData = useMemo(() => cellsToGeoJSON(cells.filter((cell) => cell.value > 0)), [cells]);
   const areaData = useMemo(() => boundsToGeoJSON(area), [area]);
+  const circleData = useMemo(() => circleGeoJSON(point), [point]);
   // The L2 cells of the area, one outline each: what the calendar and KPIs sum, drawn on the map.
   const areaCellData = useMemo(() => cellOutlinesGeoJSON(cellsInBounds(area)), [area]);
 
@@ -321,11 +330,16 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
     updateFocus(event.viewState.longitude, event.viewState.latitude, event.viewState.zoom);
   // The popup is not shown for the cell the chip already describes.
   const hoverId = hover ? (hover.kind === "l2" ? hover.cell.id : hover.id) : null;
-  const popup = hover && hoverId !== focusId ? hover : null;
+  const popup = hover && !picking && hoverId !== focusId ? hover : null;
 
   // A click on an L2 cell, or on a neighbor in the drill-down, subdivides it. A click on an L3 cell (the deepest
   // level) or on the target shows its popup, which is how a touch screen reads a cell.
   const onClick = (event: MapLayerMouseEvent) => {
+    // Picking a point for the coordinate search wins over everything else, on the flat map and on the globe.
+    if (picking && onPick) {
+      onPick(event.lngLat.lat, event.lngLat.lng);
+      return;
+    }
     // Seen from afar on the globe a cell is a few pixels: a click on the study area flies into it.
     const zoom = mapRef.current?.getZoom() ?? 0;
     if (projection === "globe" && !drill && zoom < GLOBE_FLY_IN_BELOW_ZOOM) {
@@ -354,7 +368,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
     }
     return (
       <>
-        Cell {id}: <strong>{formatCount(cell.value)}</strong> VIIRS-equivalent hotspots{month}
+        Cell {id}: <strong>{formatCount(cell.value)}</strong> {countLabel}{month}
         {cell.estimated && " · Estimated from MODIS"}
         {cell.partial && " · Partial month"}
         <br />
@@ -424,7 +438,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
             attribution?.removeAttribute("open");
           }
         }}
-        cursor={hover ? "pointer" : "grab"}
+        cursor={picking ? "crosshair" : hover ? "pointer" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-right" showCompass={false} />
@@ -461,6 +475,26 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
             paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }}
           />
         </Source>
+        {/* Coordinate search: the circle of the radius, dashed, inside the box (the area outline above). */}
+        <Source id="point-circle" type="geojson" data={circleData}>
+          <Layer
+            id="point-circle-halo"
+            type="line"
+            layout={{ visibility: drill ? "none" : "visible" }}
+            paint={{ "line-color": colors["--color-surface"], "line-width": 4, "line-opacity": 0.7 }}
+          />
+          <Layer
+            id="point-circle-line"
+            type="line"
+            layout={{ visibility: drill ? "none" : "visible" }}
+            paint={{ "line-color": colors["--viz-selection"], "line-width": 1.5, "line-dasharray": [3, 2] }}
+          />
+        </Source>
+        {point && !drill && (
+          <Marker longitude={point.lon} latitude={point.lat} anchor="center" style={{ pointerEvents: "none" }}>
+            <span className="map-point-marker" role="img" aria-label={`Searched point ${formatPointCoord(point.lat)}, ${formatPointCoord(point.lon)}`} />
+          </Marker>
+        )}
         {/* Globe: the study area, the only place with data, dashed and labeled. Outside it nothing is drawn. */}
         <Source id="study" type="geojson" data={STUDY_DATA}>
           <Layer
@@ -558,7 +592,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
           >
             {popup.kind === "l2" && (
               <>
-                <strong>{formatCount(popup.cell.value)}</strong> VIIRS-equivalent hotspots
+                <strong>{formatCount(popup.cell.value)}</strong> {countLabel}
                 <br />
                 Cell {popup.cell.id}
                 {popup.cell.estimated && " · Estimated from MODIS"}

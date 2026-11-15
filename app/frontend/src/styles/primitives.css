@@ -34,31 +34,30 @@
   --blue-700: #0d366b;
 
   /*
-   * Magma: the sequential ramp of the heatmap and the map (hotspot counts). Sampled from the perceptually uniform
-   * magma colormap at even lightness steps (L* 94 to 18), palest first like the blue ramp.
+   * Thermal (kept under the magma-* names): the sequential ramp of the heatmap and the map (hotspot counts). Thermal heat ramp, pale yellow through orange and red to dark crimson (L* 95 to 12), palest first like the blue ramp.
    * Checked by `uv run python scripts/check_viz_ramp.py` (lightness order, color vision deficiencies, no-data, surfaces).
    */
-  --magma-100: #fcf0b2;
-  --magma-200: #febf84;
-  --magma-300: #fc8961;
-  --magma-400: #e85362;
-  --magma-500: #b2357b;
-  --magma-600: #752181;
-  --magma-700: #3b0f70;
+  --magma-100: #fff3b0;
+  --magma-200: #fdc766;
+  --magma-300: #f6903d;
+  --magma-400: #e0501f;
+  --magma-500: #b32a1a;
+  --magma-600: #7a1418;
+  --magma-700: #3f0b12;
 
   /*
    * Calendar theme (an island inside the dashboard, see calendar.css). Ember: cream, peach, orange, terracotta and
    * earth red, even lightness steps (L* 97 to 22). Petrol: the ink and the active controls. Ash: the light gray plane.
    * Checked by `uv run python scripts/check_viz_ramp.py --theme calendar`.
    */
-  --ember-100: #fdf7e8;
-  --ember-200: #f7cca3;
-  --ember-300: #f09f5d;
-  --ember-400: #dc7436;
-  --ember-500: #c14a2a;
-  --ember-600: #92321d;
-  --ember-700: #661b10;
-  --ember-zero: #fffcf4; /* a valid zero: paler than the first step, and always printed as "0" */
+  --ember-100: #fff3b0;
+  --ember-200: #fdc766;
+  --ember-300: #f6903d;
+  --ember-400: #e0501f;
+  --ember-500: #b32a1a;
+  --ember-600: #7a1418;
+  --ember-700: #3f0b12;
+  --ember-zero: #fffaf0; /* a valid zero: paler than the first step, and always printed as "0" */
 
   --petrol-700: #0e4a54; /* ink, selection and focus */
   --petrol-600: #176773; /* active controls */

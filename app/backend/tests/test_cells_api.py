@@ -122,3 +122,39 @@ def test_missing_data_root_returns_503(tmp_path, monkeypatch):
 def test_invalid_period_and_month_are_rejected(client):
     assert client.get("/api/cells", params={"year": 2005, "month": 1, "period": "X"}).status_code == 422
     assert client.get("/api/cells", params={"year": 2005, "month": 13}).status_code == 422
+
+
+def test_sensor_layers_serve_native_counts_per_satellite(tmp_path, monkeypatch):
+    def row(cell, year, raw_aqua, raw_snpp):
+        base = list(_row(*cell, year, 1, 99.0, raw_snpp=raw_snpp))
+        base[16] = raw_aqua  # raw_aqua
+        return tuple(base)
+
+    rows = [
+        row(CELLS[0], 2013, 40, 8),
+        row(CELLS[1], 2013, None, None),  # no native data from either satellite: left out
+        row(CELLS[0], 2005, 5, None),
+    ]
+    _write_calendar(tmp_path, rows)
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    monkeypatch.delenv("ASTRO_DATASET_VERSION", raising=False)
+    client = TestClient(app)
+
+    harmonized = client.get("/api/cells", params={"year": 2013, "month": 1}).json()
+    assert harmonized["sensor"] == "harmonized"
+    assert [c["value"] for c in harmonized["cells"]] == [99.0, 99.0]
+
+    snpp = client.get("/api/cells", params={"year": 2013, "month": 1, "sensor": "snpp"}).json()
+    assert snpp["sensor"] == "snpp"
+    assert snpp["cells"] == [{"id": CELLS[0][0], "value": 8.0, "estimated": False, "partial": False}]
+
+    aqua = client.get("/api/cells", params={"year": 2013, "month": 1, "sensor": "aqua"}).json()
+    assert [c["value"] for c in aqua["cells"]] == [40.0]
+    assert aqua["breaks"] != snpp["breaks"]  # each layer has its own classes
+
+    # a satellite with no data in that month: no cells (missing, never zero)
+    assert client.get("/api/cells", params={"year": 2005, "month": 1, "sensor": "snpp"}).json()["cells"] == []
+    # without a month the latest month WITH data of that satellite is used
+    assert client.get("/api/cells", params={"sensor": "aqua"}).json()["year"] == 2013
+    assert client.get("/api/cells", params={"sensor": "n20"}).status_code == 503
+    assert client.get("/api/cells", params={"sensor": "viirs"}).status_code == 422

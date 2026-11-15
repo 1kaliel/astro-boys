@@ -1,0 +1,355 @@
+/*
+ * Month and day levels of the burning calendar (redesign). Tokens only, inside the calendar theme island
+ * (`.calendar-theme`, calendar.css): plane, petrol ink, ember ramp. Media queries use the system breakpoints.
+ */
+
+/* ---- Header: back to the years, month name with previous / next ---------------------------------------- */
+
+.month-view-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.month-view-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.month-view-title {
+  min-width: calc(5 * var(--space-12) / 2);
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+}
+
+.month-view-title:focus-visible {
+  outline: var(--size-px-2) solid var(--color-ring);
+  outline-offset: var(--size-px-2);
+  border-radius: var(--radius-sm);
+}
+
+.month-view-step {
+  min-width: var(--control-size);
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.month-view-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(4 * var(--space-12)), 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.month-view-total {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.month-view-total dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.month-view-total dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-view-total-unit {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+/* ---- Body: the month, and the day details on its right (wide) or as a bottom sheet (narrow) --------------- */
+
+.month-view-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.month-view-main {
+  min-width: 0;
+}
+
+@media (min-width: 56rem) {
+  .month-view-body.has-details {
+    grid-template-columns: minmax(0, 1fr) minmax(calc(4.5 * var(--space-12)), calc(6 * var(--space-12)));
+    align-items: start;
+  }
+}
+
+.month-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: opacity var(--duration-fast) ease;
+}
+
+.month-chart.is-refreshing {
+  opacity: var(--viz-dim-opacity);
+}
+
+/* ---- The grid: Monday to Sunday ------------------------------------------------------------------------- */
+
+.month-grid-wrap {
+  container: month-grid / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: calc(7 * 1.6 * var(--space-12) + 6 * var(--space-1));
+}
+
+.month-weekdays,
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.month-weekdays span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.month-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: var(--size-target-min);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--cal-zero);
+  color: var(--cal-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+button.month-day {
+  cursor: pointer;
+}
+
+.month-day-blank {
+  background: transparent;
+}
+
+.month-day-num {
+  align-self: flex-start;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.month-day-count {
+  margin-bottom: auto;
+  margin-top: auto;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+/* Valid zero: the palest fill and a hairline, like the year view. "No detection", never "no fire". */
+.month-day-zero {
+  box-shadow: inset 0 0 0 1px var(--cal-line);
+}
+
+.month-day-zero .month-day-count {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+/* The darkest steps take white text. */
+.month-day.is-dark {
+  color: var(--cal-mark);
+}
+
+/* After the last day of data: hatched, no number. Never drawn as zero. */
+.month-day-nodata {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--cal-hatch) 0 var(--size-px-2),
+    var(--cal-nodata-bg) var(--size-px-2) calc(3 * var(--size-px-2))
+  );
+  color: var(--color-text-secondary);
+}
+
+.month-day-skeleton {
+  background: var(--color-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--cal-line);
+  color: var(--color-text-secondary);
+}
+
+/* Latest day with data: an ink bar along the bottom and the word "latest". */
+.month-day.is-latest::after,
+.month-chip-latest::after {
+  content: "";
+  position: absolute;
+  right: 15%;
+  bottom: var(--size-px-2);
+  left: 15%;
+  height: var(--size-px-2);
+  border-radius: var(--radius-full);
+  background: var(--cal-ink);
+}
+
+.month-day.is-dark.is-latest::after {
+  background: var(--cal-mark);
+}
+
+.month-day-latest {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+.month-chip-latest {
+  background: var(--viz-seq-2);
+}
+
+/* Selected day: the same petrol outline with a white edge as the selected month. */
+.month-day.is-selected {
+  outline: calc(1.25 * var(--size-px-2)) solid var(--cal-ink);
+  outline-offset: calc(-1.25 * var(--size-px-2));
+  box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--cal-mark);
+}
+
+button.month-day:hover {
+  box-shadow: inset 0 0 0 var(--size-px-2) var(--cal-ink);
+}
+
+button.month-day:focus-visible {
+  outline: var(--size-px-2) solid var(--color-ring);
+  outline-offset: var(--size-px-2);
+  z-index: var(--layer-raised);
+}
+
+/* Small cells (a phone, or the day details open beside the grid): the "latest" word goes, the bar stays. */
+@container month-grid (max-width: 28rem) {
+  .month-day-latest {
+    display: none;
+  }
+
+  .month-day-count {
+    font-size: var(--font-size-xs);
+  }
+}
+
+.month-legend-segment {
+  padding: var(--space-1);
+}
+
+/* ---- Day details ---------------------------------------------------------------------------------------- */
+
+.day-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  font-size: var(--font-size-sm);
+}
+
+.day-details p {
+  margin: 0;
+}
+
+.day-details-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.day-details-title {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.day-details-title:focus-visible {
+  outline: var(--size-px-2) solid var(--color-ring);
+  outline-offset: var(--size-px-2);
+}
+
+.day-details-count {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.day-details-source,
+.day-details-note {
+  color: var(--color-text-secondary);
+}
+
+.day-details-subtitle {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.day-details-passes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-pass {
+  padding: var(--space-2) var(--space-3);
+  border-left: var(--size-px-2) solid var(--cal-ink);
+  background: var(--cal-plane);
+  font-variant-numeric: tabular-nums;
+}
+
+.day-pass-title {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Narrow screens: a bottom sheet over the page, scrolling on its own. */
+@media (max-width: 56rem) {
+  .day-details {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--layer-overlay);
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .month-chart {
+    transition: none;
+  }
+}
