@@ -112,8 +112,20 @@
 
 .skyline-legend {
   display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.skyline-legend-item {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/* Zero and no data reuse the calendar's chips (calendar.css), so the Skyline and the calendar share one key. */
+.skyline-chip {
+  font-style: normal;
 }
 
 .skyline-swatch {

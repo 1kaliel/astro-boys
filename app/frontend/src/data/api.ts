@@ -272,8 +272,15 @@ export type DailyHotspotsResponse = {
   start: string;
   end: string;
   cells: number;
-  /** Native (not harmonized) counts of one sensor. Days without detections are not listed: they are zero days. */
+  /**
+   * Native (not harmonized) counts of one sensor, on the days it was observing. A day of the range that is in neither
+   * list is a measured zero, but only when `coverage_checked` is true.
+   */
   days: { date: string; count: number }[];
+  /** Days the sensor was not observing (coverage_daily): no data, never zero. `count`: detections recorded anyway. */
+  missing_days: { date: string; status: "missing" | "not_operating"; count: number }[];
+  /** False when the coverage could not be read: then no day without detections is a verified zero. */
+  coverage_checked: boolean;
 };
 
 export function hotspotsDailyUrl(
