@@ -23,6 +23,7 @@ import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from ".
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
 import { MonthFilter } from "./MonthFilter";
+import { MonthView } from "./MonthView";
 import { YearPresets } from "./YearPresets";
 import {
   anomalyText,
@@ -167,7 +168,8 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     },
     [hidden, scale, anomaly],
   );
-  const onSelect = useCallback((year: number, month: number) => dispatch({ type: "select", year, month }), [dispatch]);
+  // A month opens its days (month view); openMonth also selects it, so the map follows.
+  const onSelect = useCallback((year: number, month: number) => dispatch({ type: "openMonth", year, month }), [dispatch]);
 
   const selectedHasData = state.selected
     ? series.some((row) =>
@@ -409,6 +411,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
  * The page loads the calendar once (`useCalendarDataset`) and shares it with the KPI row.
  */
 export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: () => void }) {
+  const [state] = useDashboard();
   if (load.status === "loading") {
     return (
       <p className="calendar-status" role="status">
@@ -424,5 +427,7 @@ export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: 
       </div>
     );
   }
+  // Second level: the days of the selected month (native detections), with the month's harmonized total.
+  if (state.calendarView === "month" && state.selected) return <MonthView dataset={load.dataset} />;
   return <CalendarView dataset={load.dataset} refreshing={load.refreshing} />;
 }
