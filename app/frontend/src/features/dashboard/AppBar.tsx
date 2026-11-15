@@ -137,7 +137,7 @@ export function AppBar({ apiStatus, simulated, modelVersion, tourSteps = TOUR_ST
           </div>
           {/* The name alone could read as live fire alerts: the subtitle always says what the app is. */}
           <p className="app-subtitle hh-subtitle">
-            <span className="hh-subtitle-full">Hotspot calendar for Northeast Brazil, 2002 to present · not live alerts</span>
+            <span className="hh-subtitle-full">Explorer · Northeast Brazil, 2002 to present · not live alerts</span>
             <span className="hh-subtitle-short">Hotspot calendar · not live alerts</span>
           </p>
         </div>

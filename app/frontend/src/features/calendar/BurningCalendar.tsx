@@ -24,7 +24,6 @@ import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from ".
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
 import { MonthFilter } from "./MonthFilter";
-import { MonthView } from "./MonthView";
 import { YearPresets } from "./YearPresets";
 import {
   anomalyText,
@@ -441,7 +440,6 @@ export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: 
       </div>
     );
   }
-  // Second level: the days of the selected month (native detections), with the month's harmonized total.
-  if (state.calendarView === "month" && state.selected) return <MonthView dataset={load.dataset} />;
+  // The days of the selected month live in the explorer sidebar (MonthView); the timeline always shows the years.
   return <CalendarView dataset={load.dataset} refreshing={load.refreshing} />;
 }

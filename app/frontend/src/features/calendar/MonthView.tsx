@@ -38,8 +38,11 @@ import {
 
 const MAX_KEY_STEPS = 31;
 
-/** Month level of the calendar: the days of one month, native detections of one satellite (GET /api/daily). */
-export function MonthView({ dataset }: { dataset: CalendarDataset }) {
+/**
+ * The days of one month, native detections of one satellite (GET /api/daily). `compact` (the explorer sidebar):
+ * no back button and no month steps, the sidebar's "When" step moves the month.
+ */
+export function MonthView({ dataset, compact }: { dataset: CalendarDataset; compact?: boolean }) {
   const [state, dispatch] = useDashboard();
   // The caller renders this view only with a selected month.
   const { year, month } = state.selected ?? { year: dataset.lastYear, month: 12 };
@@ -160,7 +163,8 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
   const total = data ? nativeTotal(cells) : null;
 
   return (
-    <div className="calendar month-view" onKeyDown={onKeyDown}>
+    <div className={cx("calendar month-view", compact && "is-compact")} onKeyDown={onKeyDown}>
+      {!compact && (
       <div className="month-view-head">
         <Button className="month-view-back" onClick={showYears}>
           <span aria-hidden="true">←</span> All years
@@ -187,6 +191,7 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
           </Button>
         </div>
       </div>
+      )}
 
       <dl className="month-view-totals">
         <div className="month-view-total">
