@@ -30,7 +30,7 @@ type GlobeViewProps = {
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
 const TOKENS = [...SEQ_TOKENS, "--viz-selection", "--color-border-strong"] as const;
 /** Where the camera starts: the pilot extent, Northeast Brazil. Altitude is a fraction of the globe radius. */
-const HOME = { lat: -10, lng: -41, altitude: 1.1 };
+const HOME = { lat: -10, lng: -41, altitude: 1.4 };
 const TRANSPARENT = "rgba(0,0,0,0)";
 
 /**

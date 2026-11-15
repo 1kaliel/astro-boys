@@ -78,7 +78,7 @@ export function DashboardPage() {
           ) : (
             <div className="map-collapsed">
               <p>The map shows the 0.25° cells of the selected month and lets you draw the area.</p>
-              <Button onClick={() => setMapOpen(true)}>Show map</Button>
+              <Button className="button-primary" onClick={() => setMapOpen(true)}>Show map</Button>
             </div>
           )}
         </Card>

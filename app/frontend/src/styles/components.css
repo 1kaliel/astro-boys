@@ -10,9 +10,10 @@
   --card-padding: var(--space-4);
   --card-shadow: var(--shadow-sm);
 
-  --button-bg: var(--color-surface-raised);
+  /* Secondary button: transparent with an accent border. The primary one (.button-primary) is a solid accent. */
+  --button-bg: transparent;
   --button-fg: var(--color-text-primary);
-  --button-border: var(--color-border-strong);
+  --button-border: var(--color-accent);
   --button-radius: var(--radius-md);
   --button-padding: var(--space-1) var(--space-3);
 
@@ -97,7 +98,38 @@
 }
 
 .button:hover {
-  border-color: var(--color-text-secondary);
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-soft);
+}
+
+.button-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.button-primary:hover {
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-hover);
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  border-color: var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* A focus ring that shows on every interactive control (keyboard only). */
+.button:focus-visible,
+.segmented-item:focus-visible,
+.select-trigger:focus-visible,
+.chip:focus-visible,
+.tabs-tab:focus-visible {
+  outline: var(--size-px-2) solid var(--color-ring);
+  outline-offset: var(--size-px-2);
 }
 
 .icon-button {
@@ -141,9 +173,12 @@
   border-inline-start: 0;
 }
 
+/* Selected: an accent wash and an accent border, so five groups pressed at once do not turn the page red. */
 .segmented-item[data-pressed] {
-  background: var(--color-text-primary);
-  color: var(--color-surface);
+  background: var(--color-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
 }
 
 .select-trigger,
@@ -194,11 +229,17 @@
 }
 
 .select-item[data-highlighted] {
-  background: var(--color-page);
+  background: var(--color-accent-soft);
 }
 
 .select-item[data-selected] {
+  box-shadow: inset 2px 0 0 var(--color-accent);
   font-weight: var(--font-weight-semibold);
+}
+
+.select-trigger[data-popup-open],
+.chip[aria-expanded="true"] {
+  border-color: var(--color-accent);
 }
 
 .number-field {
@@ -341,7 +382,7 @@
 }
 
 .tabs-tab[data-active] {
-  border-bottom-color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
   color: var(--color-text-primary);
 }
 

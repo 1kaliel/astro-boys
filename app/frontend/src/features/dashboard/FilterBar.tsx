@@ -123,7 +123,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
           </p>
         )}
         <div className="card-actions">
-          <Button type="submit" form={formId}>
+          <Button className="button-primary" type="submit" form={formId}>
             Apply
           </Button>
           <Button onClick={() => apply(PILOT_BOUNDS)}>Reset to pilot</Button>

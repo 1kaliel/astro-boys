@@ -13,7 +13,7 @@
   --cal-ink-soft: var(--petrol-500);
   --cal-line: var(--ash-200);
   --cal-hatch: var(--ash-300);
-  --cal-active: var(--petrol-600);
+  --cal-active: var(--crimson-700); /* active month chips: interface accent, not a data color */
   --cal-on-active: var(--neutral-0);
   --cal-zero: var(--ember-zero);
   --cal-nodata-bg: var(--ash-100);

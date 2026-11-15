@@ -22,6 +22,28 @@
   --neutral-1000: #0b0b0b; /* light primary ink */
   --black-alpha-40: rgb(0 0 0 / 0.4); /* modal backdrop */
 
+  /*
+   * Crimson Observatory: the identity of the interface (the dark theme is built from it). These are interface colors:
+   * never a data scale, and red does not mean "more hotspots" or "alert". Contrast on navy-900: slate-300 7.6,
+   * slate-400 5.3, crimson-500 5.3; on crimson-500 navy-950 text is 6.0. Crimson-700 is the same hue made dark
+   * enough for links and borders on the light theme (6.5 on the light surface).
+   */
+  --navy-950: #080d14; /* page */
+  --navy-900: #141c28; /* cards, panels, menus */
+  --navy-800: #1d2b38; /* raised surfaces */
+  --navy-700: #263443; /* borders and dividers */
+  --navy-600: #34465a; /* stronger borders (inputs, axes of controls) */
+  --slate-100: #f2f5f7; /* primary text */
+  --slate-300: #9eafbd; /* secondary text */
+  --slate-400: #7e92a3; /* captions and axis labels */
+  --crimson-500: #ff4d5a; /* main accent */
+  --crimson-600: #e63e4d; /* accent hover */
+  --crimson-700: #b3202f; /* accent on the light theme */
+  --crimson-800: #8f1a26; /* accent hover on the light theme */
+  --crimson-alpha-10: #ff4d5a1a; /* selection wash, dark theme */
+  --crimson-700-alpha-10: rgb(179 32 47 / 0.1); /* selection wash, light theme */
+  --coral-400: #ff9466; /* complementary highlight */
+
   /* Blue: sequential ramp and negative diverging arm (documented steps) */
   --blue-100: #cde2fb;
   --blue-200: #9ec5f4;

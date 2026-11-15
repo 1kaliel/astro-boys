@@ -242,3 +242,28 @@ top) is kept for the L3 drill-down only if MapLibre is too slow there.
 ## Open items
 
 - Texture mode tokens (step 4 of the plan).
+
+## Crimson Observatory (interface identity)
+
+The interface identity is a deep-navy dark theme with a crimson accent. It lives in the existing layers: raw values in
+`primitives.css` (`--navy-*`, `--slate-*`, `--crimson-*`, `--coral-400`), the roles in `semantic.css`
+(`--color-accent`, `--color-accent-hover`, `--color-accent-soft`, `--color-accent-secondary`, `--color-on-accent`), and
+the component rules in `components.css`.
+
+| Role | Dark | Light |
+|------|------|-------|
+| Page / surface / raised | `#080D14` / `#141C28` / `#1D2B38` | unchanged warm neutrals |
+| Border / strong border | `#263443` / `#34465A` | unchanged |
+| Text primary / secondary / muted | `#F2F5F7` / `#9EAFBD` / `#7E92A3` | unchanged |
+| Accent / hover | `#FF4D5A` / `#E63E4D` | `#B3202F` / `#8F1A26` (dark enough for text and borders) |
+| Complementary | `#FF9466` | `--orange-500` |
+
+Rules:
+
+- The accent is for identity and interaction only: primary buttons (`.button-primary`, solid), secondary buttons
+  (transparent, accent border), the active tab underline, selected options (an accent wash and border), links and the
+  focus ring. It never colors a paragraph, and it does not mean "more hotspots" or "alert".
+- The scientific scales are untouched: magma, ember, the diverging ramps, the marks for estimated, partial and no-data.
+  `viz.css` did not change; `scripts/check_viz_ramp.py` still passes for both themes.
+- The calendar island keeps its ember scale, petrol ink and ash plane; only its active controls (month chips) take the
+  accent (`--cal-active`).
