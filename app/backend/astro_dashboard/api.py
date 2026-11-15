@@ -1,7 +1,9 @@
-"""HTTP API for the dashboard (task D2).
+"""HTTP API for the dashboard (tasks D2 and D6).
 
 `GET /api/calendar` returns the monthly series of an area: the harmonized counts of its cells summed, with the
 origin of each month, the historical median and the anomalies of the sum. See calendar.py for the rules.
+`GET /api/hotspots/count` and `GET /api/hotspots.csv` give the native hotspots of the same cells and dates
+(hotspots.py).
 """
 
 from __future__ import annotations
@@ -9,11 +11,14 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import asdict
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from astro_dashboard import hotspots
 from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
 
@@ -164,3 +169,103 @@ def version(request: Request) -> dict:
         "image_model_version": os.environ.get("ASTRO_MODEL_VERSION") or None,
         "build": read_build_info(data_root_from_env()),
     }
+
+
+FIRST_DATE = date(2000, 1, 1)
+
+
+def _hotspot_query(
+    store: CalendarStore,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    start: date,
+    end: date,
+    period: str,
+    include_all: bool,
+) -> hotspots.HotspotQuery:
+    if west >= east or south >= north:
+        raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
+    if start > end:
+        raise HTTPException(status_code=422, detail="start must not be after end.")
+    if start < FIRST_DATE:
+        raise HTTPException(status_code=422, detail=f"start must be {FIRST_DATE.isoformat()} or later.")
+    cells = store.cells_in(Bounds(west=west, south=south, east=east, north=north))
+    if not cells:
+        raise HTTPException(status_code=422, detail="The selected area overlaps no 0.25 degree cell.")
+    return hotspots.HotspotQuery(cells=cells, start=start, end=end, period=period, include_all=include_all)
+
+
+class HotspotCountOut(BaseModel):
+    # Native hotspot detections (NASA FIRMS) of the area cells and dates; never "fires".
+    rows: int
+    max_rows: int
+    cells: int
+    start: date
+    end: date
+    period: Literal["ALL", "D", "N"]
+    include_all: bool
+
+
+@router.get("/hotspots/count", response_model=HotspotCountOut, tags=["hotspots"])
+def hotspots_count(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    start: Annotated[date, Query(description="First local solar date, YYYY-MM-DD")],
+    end: Annotated[date, Query(description="Last local solar date, YYYY-MM-DD")],
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+    period: Literal["ALL", "D", "N"] = "ALL",
+    include_all: bool = False,
+) -> HotspotCountOut:
+    query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
+    try:
+        rows = hotspots.count(query)
+    except hotspots.HotspotsUnavailable as error:
+        log.warning("Hotspots count failed: %s", error)
+        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+    return HotspotCountOut(
+        rows=rows,
+        max_rows=hotspots.max_rows(),
+        cells=len(query.cells),
+        start=start,
+        end=end,
+        period=period,
+        include_all=include_all,
+    )
+
+
+@router.get("/hotspots.csv", tags=["hotspots"], response_class=StreamingResponse)
+def hotspots_csv(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    start: Annotated[date, Query(description="First local solar date, YYYY-MM-DD")],
+    end: Annotated[date, Query(description="Last local solar date, YYYY-MM-DD")],
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+    period: Literal["ALL", "D", "N"] = "ALL",
+    include_all: bool = False,
+) -> StreamingResponse:
+    query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
+    try:
+        body = hotspots.export_csv(query)
+    except hotspots.Busy as error:
+        raise HTTPException(status_code=429, detail=str(error), headers={"Retry-After": "10"}) from error
+    except hotspots.TooManyRows as error:
+        raise HTTPException(status_code=413, detail=str(error)) from error
+    except hotspots.HotspotsUnavailable as error:
+        log.warning("Hotspots export failed: %s", error)
+        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+
+    box = "_".join(f"{v:g}" for v in (west, south, east, north))
+    suffix = "" if period == "ALL" else f"_{period}"
+    suffix += "_all-confidence" if include_all else ""
+    filename = f"astro-hotspots_{box}_{start.isoformat()}_{end.isoformat()}{suffix}.csv"
+    return StreamingResponse(
+        body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"},
+    )

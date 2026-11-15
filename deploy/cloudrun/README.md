@@ -23,6 +23,11 @@ Whatever the stack (Python, Node, static site behind a tiny server…), the imag
    records its `model_version` (label `astro.model_version`, env `ASTRO_MODEL_VERSION`, `/api/version`), and
    nothing but the calendar is baked. Added on 2026-11-15, asked by Kali: `processed/month_to_date/v1` (60 KB,
    the same days of earlier years for the unfinished month) is baked with the calendar, the same way.
+
+   **D6 (CSV):** set `ASTRO_HOTSPOTS_ROOT: "gs://<bucket>/astro/processed/hotspots/v1"` in `service.env`. The
+   `astro-dashboard` service account needs `roles/storage.objectViewer` on `processed/`
+   ([IAM](../../docs/cloud/iam-and-access.md)); Kali grants it. The request timeout is 300 s because large CSVs
+   are streamed; only the files of the requested years are read (about 60 to 90 MB per year).
 4. **Start fast** (under ~10 s) and **use ≤ 1 GiB RAM** by default (raise `--memory` in `deploy.sh` if needed).
 5. **Have a `/healthz` (or `/`) route** that returns 200 quickly.
 6. Contain **no secrets and no `.env`**. Add a `.dockerignore` excluding `.env`, `data/`, `.venv/`, `node_modules/`.

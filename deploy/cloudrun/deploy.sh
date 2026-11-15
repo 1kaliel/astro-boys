@@ -90,7 +90,7 @@ run gcloud run deploy "$RUN_SERVICE" \
   --service-account="$(dashboard_sa)" \
   --cpu=1 --memory=1Gi --concurrency=40 \
   --min-instances=0 --max-instances=3 \
-  --timeout=60 \
+  --timeout=300 \
   --labels=team=astro-boys,purpose=space-apps-2026 \
   "$auth_flag" "${env_args[@]}"
 
