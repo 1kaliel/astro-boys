@@ -319,7 +319,12 @@ function HeroFigures({ figures, failed }: { figures: RecordFigures | null; faile
         <dd>{figures ? formatCompact(figures.total) : pending}</dd>
       </div>
       <div>
-        <dt>Peak month{figures?.peak ? `, ${formatLegendCount(figures.peak.count)} hotspots` : ""}</dt>
+        <dt>
+          Peak month
+          {figures?.peak
+            ? `, ${formatLegendCount(figures.peak.count)} hotspots${figures.peak.estimated ? " (estimated from MODIS)" : ""}`
+            : ""}
+        </dt>
         <dd>{figures?.peak ? `${MONTHS_SHORT[figures.peak.month - 1]} ${figures.peak.year}` : pending}</dd>
       </div>
       <div>

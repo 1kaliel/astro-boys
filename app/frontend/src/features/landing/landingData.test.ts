@@ -77,7 +77,7 @@ describe("record figures", () => {
   it("sums the whole record, finds the peak month and counts months above usual", () => {
     const figures = recordFigures(MONTHS, 2011, 2013);
     expect(figures?.total).toBe(600 + 11 * 60 + 700 + 11 * 70 + 50 + 50 + 5000);
-    expect(figures?.peak).toEqual({ year: 2013, month: 3, count: 5000 });
+    expect(figures?.peak).toEqual({ year: 2013, month: 3, count: 5000, estimated: false });
     // Above the median of 100: Sep 2011 and Oct 2012 (the partial month is never judged).
     expect(figures?.above).toBe(2);
     expect(figures?.judged).toBe(26);

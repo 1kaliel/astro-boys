@@ -50,7 +50,7 @@ export type RecordFigures = {
   firstYear: number;
   lastYear: number;
   total: number;
-  peak: (YearMonth & { count: number }) | null;
+  peak: (YearMonth & { count: number; estimated: boolean }) | null;
   above: number;
   judged: number;
 };
@@ -65,7 +65,10 @@ export function recordFigures(months: readonly CalendarMonth[], firstYear: numbe
     firstYear,
     lastYear,
     total: total.value,
-    peak: peak && peak.count != null ? { year: peak.year, month: peak.month, count: peak.count } : null,
+    peak:
+      peak && peak.count != null
+        ? { year: peak.year, month: peak.month, count: peak.count, estimated: peak.isEstimated }
+        : null,
     above: usual.above,
     judged: usual.judged,
   };
