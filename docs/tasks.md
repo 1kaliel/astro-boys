@@ -46,10 +46,10 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
-| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ⬜ | Runs with `docker run` |
+| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ✅ | On `main` (FastAPI + React/Vite, design system, shared state) |
 | D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Guilherme + Cleber | Sat 23:00 | ⬜ | Function or endpoint + test |
 | D3 | Map with L2 cells; rectangle draw and lat/lon bounds → list of cells | Guilherme | Sat 23:00 | ⬜ | **Checkpoint A** |
-| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ⬜ | **Checkpoint A** |
+| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ✅ | **Checkpoint A**: on `main`, running on a synthetic fixture; real `calendar/v1` comes with D2 |
 | D5 | This month vs historical median card; date-range selector | Cleber | Sun 02:00 | ⬜ | |
 | D6 | CSV download of native hotspots for area + dates | Guilherme + Cleber | Sun 02:00 | ⬜ | **Checkpoint B** |
 | D7 | Map ↔ calendar linked by one shared state | Guilherme | Sun 02:00 | ⬜ | |
