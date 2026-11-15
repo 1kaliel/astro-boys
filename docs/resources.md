@@ -153,6 +153,7 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 | Results and write-up: the calibration, validation and final-test runs, `artifacts/metrics/`, `artifacts/figures/before_after_2012.*` (drawn from the pipeline's data, not generated) and the results sections of `docs/methodology.md` | AI coding assistant | Runs made and text drafted for Kali from the pipeline's outputs; no number is AI-generated |
 | Coordination for Kali: review of pull requests, integration of team branches (conflict resolution), the Cloud Run deploys of Nov 15 and their checks on the live site, the task board and the diary entries signed Kali that say so | AI coding assistant | Each step is in the diary; deploys and bucket uploads only with Kali's approval |
 | Submission draft (`docs/submission.md`, tasks S1 and S4) | AI coding assistant | Drafted for Kali and Jean from the team's documents; to be reviewed by them before it is pasted into the project page |
+| S4 plan-and-research-notes sentence in `docs/submission.md`, task-board update, and removal of a personal email address from the 14 November diary before the repository goes public | Claude Code (Anthropic) | Sentence drafted for Kali, who confirmed it; no data, model or result changed |
 
 ## D12 screenshot evidence assistance
 
