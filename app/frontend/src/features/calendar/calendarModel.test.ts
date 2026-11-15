@@ -422,10 +422,10 @@ describe("month names", () => {
     expect(new Set(long).size).toBe(12);
   });
 
-  it("are Portuguese when the locale is pt-BR (the calendar was asked for in Portuguese)", () => {
-    if (MONTH_LOCALE !== "pt-BR") return;
+  it("are English (the project language, required by the challenge)", () => {
+    expect(MONTH_LOCALE).toBe("en");
     expect(Array.from({ length: 12 }, (_, i) => monthShort(i + 1))).toEqual([
-      "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ]);
   });
 });

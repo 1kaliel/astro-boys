@@ -4,8 +4,8 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import type { CalendarDataset } from "../../data/calendarSource";
-import { useCalendarDataset } from "../../data/useCalendar";
-import { formatCount } from "../../lib/format";
+import type { CalendarLoad } from "../../data/useCalendar";
+import { MONTHS_LONG, MONTHS_SHORT, formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
 import { CalendarLegend } from "./CalendarLegend";
@@ -212,7 +212,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
       {!dataset.synthetic && (
         <p className="calendar-notice">
           {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
-          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} cells`}
+          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
           {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
           {refreshing && ". Updating…"}
         </p>
@@ -236,11 +236,11 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   );
 }
 
-/** Year x month heatmap of hotspot detections (task D4): loading, error, empty and ready states. */
-export function BurningCalendar() {
-  const [state] = useDashboard();
-  const [load, reload] = useCalendarDataset(state.area, state.period);
-
+/**
+ * Year x month heatmap of hotspot detections (task D4): loading, error, empty and ready states.
+ * The page loads the calendar once (`useCalendarDataset`) and shares it with the KPI row.
+ */
+export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: () => void }) {
   if (load.status === "loading") {
     return (
       <p className="calendar-status" role="status">

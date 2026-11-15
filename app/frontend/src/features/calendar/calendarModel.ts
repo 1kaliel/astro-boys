@@ -1,5 +1,5 @@
 import type { CalendarMonth } from "../../data/calendarSource";
-import { formatCompact, formatCount } from "../../lib/format";
+import { formatCount, formatLegendCount } from "../../lib/format";
 import type { Period } from "../../state/dashboard";
 import { monthLong, monthShort } from "./calendarText";
 
@@ -119,7 +119,7 @@ export function legendRanges(scale: ColorScale, steps: number = SEQ_BINS): Legen
   return lowers.map((from, bin) => {
     const last = bin === lowers.length - 1;
     const to = last ? scale.max : lowers[bin + 1];
-    const label = from === to ? formatCompact(from) : `${formatCompact(from)}–${formatCompact(to)}`;
+    const label = from === to ? formatLegendCount(from) : `${formatLegendCount(from)}–${formatLegendCount(to)}`;
     return { step: scaleStep(from, scale, steps), from, to, includesTo: last, label };
   });
 }

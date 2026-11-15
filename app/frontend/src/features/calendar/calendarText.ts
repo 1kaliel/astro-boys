@@ -3,11 +3,10 @@ import { MONTHS_LONG as MONTHS_LONG_EN, MONTHS_SHORT as MONTHS_SHORT_EN } from "
 /**
  * Language of the month names in the calendar (axis, month buttons, cell detail, screen-reader labels).
  *
- * The calendar was asked for in Portuguese (Jan, Fev, Mar, Abr, Mai, Jun, Jul, Ago, Set, Out, Nov, Dez). The rest of
- * the app, the repo and the submission are English, and the challenge requires English in every linked material, so
- * this is ONE constant: set it to "en" to bring the months back to English everywhere in the calendar.
+ * English, like the rest of the app, the repo and the submission (the challenge requires English in every linked
+ * material). Portuguese names stay below as a switch: set this to "pt-BR" to show them again.
  */
-export const MONTH_LOCALE: "pt-BR" | "en" = "pt-BR";
+export const MONTH_LOCALE: "pt-BR" | "en" = "en";
 
 const MONTHS_SHORT_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"] as const;
 const MONTHS_LONG_PT = [

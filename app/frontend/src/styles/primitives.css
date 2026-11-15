@@ -117,8 +117,19 @@
   --size-px-2: 2px;
   --size-swatch: 12px;
   --size-target-min: 24px; /* minimum cell and hit-target size */
+  --size-target-compact: 18px; /* heatmap cells on phones: 12 months must fit in about 300px */
   --size-panel-min: 320px;
   --size-container: 1200px;
+  --size-dashboard-max: 1600px;
+  --size-app-bar: 56px;
+  --size-heat-label: 40px; /* year column of the heatmap */
+  --size-era: 22px; /* era bar column of the heatmap (estimated / observed) */
+
+  /* Stacking layers. The app root is isolated (Base UI), so these only order things inside it. */
+  --layer-raised: 1;
+  --layer-sticky: 10;
+  --layer-overlay: 50;
+  --layer-popup: 60;
 
   /* Shape and motion */
   --radius-sm: 4px;

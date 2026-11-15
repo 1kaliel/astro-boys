@@ -3,7 +3,14 @@
 **Owner:** Guilherme and Cleber (backend and deploy), Jean (floater). **Stack:** FastAPI backend + React (Vite, TypeScript)
 single-page frontend, served from one container. Logged in the diary as `DECISION`.
 
-Full spec: [docs/spec/dashboard.md](../docs/spec/dashboard.md). Tasks and owners: [docs/tasks.md](../docs/tasks.md).
+Full spec: [docs/spec/dashboard.md](../docs/spec/dashboard.md). Design system: [docs/design-system.md](../docs/design-system.md).
+Tasks and owners: [docs/tasks.md](../docs/tasks.md).
+
+## What it shows
+
+App bar, one filter row (area, years, time of day, scale) that scopes every view, a KPI row (latest month vs the
+median, busiest month, year so far, months estimated from MODIS), the burning calendar (year × month heatmap) and the
+map of 0.25° cells for the selected month.
 
 ## What it must do
 
@@ -20,8 +27,11 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
 - D1 skeleton: `/healthz`, the built frontend, Dockerfile on `$PORT`.
 - D2 data access: `GET /api/calendar` reads `calendar/v1` from `ASTRO_DATA_ROOT`, sums the cells of an area and adds
   the historical median and anomalies of the sum (see [Calendar API](#calendar-api)).
+- D3 map and area selection: `GET /api/cells` (see [Map API](#map-api)), rectangle drawing, visible map area, lat/lon
+  bounds. The map is a separate chunk, loaded on demand (collapsed on phones).
 - D4 burning calendar: year × month heatmap that reads the API.
-- Not done: map and area selection (D3), "this month vs median" card (D5), CSV (D6), reading `gs://` directly (D8).
+- Dashboard layout: app bar, filter bar, KPI row (reads the same calendar answer as the heatmap), calendar and map.
+- Not done: "this month vs median" card with date picker (D5), CSV (D6), reading `gs://` directly (D8).
 
 ## Calendar API
 
@@ -59,6 +69,16 @@ GCS_BUCKET=<bucket> APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1
 ASTRO_DATA_ROOT=../data uv run uvicorn --app-dir backend astro_dashboard.main:app --port 8080     # from app/
 ```
 
+## Map API
+
+`GET /api/cells?year=&month=&period=ALL|D|N` returns `count_harmonized` per 0.25° cell for one month (the latest month
+when `year` and `month` are omitted), the flags `estimated` and `partial`, and `breaks`: fixed class limits (quantiles of
+every positive cell-month) so that months stay comparable on the map. The browser builds each cell's geometry from its
+ID (`lib/grid.ts`). Which cells belong to an area uses the same overlap rule as the calendar API, so the map and the
+calendar always talk about the same cells. `simulated: true` means the simulated table (`model_version` starting with
+`MOCK`): the UI shows a banner, and those numbers must never appear in a figure, the demo or the submission. Responses
+are gzip-compressed.
+
 Frontend without a backend: `VITE_CALENDAR_SOURCE=fixture npm run dev` reads a small file of **synthetic** numbers
 (rebuilt by `scripts/build_calendar_fixture.py`) and labels it "Simulated data".
 
@@ -67,9 +87,16 @@ Frontend without a backend: `VITE_CALENDAR_SOURCE=fixture npm run dev` reads a s
 ```text
 app/
   pyproject.toml, uv.lock     backend Python project (uv; separate from the pipeline in src/)
-  backend/astro_dashboard/    FastAPI app: main.py serves the API and the built frontend
+  backend/astro_dashboard/    FastAPI app: main.py (routes, static files), api.py + calendar.py (calendar), cells.py (map)
   backend/tests/              pytest for the backend
   frontend/                   React + Vite + TypeScript SPA (npm; package-lock.json committed)
+    src/styles/               design tokens (primitives, semantic, viz, components), calendar.css, layout.css
+    src/components/ui/        Base UI primitives styled with the tokens
+    src/components/viz/       KpiTile, Legend
+    src/components/map/       MapPanel (lazy chunk), CellMap, MapTools
+    src/features/calendar/    BurningCalendar (nivo heatmap), cells, table view, calendar model
+    src/features/dashboard/   DashboardPage, AppBar, FilterBar, KpiRow, AboutDialog
+    src/lib/ · data/ · state/ grid, metrics, format, theme · API clients · shared dashboard state
   Dockerfile, .dockerignore   one image: builds the frontend, runs uvicorn on $PORT
 ```
 
@@ -93,6 +120,20 @@ npm run dev                   # dev server on :5173, proxies /healthz and /api t
 ```
 
 Open http://localhost:8080 (built frontend) or http://localhost:5173 (dev server, backend on :8080).
+
+Without the real calendar, make the simulated table (from the repo root, not real data):
+`uv run astro-fire mock-calendar --bbox=-48.8,-18.4,-34.7,-1.0` writes `data/processed/calendar/mock/`; then start the
+backend with `ASTRO_DATASET_VERSION=mock`.
+
+**PowerShell (Windows):** `NAME=value command` is bash syntax and fails in PowerShell. Set the variables first; they
+last only for that terminal:
+
+```powershell
+cd app
+$env:ASTRO_DATA_ROOT = (Resolve-Path ..\data).Path
+$env:ASTRO_DATASET_VERSION = "mock"      # or "v1" (the default) for the real calendar
+uv run uvicorn --app-dir backend astro_dashboard.main:app --port 8080
+```
 
 ## Test and check
 

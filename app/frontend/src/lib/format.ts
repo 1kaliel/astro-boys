@@ -1,4 +1,11 @@
 const countFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const compactFormat = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+/** Auto-compact figure for tiles and legends: 1,284 · 12.9K · 1.2M. Null means "no data", never zero. */
+export function formatCompact(value: number | null | undefined): string {
+  if (value == null) return "No data";
+  return Math.abs(value) < 10_000 ? countFormat.format(value) : compactFormat.format(value);
+}
 const percentFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0, signDisplay: "always" });
 const signedFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0, signDisplay: "always" });
 
@@ -13,7 +20,7 @@ const compactWhole = new Intl.NumberFormat("en-US", { notation: "compact", maxim
 
 /** A short count for a legend: 1,438 -> "1.4K", 14,300 -> "14K", 299,915 -> "300K", 52 -> "52". One decimal
  * below 10 thousand, whole numbers above, so range labels stay short. */
-export function formatCompact(value: number): string {
+export function formatLegendCount(value: number): string {
   return (Math.abs(value) >= 10_000 ? compactWhole : compactOneDecimal).format(value);
 }
 
