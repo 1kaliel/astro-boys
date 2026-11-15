@@ -22,14 +22,18 @@ LAST_ARCHIVE_YEAR = 2025
 BBOX = (-48.8, -18.4, -34.7, -1.0)
 
 # Keep file row order for the stable source ID, even if DuckDB changes its scan parallelism.
-INGEST_SQL = """
+DEDUPLICATE_SQL = """
+CREATE OR REPLACE TEMP TABLE deduplicated AS
 WITH raw AS (
-    SELECT *, ordinality AS source_row
+    SELECT *
     FROM read_csv(?, header = true, all_varchar = true, parallel = false) WITH ORDINALITY
-), deduplicated AS (
-    SELECT * EXCLUDE (ordinality, source_row), min(source_row) AS source_row
-    FROM raw GROUP BY ALL
-), parsed AS (
+)
+SELECT * EXCLUDE (ordinality), min(ordinality) AS source_row, count(*) - 1 AS exact_duplicates
+FROM raw GROUP BY ALL
+"""
+
+INGEST_SQL = """
+WITH parsed AS (
     SELECT
         sha256(? || ':' || source_row::VARCHAR) AS hotspot_id,
         try_cast(latitude AS DOUBLE) AS latitude,
@@ -147,7 +151,11 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
     target = _local_target(settings, "hotspots")
     first, last = years
     manifest = Manifest(new_run_id("ingest"), "ingest", settings.redacted())
-    manifest.checks = {"local_years": years, "satellites": satellites, "bbox": BBOX}
+    duplicates_by_file: dict[str, int] = {}
+    manifest.checks = {
+        "local_years": years, "satellites": satellites, "bbox": BBOX,
+        "exact_duplicate_rows_by_file": duplicates_by_file,
+    }
     with tempfile.TemporaryDirectory(dir=target.parent) as temp, storage.connect(settings) as con:
         staging = Path(temp)
         shards = staging / "shards"
@@ -162,12 +170,17 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
             west, south, east, north = BBOX
             for year in range(max(first, start), min(last + 1, LAST_ARCHIVE_YEAR) + 1):
                 source, csv = _source(settings, sensor, year, staging)
-                manifest.add_input(source.as_posix())
                 print(f"Ingesting {csv.name}", flush=True)
+                con.execute(DEDUPLICATE_SQL, [str(csv)])
+                unique, duplicates = con.execute(
+                    "SELECT count(*), coalesce(sum(exact_duplicates), 0) FROM deduplicated"
+                ).fetchall()[0]
+                manifest.add_input(source.as_posix(), rows=unique + duplicates)
+                duplicates_by_file[csv.name] = duplicates
                 rows = con.sql(
                     INGEST_SQL.format(mir=mir, tir=tir),
                     params=[
-                        str(csv), csv.name, west, east, south, north,
+                        csv.name, west, east, south, north,
                         selected, instrument, first, last, csv.name,
                     ],
                 )
@@ -185,6 +198,7 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
             [inputs, str(output)],
         )
         output.rename(target)
+    manifest.checks["exact_duplicate_rows_dropped"] = sum(duplicates_by_file.values())
     return _finish(manifest, settings, target, count)
 
 

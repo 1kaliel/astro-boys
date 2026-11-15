@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from zipfile import ZipFile
 
 import duckdb
@@ -30,7 +32,16 @@ def test_near_midnight_deduplication_and_filtering(tmp_path, monkeypatch):
         with ZipFile(archive_dir / f"modis_{year}_all_countries.zip", "w") as archive:
             archive.writestr(f"modis/{year}/modis_{year}_Brazil.csv", MODIS_HEADER + rows)
 
-    assert batch.ingest(settings, (2012, 2012), ["Aqua"])["rows"] == 5
+    ingest = batch.ingest(settings, (2012, 2012), ["Aqua"])
+    assert ingest["rows"] == 5
+    assert ingest["exact_duplicate_rows_dropped"] == 1
+    assert ingest["exact_duplicate_rows_by_file"] == {
+        "modis_2012_Brazil.csv": 1,
+        "modis_2013_Brazil.csv": 0,
+    }
+    manifest = json.loads(Path(ingest["manifest"]).read_text(encoding="utf-8"))
+    assert [source["rows"] for source in manifest["inputs"]] == [8, 1]
+    assert manifest["checks"]["exact_duplicate_rows_dropped"] == 1
     result = batch.aggregate(settings)
     assert result["rows"] == 1
     with duckdb.connect() as con:

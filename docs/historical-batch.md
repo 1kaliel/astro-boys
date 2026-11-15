@@ -24,6 +24,7 @@ Outputs under `data/`:
   `cell_l2, year, month, daynight, satellite` with at least one detection that passes the main filter.
   `n_all_confidence` counts vegetation detections in that key across confidence classes.
 - `manifests/` records input checksums, row counts and output paths for both stages.
+  Ingest records raw input rows and exact duplicate rows removed before clipping, per file and in total.
 
 Both commands reject an existing version in the selected local data root. Keep simultaneous jobs on different
 data roots. After QA and coordination with Kali, publish the counts from a configured host:
@@ -32,5 +33,8 @@ data roots. After QA and coordination with Kali, publish the counts from a confi
 APPLY=1 ./scripts/sync_data.sh push processed cell_month_counts/v1
 APPLY=1 ./scripts/sync_data.sh push manifests
 ```
+
+For a run written to a different local directory, set `ASTRO_SYNC_DATA_ROOT` to that directory
+before running either sync command.
 
 Upload `hotspots/v1` separately when it is ready for the Dashboard release.
