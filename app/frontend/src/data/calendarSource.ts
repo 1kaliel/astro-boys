@@ -8,7 +8,7 @@ export type CalendarMonth = {
   year: number;
   month: number; // 1..12
   period: Period;
-  /** VIIRS-equivalent hotspot detections (never "fires"). Null = no estimate for this month, which is not zero. */
+  /** VIIRS-equivalent hotspot detections (never "fires"). Null = the month has no estimate (never zero). */
   count: number | null;
   /** 90% interval. Null = not delivered yet for an estimated month (never zero). Equal to `count` when observed. */
   ciLow: number | null;

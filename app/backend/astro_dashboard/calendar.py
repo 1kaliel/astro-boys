@@ -9,10 +9,14 @@ The data contract is docs/data-dictionary.md. The rules this module applies:
 * A month with no row anywhere in the extent has no data. A month with rows elsewhere in the extent counts as
   zero detections for cells of the area that have no row: an absent row means no detection by the source
   satellite (it does not prove there was no fire).
-* Nothing becomes zero by accident: an interval that the pipeline has not delivered yet stays `None`, and a
-  month whose cells have no estimate (count_harmonized is null) has no count, not a count of 0.
-* The variance of an area sum is `sum(var) x n^0.32` (docs/data-dictionary.md): errors of nearby cells are
-  correlated, so adding the variances as if the cells were independent makes the interval far too narrow.
+* The 90% interval of an area is approximate: errors of neighboring cells move together, so the summed
+  variance is widened by `n_cells ** 0.32` (docs/methodology.md, "Sums of cells"). One cell is not widened.
+* Nothing becomes zero by accident: an interval without the variance of every contributing cell stays `None`,
+  and so does the count of a month in which a contributing cell (or the whole extent) has no estimate, as in
+  the estimated partial months of 2002.
+* The unfinished month is compared with the same days of earlier years, from `month_to_date/v1` (days 1..N of
+  that month, summed over the area per year; a year with no row in the area counts as zero). A partial month
+  never gets the full-month median: without that table it has no median and no anomaly.
 """
 
 from __future__ import annotations
@@ -26,11 +30,11 @@ import duckdb
 
 CELL_SIZE_DEG = 0.25
 PERIODS = ("ALL", "D", "N")
-# 90% interval from the variance of the area sum.
+# 90% interval of an area: Z_90 * sqrt(sum(var) * n_cells ** CORRELATION_EXPONENT). Adding the variances
+# alone assumes independent cells and understates the error of a sum (2.4x for 16 cells, 13.7x for the
+# whole extent); the exponent is the fit in docs/methodology.md and docs/data-dictionary.md.
 Z_90 = 1.645
-# Errors of nearby cells are correlated (docs/data-dictionary.md: measured 2.4x for 16 cells and 13.7x for the
-# whole extent against the independent sum). The variance of a sum of n cells is sum(var) x n^0.32.
-AREA_VARIANCE_EXPONENT = 0.32
+CORRELATION_EXPONENT = 0.32
 MAD_TO_SIGMA = 1.4826
 # A median over fewer years than this is not shown.
 MIN_BASELINE_YEARS = 3
@@ -65,6 +69,9 @@ class MonthRow:
     origin: str
     source_satellite: str
     median_hist: float | None = None
+    # Years the median is taken over, and the days it covers: None = whole months, N = days 1..N of the month.
+    median_n_years: int | None = None
+    median_days: int | None = None
     anomaly_abs: float | None = None
     anomaly_pct: float | None = None
     anomaly_z: float | None = None
@@ -89,7 +96,7 @@ class NoCellsInArea(ValueError):
 class CalendarStore:
     """`calendar/v1` loaded once into memory (only the columns the app needs), queried per request."""
 
-    def __init__(self, parquet_glob: str) -> None:
+    def __init__(self, parquet_glob: str, to_date_glob: str | None = None) -> None:
         self._con = duckdb.connect()
         self._con.execute(
             """
@@ -116,10 +123,36 @@ class CalendarStore:
             SELECT year, month, period,
                    bool_or(is_estimated) AS is_estimated, bool_or(is_partial) AS is_partial,
                    max(days_observed) AS days_observed,
-                   min(origin) AS origin, min(source_satellite) AS source_satellite
+                   min(origin) AS origin, min(source_satellite) AS source_satellite,
+                   count(count_harmonized) > 0 AS has_count
             FROM cal GROUP BY year, month, period
             """
         )
+        # Same days of earlier years for the unfinished month. The table holds D and N; ALL is their sum.
+        self._con.execute(
+            """
+            CREATE TABLE to_date (cell_l2 VARCHAR, year INTEGER, month INTEGER, period VARCHAR,
+                                  days INTEGER, n_hotspots DOUBLE, n_years INTEGER)
+            """
+        )
+        if to_date_glob is not None:
+            self._con.execute(
+                """
+                INSERT INTO to_date
+                SELECT cell_l2, year::INTEGER, month::INTEGER, period, days::INTEGER, n_hotspots::DOUBLE,
+                       n_years::INTEGER
+                FROM read_parquet(?) WHERE period IN ('D', 'N')
+                """,
+                [to_date_glob],
+            )
+        # (month, days) -> (the years with a row anywhere in the extent, the number of years of the table)
+        self._to_date_windows: dict[tuple[int, int], tuple[list[int], int]] = {
+            (month, days): (sorted(years), n_years)
+            for month, days, years, n_years in self._con.execute(
+                "SELECT month, days, list(DISTINCT year), max(n_years) FROM to_date GROUP BY month, days"
+            ).fetchall()
+        }
+        self.to_date_rows = int(self._con.execute("SELECT count(*) FROM to_date").fetchone()[0])  # type: ignore[index]
         versions = self._con.execute("SELECT DISTINCT model_version FROM cal ORDER BY 1").fetchall()
         self.model_version = ",".join(v[0] for v in versions if v[0])
         row = self._con.execute("SELECT count(*), min(year), max(year) FROM cal").fetchone()
@@ -134,7 +167,28 @@ class CalendarStore:
         files = list(folder.glob("**/*.parquet"))
         if not files:
             raise FileNotFoundError(f"No calendar Parquet files under {folder}")
-        return cls(str(folder / "**" / "*.parquet"))
+        to_date = Path(data_root) / "processed" / "month_to_date" / dataset_version
+        has_to_date = any(to_date.glob("**/*.parquet"))
+        return cls(
+            str(folder / "**" / "*.parquet"), str(to_date / "**" / "*.parquet") if has_to_date else None
+        )
+
+    def to_date_windows(self) -> list[dict[str, int]]:
+        """What `month_to_date` covers: days 1..`days` of `month`, in `n_years` earlier years."""
+        return [
+            {"month": month, "days": days, "n_years": n_years, "last_year": max(years)}
+            for (month, days), (years, n_years) in sorted(self._to_date_windows.items())
+        ]
+
+    def unfinished_month(self) -> tuple[int, int, int] | None:
+        """(year, month, days observed) of the last month of the data if it is observed and partial."""
+        row = self._con.execute(
+            """
+            SELECT year, month, max(days_observed), bool_or(is_partial AND NOT is_estimated)
+            FROM coverage GROUP BY year, month ORDER BY year DESC, month DESC LIMIT 1
+            """
+        ).fetchone()
+        return (int(row[0]), int(row[1]), int(row[2])) if row and row[3] else None
 
     def area_calendar(
         self,
@@ -158,12 +212,17 @@ class CalendarStore:
                 SELECT cell_l2 FROM cells WHERE {_OVERLAP_SQL}
             ), sums AS (
                 SELECT year, month, sum(count_harmonized) AS total, sum(var_harmonized) AS var_sum,
-                       count(var_harmonized) AS n_var, count(count_harmonized) AS n_count, count(*) AS n_rows
+                       count(var_harmonized) AS n_var, count(*) AS n_rows,
+                       count(count_harmonized) AS n_count
                 FROM cal WHERE period = ? AND cell_l2 IN (SELECT cell_l2 FROM sel)
                 GROUP BY year, month
             )
-            SELECT c.year, c.month, s.total, s.var_sum,
-                   coalesce(s.n_var, 0), coalesce(s.n_count, 0), coalesce(s.n_rows, 0),
+            SELECT c.year, c.month,
+                   -- No estimate in the month (nowhere in the extent, or not for a cell of the area) is not
+                   -- zero. A cell without a row in a month that has counts had no detection: that is zero.
+                   CASE WHEN c.has_count AND coalesce(s.n_count, 0) = coalesce(s.n_rows, 0)
+                        THEN coalesce(s.total, 0.0) END,
+                   s.var_sum, coalesce(s.n_var, 0), coalesce(s.n_rows, 0),
                    c.is_estimated, c.is_partial, c.days_observed, c.origin, c.source_satellite
             FROM coverage c LEFT JOIN sums s USING (year, month)
             WHERE c.period = ? ORDER BY c.year, c.month
@@ -171,9 +230,12 @@ class CalendarStore:
             [*bounds.overlap_params(), period, period],
         ).fetchall()
 
-        months = [_month_row(*r) for r in rows]
+        months = [_month_row(*r, cells=cells) for r in rows]
         used_baseline = baseline or _default_baseline(months)
         months = _with_anomalies(months, used_baseline)
+        months = [
+            self._same_days(cursor, m, bounds, period, used_baseline) if m.is_partial else m for m in months
+        ]
         return AreaCalendar(
             bounds=bounds,
             cells=cells,
@@ -186,42 +248,75 @@ class CalendarStore:
         )
 
 
+    def _same_days(
+        self,
+        cursor: duckdb.DuckDBPyConnection,
+        row: MonthRow,
+        bounds: Bounds,
+        period: str,
+        baseline: tuple[int, int] | None,
+    ) -> MonthRow:
+        """Median and anomalies of a partial month against the same days of earlier years, when
+        `month_to_date` covers exactly those days. Estimated months are not in that table: it counts VIIRS."""
+        window = self._to_date_windows.get((row.month, row.days_observed))
+        if window is None or row.is_estimated:
+            return row
+        all_years, n_years = window
+        years = [
+            y for y in all_years if y < row.year and (baseline is None or baseline[0] <= y <= baseline[1])
+        ]
+        if not years or max(all_years) >= row.year:
+            return row
+        sums = dict(
+            cursor.execute(
+                f"""
+                SELECT year, sum(n_hotspots) FROM to_date
+                WHERE month = ? AND days = ? AND (? = 'ALL' OR period = ?)
+                  AND cell_l2 IN (SELECT cell_l2 FROM cells WHERE {_OVERLAP_SQL})
+                GROUP BY year
+                """,
+                [row.month, row.days_observed, period, period, *bounds.overlap_params()],
+            ).fetchall()
+        )
+        # A year without a row in the area had no detection on those days: zero. So did a year of the table
+        # (`n_years`) with no row anywhere in the extent.
+        values = [float(sums.get(y, 0.0)) for y in years] + [0.0] * max(0, n_years - len(all_years))
+        if len(values) < MIN_BASELINE_YEARS:
+            return row
+        return _scored(row, values, days=row.days_observed)
+
+
 def _month_row(
     year: int,
     month: int,
     total: float | None,
     var_sum: float | None,
     n_var: int,
-    n_count: int,
     n_rows: int,
     is_estimated: bool,
     is_partial: bool,
     days_observed: int,
     origin: str,
     source_satellite: str,
+    *,
+    cells: int,
 ) -> MonthRow:
-    count: float | None
     ci_low: float | None = None
     ci_high: float | None = None
-    if n_rows == 0:
-        # The month was observed somewhere in the extent and no cell of the area has a row: zero detections.
-        count = 0.0
-        if not is_estimated:
-            ci_low, ci_high = 0.0, 0.0
-    elif n_count < n_rows or total is None:
-        # Some or all cells have no estimate (null count): a sum would understate the month. No value, not 0.
-        count = None
-    else:
-        count = total
-        # An interval needs the variance of every cell that contributed. Until the pipeline delivers it for
-        # estimated months (H11) it stays None: "interval pending", never zero. Observed months have 0.
-        if n_var == n_rows and var_sum is not None:
-            spread = Z_90 * math.sqrt(max(var_sum, 0.0) * n_rows**AREA_VARIANCE_EXPONENT)
-            ci_low, ci_high = max(0.0, count - spread), count + spread
+    # An interval needs the variance of every cell that contributed; without it the interval stays None
+    # ("interval pending"), never zero. Observed months have no variance.
+    if total is None:
+        pass
+    elif n_rows == 0 and not is_estimated:
+        ci_low, ci_high = total, total
+    elif n_rows > 0 and n_var == n_rows and var_sum is not None:
+        var_area = max(var_sum, 0.0) * cells**CORRELATION_EXPONENT
+        spread = Z_90 * math.sqrt(var_area)
+        ci_low, ci_high = max(0.0, total - spread), total + spread
     return MonthRow(
         year=year,
         month=month,
-        count_harmonized=None if count is None else round(count, 3),
+        count_harmonized=None if total is None else round(total, 3),
         ci_low=None if ci_low is None else round(ci_low, 3),
         ci_high=None if ci_high is None else round(ci_high, 3),
         is_estimated=bool(is_estimated),
@@ -240,45 +335,39 @@ def _default_baseline(months: list[MonthRow]) -> tuple[int, int] | None:
 def _with_anomalies(months: list[MonthRow], baseline: tuple[int, int] | None) -> list[MonthRow]:
     """Median, absolute and percent anomaly and robust z of the area sum, per month of the year.
 
-    The baseline is the complete (not partial) months of the baseline years. A partial month gets no anomaly:
-    comparing it with full months would read an incomplete month as "little activity".
+    The baseline is the complete (not partial) months of the baseline years that have a count. A partial month
+    gets nothing here: comparing it with full months would read an incomplete month as "little activity"
+    (see `CalendarStore._same_days`).
     """
     if baseline is None:
         return months
     start, end = baseline
     by_month: dict[int, list[float]] = {}
     for m in months:
-        if m.count_harmonized is not None and not m.is_partial and start <= m.year <= end:
+        if not m.is_partial and m.count_harmonized is not None and start <= m.year <= end:
             by_month.setdefault(m.month, []).append(m.count_harmonized)
-    stats: dict[int, tuple[float, float]] = {}
-    for month, values in by_month.items():
-        if len(values) < MIN_BASELINE_YEARS:
-            continue
-        median = statistics.median(values)
-        mad = statistics.median(abs(v - median) for v in values)
-        stats[month] = (median, mad)
+    return [
+        _scored(m, by_month[m.month])
+        if not m.is_partial and len(by_month.get(m.month, ())) >= MIN_BASELINE_YEARS
+        else m
+        for m in months
+    ]
 
-    out: list[MonthRow] = []
-    for m in months:
-        found = stats.get(m.month)
-        if found is None:
-            out.append(m)
-            continue
-        median, mad = found
-        if m.is_partial or m.count_harmonized is None:
-            out.append(_replace(m, median_hist=round(median, 3)))
-            continue
-        diff = m.count_harmonized - median
-        out.append(
-            _replace(
-                m,
-                median_hist=round(median, 3),
-                anomaly_abs=round(diff, 3),
-                anomaly_pct=round(diff / median * 100, 1) if median > 0 else None,
-                anomaly_z=round(diff / (MAD_TO_SIGMA * mad), 2) if mad > 0 else None,
-            )
-        )
-    return out
+
+def _scored(row: MonthRow, values: list[float], days: int | None = None) -> MonthRow:
+    """`row` with the median of `values` and, if it has a count, its anomalies against them."""
+    median = statistics.median(values)
+    mad = statistics.median(abs(v - median) for v in values)
+    scored = _replace(row, median_hist=round(median, 3), median_n_years=len(values), median_days=days)
+    if row.count_harmonized is None:
+        return scored
+    diff = row.count_harmonized - median
+    return _replace(
+        scored,
+        anomaly_abs=round(diff, 3),
+        anomaly_pct=round(diff / median * 100, 1) if median > 0 else None,
+        anomaly_z=round(diff / (MAD_TO_SIGMA * mad), 2) if mad > 0 else None,
+    )
 
 
 def _replace(row: MonthRow, **changes: float | None) -> MonthRow:

@@ -1,8 +1,10 @@
+import datetime as dt
 import json
 from pathlib import Path
 from zipfile import ZipFile
 
 import duckdb
+import pytest
 
 from astro_fire import batch
 from astro_fire.config import get_settings
@@ -55,13 +57,18 @@ def test_near_midnight_deduplication_and_filtering(tmp_path, monkeypatch):
         ).fetchall() == [("G081136.01", 2012, 12, "D", "Aqua", 2, 1, 14.0, 3)]
 
 
-def test_ingest_api_prefers_standard_files_and_treats_nrt_as_type_zero(tmp_path, monkeypatch):
+def test_ingest_api_prefers_standard_files_and_preserves_unknown_nrt_type(tmp_path, monkeypatch):
     import duckdb
 
     from astro_fire import batch
     from astro_fire.config import get_settings
 
     monkeypatch.setenv("ASTRO_DATASET_VERSION", "v1")
+    monkeypatch.setattr(batch, "API_2026_WINDOWS", {
+        "VIIRS_SNPP_SP": (dt.date(2026, 1, 1), dt.date(2026, 1, 5)),
+        "VIIRS_SNPP_NRT": (dt.date(2026, 1, 6), dt.date(2026, 1, 8)),
+        "VIIRS_NOAA20_NRT": (dt.date(2026, 1, 4), dt.date(2026, 1, 8)),
+    })
     box = "-48.8_-18.4_-34.7_-1.0"
     head = ("latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,"
             "version,bright_ti5,frp,daynight")
@@ -92,12 +99,26 @@ def test_ingest_api_prefers_standard_files_and_treats_nrt_as_type_zero(tmp_path,
     ).fetchall() == [
         ("SNPP", "2", 0, True, "G080134.10"),
         ("SNPP", "2", 2, False, "G080134.10"),
-        ("N20", "2.0NRT", 0, True, "G080134.10"),
-        ("SNPP", "2.0NRT", 0, True, "G080134.10"),
-        ("SNPP", "2.0NRT", 0, False, "G080134.10"),
+        ("N20", "2.0NRT", None, True, "G080134.10"),
+        ("SNPP", "2.0NRT", None, True, "G080134.10"),
+        ("SNPP", "2.0NRT", None, False, "G080134.10"),
     ]
     counts_glob = f"{tmp_path}/processed/cell_month_counts/v1/**/*.parquet"
     counts = f"read_parquet('{counts_glob}', hive_partitioning = true)"
     assert con.execute(
         f"SELECT year, month, daynight, satellite, n_hotspots FROM {counts} ORDER BY satellite"
     ).fetchall() == [(2026, 1, "D", "N20", 1), (2026, 1, "D", "SNPP", 2)]
+
+
+def test_ingest_api_rejects_missing_day_before_writing_partitions(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch, "API_2026_WINDOWS", {
+        "VIIRS_SNPP_SP": (dt.date(2026, 1, 1), dt.date(2026, 1, 7)),
+    })
+    bbox = tmp_path / "raw/firms/api/VIIRS_SNPP_SP/-48.8_-18.4_-34.7_-1.0"
+    bbox.mkdir(parents=True)
+    (bbox / "2026-01-01_3d.csv").touch()
+    (bbox / "2026-01-05_3d.csv").touch()
+    settings = get_settings(astro_data_root=str(tmp_path))
+    with pytest.raises(ValueError, match="VIIRS_SNPP_SP is missing CSV coverage.*2026-01-04"):
+        batch.ingest_api(settings, 2026)
+    assert not (tmp_path / "processed").exists()

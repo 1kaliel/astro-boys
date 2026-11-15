@@ -25,7 +25,7 @@ export function busiestMonth(months: readonly CalendarMonth[]): { month: number;
 /**
  * The complete months of the latest year against the sum of their monthly medians. Partial months are left out
  * (`partial` says one was): an incomplete month next to a full-month median would read as "little activity".
- * Null when there is no complete month or a median is missing.
+ * Null when there is no complete month, or a count or a median is missing.
  */
 export function yearToDate(
   months: readonly CalendarMonth[],
@@ -34,7 +34,7 @@ export function yearToDate(
   if (!last) return null;
   const all = months.filter((m) => m.year === last.year);
   const rows = all.filter((m) => !m.isPartial);
-  if (rows.length === 0 || rows.some((m) => m.medianHist == null || m.count == null)) return null;
+  if (rows.length === 0 || rows.some((m) => m.count == null || m.medianHist == null)) return null;
   return {
     year: last.year,
     value: rows.reduce((sum, m) => sum + (m.count ?? 0), 0),

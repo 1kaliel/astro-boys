@@ -18,6 +18,9 @@ Created by [`infra/gcp/20-service-accounts.sh`](../../infra/gcp/20-service-accou
 | `astro-pipeline` | Pipeline VM | `roles/storage.objectUser` (read/write objects, no IAM or bucket admin) | The data bucket |
 | | | `roles/logging.logWriter`, `roles/monitoring.metricWriter` | Project (needed for VM logs/metrics) |
 | `astro-dashboard` | Cloud Run service | `roles/storage.objectViewer` | Managed folder `processed/` only |
+| `astro-build` | Cloud Build, dashboard image build ([`45-build-service-account.sh`](../../infra/gcp/45-build-service-account.sh)) | `roles/storage.objectViewer` | Cloud Build source bucket `<project>_cloudbuild` |
+| | | `roles/artifactregistry.writer` | Repository `astro` only |
+| | | `roles/logging.logWriter` | Project (build logs) |
 
 ## People
 

@@ -99,9 +99,9 @@ For the CSV download and the L3 drill-down. Partitioned by `instrument`, `year`.
 | `brightness_mir_k`, `brightness_tir_k` | double | Hot and reference band of **that** sensor; never compare across sensors |
 | `delta_t_k` | double | `mir − tir`, diagnostic |
 | `scan_km`, `track_km` | double | As delivered |
-| `type` | int | As delivered |
+| `type` | int, nullable | As delivered. Null when FIRMS NRT provides no type |
 | `version` | string | As delivered |
-| `passes_main_filter` | bool | `type == 0` and nominal/high confidence |
+| `passes_main_filter` | bool | Nominal/high confidence and `type == 0`. Untyped 2026 API NRT detections also pass for provisional counts |
 | `cell_l1`, `cell_l2`, `cell_l3` | string | Grid cells |
 | `country` | string | From the source file name |
 | `source_file` | string | Raw file the row came from |

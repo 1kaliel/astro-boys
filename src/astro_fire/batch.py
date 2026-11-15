@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import shutil
 import tempfile
@@ -81,7 +82,7 @@ SELECT
     frp_mw, brightness_mir_k, brightness_tir_k,
     brightness_mir_k - brightness_tir_k AS delta_t_k,
     scan_km, track_km, type, version,
-    coalesce(type = 0 AND confidence_class IN ('n', 'h'), false) AS passes_main_filter,
+    coalesce(({eligible_type}) AND confidence_class IN ('n', 'h'), false) AS passes_main_filter,
     cell_l1,
     cell_l1 || '.' || lpad(l2::VARCHAR, 2, '0') AS cell_l2,
     cell_l1 || '.' || lpad(l2::VARCHAR, 2, '0') || '.' || lpad(l3::VARCHAR, 2, '0') AS cell_l3,
@@ -95,7 +96,7 @@ SELECT
     count(*) FILTER (WHERE passes_main_filter) AS n_hotspots,
     count(DISTINCT date_local) FILTER (WHERE passes_main_filter) AS n_active_days,
     sum(frp_mw) FILTER (WHERE passes_main_filter) AS frp_sum_mw,
-    count(*) FILTER (WHERE type = 0) AS n_all_confidence
+    count(*) FILTER (WHERE {eligible_type}) AS n_all_confidence
 FROM read_parquet(?, hive_partitioning = true)
 GROUP BY ALL
 HAVING n_hotspots > 0
@@ -186,7 +187,7 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
                 duplicates_by_file[csv.name] = duplicates
                 outside_bbox_by_file[csv.name] = outside_bbox
                 rows = con.sql(
-                    INGEST_SQL.format(mir=mir, tir=tir),
+                    INGEST_SQL.format(mir=mir, tir=tir, eligible_type="type = 0"),
                     params=[
                         csv.name, west, east, south, north,
                         selected, instrument, first, last, csv.name,
@@ -226,7 +227,7 @@ def aggregate(settings: Settings) -> dict:
         manifest.add_input(path.as_posix())
     with tempfile.TemporaryDirectory(dir=target.parent) as temp, storage.connect(settings) as con:
         scan = str(inputs / "**" / "*.parquet")
-        con.sql(AGGREGATE_SQL, params=[scan]).create("monthly_counts")
+        con.sql(AGGREGATE_SQL.format(eligible_type="type = 0"), params=[scan]).create("monthly_counts")
         rows = con.execute("SELECT count(*) FROM monthly_counts").fetchone()[0]
         if rows == 0:
             raise ValueError("no Northeast hotspots passed the main filter")
@@ -249,6 +250,13 @@ API_SOURCES = {  # FIRMS source prefix → (sensor label used in hotspot IDs, in
     "VIIRS_SNPP": ("viirs-snpp", "VIIRS"),
     "VIIRS_NOAA20": ("viirs-jpss1", "VIIRS"),
 }
+API_2026_WINDOWS = {
+    "VIIRS_SNPP_SP": (dt.date(2026, 1, 1), dt.date(2026, 7, 31)),
+    "VIIRS_SNPP_NRT": (dt.date(2026, 8, 1), dt.date(2026, 11, 2)),
+    "VIIRS_NOAA20_SP": (dt.date(2026, 1, 1), dt.date(2026, 7, 31)),
+    "VIIRS_NOAA20_NRT": (dt.date(2026, 8, 1), dt.date(2026, 11, 14)),
+}
+API_ELIGIBLE_TYPE = "type = 0 OR (type IS NULL AND version LIKE '%NRT')"
 
 
 def _api_files(settings: Settings, source: str) -> list[Path]:
@@ -256,19 +264,41 @@ def _api_files(settings: Settings, source: str) -> list[Path]:
     return sorted(root.glob("*/*.csv")) if root.is_dir() else []
 
 
+def _check_api_2026_coverage(files: dict[str, list[Path]]) -> None:
+    bbox_dir = "_".join(map(str, BBOX))
+    for source, (first, last) in API_2026_WINDOWS.items():
+        covered = set()
+        for path in files[source]:
+            if path.parent.name != bbox_dir:
+                continue
+            match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})_([1-5])d\.csv", path.name)
+            if not match:
+                raise ValueError(f"invalid FIRMS API chunk name: {path.name}")
+            start = dt.date.fromisoformat(match[1])
+            covered.update(start + dt.timedelta(days=day) for day in range(int(match[2])))
+        expected = {first + dt.timedelta(days=day) for day in range((last - first).days + 1)}
+        if missing := sorted(expected - covered):
+            raise ValueError(
+                f"{source} is missing CSV coverage for {len(missing)} UTC day(s), first {missing[0]}"
+            )
+
+
 def ingest_api(settings: Settings, year: int) -> dict:
     """Normalize one year of FIRMS area-API detections and write its hotspots and counts partitions.
 
     Standard-processing (`_SP`) files are used where they exist; near-real-time (`_NRT`) files only for
-    later dates. NRT files carry no `type` column: every NRT detection is treated as type 0 (presumed
-    vegetation fire), so static sources are not removed from those months. They are recognizable by the
-    `NRT` suffix of `version`.
+    later dates. The 2026 request windows must be complete. Untyped NRT detections retain null type and
+    enter the provisional counts when confidence is nominal or high.
 
     Writes `processed/hotspots/<v>/instrument=VIIRS/year=<year>/` and
     `processed/cell_month_counts/<v>/year=<year>/`, replacing those partitions only.
     """
     if settings.is_remote:
         raise ValueError("use a local data root, then publish the partitions")
+    files = {f"{prefix}_{kind}": _api_files(settings, f"{prefix}_{kind}")
+             for prefix in API_SOURCES for kind in ("SP", "NRT")}
+    if year == 2026:
+        _check_api_2026_coverage(files)
     version = settings.dataset_version
     hotspots_root = Path(storage.uri(settings, "processed", "hotspots", version))
     hotspots_dir = hotspots_root / "instrument=VIIRS" / f"year={year}"
@@ -281,7 +311,7 @@ def ingest_api(settings: Settings, year: int) -> dict:
         shards = staging / "shards"
         shards.mkdir()
         for prefix, (sensor, instrument) in API_SOURCES.items():
-            sp, nrt = _api_files(settings, f"{prefix}_SP"), _api_files(settings, f"{prefix}_NRT")
+            sp, nrt = files[f"{prefix}_SP"], files[f"{prefix}_NRT"]
             if not sp and not nrt:
                 continue
             for path in sp + nrt:
@@ -295,7 +325,8 @@ def ingest_api(settings: Settings, year: int) -> dict:
                 relation = con.read_csv([str(p) for p in nrt], header=True, all_varchar=True)
                 relation.create_view("nrt", replace=True)
                 after = "WHERE acq_date > (SELECT max(acq_date) FROM sp)" if sp else ""
-                parts.append(f"SELECT *, '0' AS type FROM nrt {after}")
+                type_column = "" if "type" in relation.columns else ", NULL::VARCHAR AS type"
+                parts.append(f"SELECT *{type_column} FROM nrt {after}")
             combined = staging / f"{sensor}_{year}_api.csv"
             con.execute(
                 f"COPY ({' UNION ALL BY NAME '.join(parts)}) TO '{combined}' (FORMAT csv, HEADER true)"
@@ -311,7 +342,7 @@ def ingest_api(settings: Settings, year: int) -> dict:
                 "SELECT coalesce(sum(exact_duplicates), 0) FROM deduplicated"
             ).fetchall()[0][0]
             rows = con.sql(
-                INGEST_SQL.format(mir="bright_ti4", tir="bright_ti5"),
+                INGEST_SQL.format(mir="bright_ti4", tir="bright_ti5", eligible_type=API_ELIGIBLE_TYPE),
                 params=[name, west, east, south, north, satellites, instrument, year, year, name],
             )
             rows.write_parquet(str(shards / f"{sensor}.parquet"), compression="zstd")
@@ -329,7 +360,10 @@ def ingest_api(settings: Settings, year: int) -> dict:
         partition = hot / "instrument=VIIRS" / f"year={year}"
         if not partition.is_dir():
             raise ValueError(f"no detections for local year {year} in the API files")
-        con.sql(AGGREGATE_SQL, params=[str(hot / "**" / "*.parquet")]).create("monthly_counts")
+        con.sql(
+            AGGREGATE_SQL.format(eligible_type=API_ELIGIBLE_TYPE),
+            params=[str(hot / "**" / "*.parquet")],
+        ).create("monthly_counts")
         counts = staging / "counts"
         con.execute(
             "COPY monthly_counts TO ? (FORMAT PARQUET, COMPRESSION ZSTD, PARTITION_BY (year))",
@@ -351,7 +385,7 @@ def ingest_api(settings: Settings, year: int) -> dict:
     manifest.checks = {
         "year": year, "sources": summary, "hotspot_rows": hotspot_rows, "passing_main_filter": passing,
         "months_by_satellite": [list(c) for c in coverage],
-        "nrt_type_assumption": "NRT files have no type column; NRT detections are treated as type 0",
+        "nrt_type_rule": "Missing type stays null; nominal/high confidence NRT counts are provisional",
     }
     manifest.finish()
     return {
