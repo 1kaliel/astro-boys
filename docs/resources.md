@@ -123,7 +123,8 @@ LAADS DAAC alerts https://ladsweb.modaps.eosdis.nasa.gov/alerts-and-issues
 
 **Required by the rules.** The submission must say how AI tools were used, and AI-generated code and data must be
 acknowledged in descriptive text and metadata (images/video need a visible watermark). Record each use here as it
-happens. See [challenge/official-requirements.md](challenge/official-requirements.md#ai-super-intelligence-rules).
+happens. See the official [Participant FAQs](https://www.spaceappschallenge.org/resources/participant-faqs/) and
+[Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/).
 
 | What | Tool | Notes |
 |------|------|-------|
@@ -154,14 +155,15 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 | Coordination for Kali: review of pull requests, integration of team branches (conflict resolution), the Cloud Run deploys of Nov 15 and their checks on the live site, the task board and the diary entries signed Kali that say so | AI coding assistant | Each step is in the diary; deploys and bucket uploads only with Kali's approval |
 | Submission draft (`docs/submission.md`, tasks S1 and S4) | AI coding assistant | Drafted for Kali and Jean from the team's documents; to be reviewed by them before it is pasted into the project page |
 | S4 plan-and-research-notes sentence in `docs/submission.md`, task-board update, and removal of a personal email address from the 14 November diary before the repository goes public | Claude Code (Anthropic) | Sentence drafted for Kali, who confirmed it; no data, model or result changed |
+| Repository cleanup before submission: removal of team-internal coordination files (task board, timeline, risks, roles, team list, tool and cloud runbooks, challenge copy, internal D10/D12 check records, agent and contribution rules, issue and PR templates, diary helper, empty folders), the move of `docs/cloud/storage-layout.md` to `docs/storage-layout.md`, and the link fixes in `README.md` and the other documents | Claude Code (Anthropic) | Prepared from Jean Gustavo's cleanup plan for Kali to review; no code, data or scientific result changed |
 
 ## D12 screenshot evidence assistance
 
-Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. See [D12 validation](d12-validation.md).
+Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. The screenshots and their manifest are in [artifacts/screenshots/](../artifacts/screenshots/).
 
 ## L4 final-delivery assignment assistance
 
-AI assistance helped prepare the L4 role/format record and align the task board and team roster at Jean Gustavo's request. Jean selected Justino for S5. Existing task owners and scientific results are unchanged. This record does not claim a completed presentation, review or submission. See [delivery-roles.md](delivery-roles.md).
+AI assistance helped prepare the L4 role/format record and align the task board and team roster at Jean Gustavo's request. Jean selected Justino for S5. Existing task owners and scientific results are unchanged. This record does not claim a completed presentation, review or submission.
 
 ## S1 editorial review for Jean (15 November 2026)
 

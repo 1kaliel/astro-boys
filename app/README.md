@@ -4,7 +4,6 @@
 single-page frontend, served from one container. Logged in the diary as `DECISION`.
 
 Full spec: [docs/spec/dashboard.md](../docs/spec/dashboard.md). Design system: [docs/design-system.md](../docs/design-system.md).
-Tasks and owners: [docs/tasks.md](../docs/tasks.md).
 
 ## What it shows
 

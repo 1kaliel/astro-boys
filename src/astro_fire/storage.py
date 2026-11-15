@@ -1,6 +1,6 @@
 """Storage layout and DuckDB connections, identical for local disk and Cloud Storage.
 
-Layout (under the data root, see docs/cloud/storage-layout.md):
+Layout (under the data root, see docs/storage-layout.md):
 
   raw/        immutable source files, exactly as downloaded
   interim/    disposable intermediate results

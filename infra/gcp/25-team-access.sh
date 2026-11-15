@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Grant teammates the access their team needs, and nothing project-wide beyond that.
-# IAM CHANGE: run only after Kali approves the member list. See docs/cloud/iam-and-access.md.
+# IAM CHANGE: run only after Kali approves the member list.
 source "$(dirname "$0")/lib.sh"
 require GCP_PROJECT_ID GCP_REGION GCP_ZONE GCS_BUCKET GCS_PREFIX VM_NAME AR_REPOSITORY \
         PIPELINE_SA_NAME DASHBOARD_SA_NAME HARMONIZATION_MEMBERS DASHBOARD_MEMBERS

@@ -25,27 +25,21 @@ Full plan: [docs/project-plan.md](docs/project-plan.md).
 |------|--------------|
 | [docs/project-plan.md](docs/project-plan.md) | Goal, scope, architecture, guardrails, definition of done |
 | [docs/spec/](docs/spec/) | Specs: [harmonization method](docs/spec/harmonization.md), [dashboard](docs/spec/dashboard.md) |
-| [docs/tool-usage.md](docs/tool-usage.md) | How to use FIRMS, the pipeline, the VM and the bucket |
-| [docs/challenge/](docs/challenge/) | Challenge brief, official requirements, suggested tools |
-| [docs/data-access.md](docs/data-access.md) | How we get FIRMS MODIS + VIIRS history fast |
-| [docs/timeline.md](docs/timeline.md) | Event dates, schedule and checkpoints |
-| [docs/tasks.md](docs/tasks.md) | Task board per team |
-| [docs/team.md](docs/team.md) | Team Harmonization and Team Dashboard |
-| [docs/risks.md](docs/risks.md) | Risks and contingency plans |
 | [docs/data-dictionary.md](docs/data-dictionary.md) · [docs/methodology.md](docs/methodology.md) | Data contract; methods and results |
+| [docs/data-access.md](docs/data-access.md) · [docs/historical-batch.md](docs/historical-batch.md) | How we get FIRMS MODIS + VIIRS history; how to rebuild the monthly counts |
+| [docs/storage-layout.md](docs/storage-layout.md) | Data layers and paths, the same on a laptop, the VM and Cloud Storage |
 | [docs/diary/](docs/diary/) · [docs/decisions/](docs/decisions/) | Timestamped diary and decision records |
 | `data/` | Raw, interim and processed data (not committed). See [data/README.md](data/README.md) |
-| `src/astro_fire/` · `tests/` · `scripts/` · `notebooks/` | Pipeline code (Python + DuckDB), tests, helpers |
-| [docs/cloud/](docs/cloud/README.md) · `infra/gcp/` · `deploy/cloudrun/` | Google Cloud setup, runbooks, deploy scaffold |
+| `src/astro_fire/` · `tests/` · `scripts/` | Pipeline code (Python + DuckDB), tests, helpers |
+| `infra/gcp/` · [`deploy/cloudrun/`](deploy/cloudrun/README.md) · `deploy/local/` | Google Cloud setup scripts, Cloud Run deploy, offline local run |
 | [`app/`](app/README.md) | Dashboard (Team Dashboard's stack) |
-| `artifacts/` · `presentation/` | Metrics, figures, screenshots, slides |
+| `artifacts/` | Metrics, figures, screenshots |
 
-## How we work
+## How we worked
 
-- **Rules:** [AGENTS.md](AGENTS.md), for humans and AI coding agents.
-- **Diary:** every decision, finished task and blocker is logged with a UTC timestamp via `./scripts/log.sh`.
-- **Tools:** we use what the challenge suggests: [docs/challenge/suggested-tools.md](docs/challenge/suggested-tools.md).
-- **Credits:** [docs/resources.md](docs/resources.md) · **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Diary:** every decision, finished task and blocker is logged with a UTC timestamp in [docs/diary/](docs/diary/).
+- **Credits and AI use:** data sources, references, tools and every use of AI are listed in
+  [docs/resources.md](docs/resources.md).
 
 ## Getting started
 
@@ -59,5 +53,5 @@ make ci                  # lint, tests, repo hygiene, smoke (same as GitHub CI)
 ```
 
 Runs locally by default (`data/`). In the cloud, the same commands run on the pipeline VM against the shared
-bucket: see [docs/cloud/](docs/cloud/README.md). The dashboard lives in [`app/`](app/README.md) and deploys to
+bucket (layout: [docs/storage-layout.md](docs/storage-layout.md)). The dashboard lives in [`app/`](app/README.md) and deploys to
 Cloud Run via [`deploy/cloudrun/`](deploy/cloudrun/README.md).

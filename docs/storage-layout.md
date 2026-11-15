@@ -48,7 +48,7 @@ The same tree exists in Cloud Storage and on every machine. Code addresses it th
 - **ZSTD compression.** Coordinates as DOUBLE, dates as DATE, times as UTC.
 - **Version folders** (`v1`, `v2`, …) match `ASTRO_DATASET_VERSION`. The dashboard pins a version; the
   previous version stays for rollback.
-- The exact schema of each dataset is the data contract in [../data-dictionary.md](../data-dictionary.md).
+- The exact schema of each dataset is the data contract in [data-dictionary.md](data-dictionary.md).
 
 ## The repo's `artifacts/` vs the data root's `artifacts/`
 

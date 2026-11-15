@@ -25,8 +25,8 @@ Whatever the stack (Python, Node, static site behind a tiny server…), the imag
    the same days of earlier years for the unfinished month) is baked with the calendar, the same way.
 
    **D6 (CSV):** set `ASTRO_HOTSPOTS_ROOT: "gs://<bucket>/astro/processed/hotspots/v1"` in `service.env`. The
-   `astro-dashboard` service account needs `roles/storage.objectViewer` on `processed/`
-   ([IAM](../../docs/cloud/iam-and-access.md)); Kali grants it. The request timeout is 300 s because large CSVs
+   `astro-dashboard` service account needs `roles/storage.objectViewer` on `processed/`;
+   Kali grants it. The request timeout is 300 s because large CSVs
    are streamed; only the files of the requested years are read (about 60 to 90 MB per year).
 4. **Start fast** (under ~10 s) and **use ≤ 1 GiB RAM** by default (raise `--memory` in `deploy.sh` if needed).
 5. **Have a `/healthz` (or `/`) route** that returns 200 quickly. On a `run.app` URL Cloud Run keeps `/healthz` for
@@ -50,7 +50,7 @@ curl http://localhost:8080/api/version                             # model_versi
 
 For the offline fallback the same steps are one command, `./deploy/local/run-offline.sh` (build if missing, then run
 with the local `hotspots/v1` mounted read-only and no credentials). Tested with the external network cut on
-2026-11-15: [D12 offline test](../../docs/d12-offline-test.md).
+2026-11-15 (D12 in the [diary](../../docs/diary/2026-11-15.md)).
 
 The build fails if the calendar is missing, if its `model_version` is not `MODEL_VERSION`, or if `month_to_date`
 covers other days than the calendar's unfinished month. For an image without
@@ -60,7 +60,7 @@ and `data/processed/month_to_date/v1` (or `TO_DATE_DIR`).
 
 ## Deploy
 
-Prerequisites, done once by Kali (see [docs/cloud/README.md](../../docs/cloud/README.md)): APIs enabled,
+Prerequisites, done once by Kali with the scripts in `infra/gcp/`: APIs enabled,
 Artifact Registry repo, dashboard service account, and your account granted `artifactregistry.writer`,
 `run.developer` and `iam.serviceAccountUser` on the dashboard service account.
 
@@ -97,4 +97,3 @@ gcloud run services update-traffic "$RUN_SERVICE" --region "$GCP_REGION" --proje
 ## If Cloud Run is unavailable
 
 Run the same container locally (above) and record the demo from it. Keep screenshots in `artifacts/screenshots/`.
-Full fallback plan: [docs/cloud/fallback-and-rollback.md](../../docs/cloud/fallback-and-rollback.md).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create the two service accounts and grant them the minimum they need.
-# IAM CHANGE: run only after Kali approves. See docs/cloud/iam-and-access.md.
+# IAM CHANGE: run only after Kali approves.
 source "$(dirname "$0")/lib.sh"
 require GCP_PROJECT_ID GCS_BUCKET GCS_PREFIX PIPELINE_SA_NAME DASHBOARD_SA_NAME
 PIPE_SA="$(pipeline_sa)"

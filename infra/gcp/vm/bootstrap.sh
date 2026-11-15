@@ -86,5 +86,5 @@ sudo systemctl enable --now astro-idle-shutdown.timer
 
 echo
 echo "Done. Long runs: start them inside tmux so they survive a dropped SSH connection."
-echo "Data: ./scripts/sync_data.sh pull raw   (see docs/cloud/vm-runbook.md)"
+echo "Data: ./scripts/sync_data.sh pull raw"
 

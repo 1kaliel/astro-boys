@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create the service account Cloud Build runs the dashboard image build as, with the minimum it needs.
 # Only needed for `BUILDER=cloudbuild ./deploy/cloudrun/deploy.sh` (machines without Docker and BuildKit).
-# IAM CHANGE: run only after Kali approves. See docs/cloud/iam-and-access.md.
+# IAM CHANGE: run only after Kali approves.
 #
 # Cloud Build does not accept its legacy account (<number>@cloudbuild.gserviceaccount.com) as an explicit
 # build account, and the project default (the Compute Engine account) has no role, on purpose.
