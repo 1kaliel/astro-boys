@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action lists the commits of a pull request; on a private repo that needs this read scope.
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
