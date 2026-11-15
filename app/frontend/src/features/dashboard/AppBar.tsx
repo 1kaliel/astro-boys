@@ -32,10 +32,9 @@ export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
           <img className="brand-logo-light" src={logoLight} alt="Firewatcher" />
           <img className="brand-logo-dark" src={logoDark} alt="Firewatcher" />
         </span>
-        <div>
-          <h1 className="app-title">Hotspot calendar</h1>
-          <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
-        </div>
+        {/* The signature names the app, so the page title is not drawn; it stays for screen readers. */}
+        <h1 className="sr-only">Firewatcher: hotspot calendar</h1>
+        <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
       </div>
       <div className="app-actions">
         <span className="api-status" role="status" aria-live="polite">

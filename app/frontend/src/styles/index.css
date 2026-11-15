@@ -21,6 +21,20 @@
   font-display: swap;
 }
 
+/*
+ * The same file, but only for letters (unicode-range): digits and punctuation come from the fallback. Its numerals draw
+ * 1 like an I and 4 like an H, which is fine in a big figure and wrong in a legend or an axis, so small data labels
+ * (--font-display-text) use the letters of the display face and the numbers of the system font.
+ */
+@font-face {
+  font-family: "Neuropolitical Letters";
+  src: url("/fonts/Neuropolitical-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0041-005A, U+0061-007A, U+00C0-00FF;
+}
+
 *,
 *::before,
 *::after {

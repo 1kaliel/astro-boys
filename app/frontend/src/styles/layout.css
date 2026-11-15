@@ -25,7 +25,7 @@
   justify-content: space-between;
   gap: var(--space-3);
   min-height: var(--size-app-bar);
-  padding: var(--space-2) var(--spacing-page-x);
+  padding: var(--space-3) var(--spacing-page-x);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
 }
@@ -45,7 +45,7 @@
 
 .brand-logo img {
   display: block;
-  height: 32px;
+  height: 40px;
   width: auto;
 }
 
@@ -70,21 +70,13 @@
 :root[data-theme="dark"] .brand-logo-dark {
   display: block !important;
 }
-
-.app-title {
-  font-family: var(--font-display);
-  font-weight: var(--font-weight-regular);
-  font-synthesis: none;
-  margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-primary);
-}
-
+/* Beside the signature, set off by a hairline: the scope of the app in one line. */
 .app-subtitle {
   margin: 0;
-  font-size: var(--font-size-xs);
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
   color: var(--color-text-secondary);
 }
 
@@ -276,7 +268,7 @@
 .kpi-value {
   font-family: var(--font-display);
   font-synthesis: none;
-  font-size: clamp(2.25rem, 1.4rem + 2.4vw, 3rem); /* 36 to 48px */
+  font-size: clamp(2rem, 1rem + 2vw, 2.5rem); /* 32 to 40px: the display face is wide, "115 of 293" has to fit */
   font-weight: var(--font-weight-regular); /* the display face has one weight: no faux bold */
   line-height: 1.05;
   letter-spacing: 0;
@@ -715,26 +707,39 @@
   }
 }
 
-@media (max-width: 56rem) {
-  .api-status,
+/* The scope line goes first when the bar gets tight, so the header stays one row (the filter bar sticks below it). */
+@media (max-width: 88rem) {
   .app-subtitle {
     display: none;
   }
 }
 
+@media (max-width: 56rem) {
+  .api-status {
+    display: none;
+  }
+}
+
 @media (max-width: 40rem) {
-  /* The logo already says what the app is: on a phone the title stays for screen readers but is not drawn. */
-  .app-title {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  /* Two rows on a phone: the signature on its own line, then the buttons, so nothing sits over the wordmark. */
+  .app-bar {
+    flex-wrap: wrap;
+    min-height: 0;
+    padding-block: var(--space-2);
+    row-gap: var(--space-2);
+  }
+
+  .app-brand {
+    flex: 1 1 100%;
+  }
+
+  .app-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
   }
 
   .brand-logo img {
-    height: 28px;
+    height: 30px;
   }
 }
 

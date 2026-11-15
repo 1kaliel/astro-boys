@@ -292,6 +292,11 @@ the month above the map. Everything else (body text, controls, tables, legends, 
 arrows. The stack falls back to `--font-sans` for a missing file or glyph, and the display rules set the regular weight
 and `font-synthesis: none` so the browser never fakes a bold.
 
+**Numbers.** The display face draws 1 like an I and 4 like an H, which is fine in a big figure and wrong in a legend or an
+axis. So the calendar's small data labels (axes, legend scale, chips, filter labels) use `--font-display-text`: the
+letters of the display face (`unicode-range` on the same file) and the numbers and punctuation of the system font. The
+big figures of the KPI and weather cards (32 to 40 px, sized so "115 of 293" stays on one line) keep the full face.
+
 **License.** The free Typodermic license is a desktop one. Live text in a website, where the browser receives the font
 file, needs their paid **Webfont license** (their licensing page, "Live website text"). So the file is **not in git**:
 it lives in `app/frontend/public/fonts/` and `fonts/`, both git-ignored, and a build without it uses the fallback. To
@@ -302,7 +307,8 @@ ship the font on the public site, buy the Webfont license first, or swap `--font
 The header shows the Firewatcher signature (symbol and name, `src/assets/brand/`): the normal file on light surfaces and
 the `-negativo` file on dark ones, both in the page and switched by CSS from the same dark-theme selectors as the tokens,
 so the theme toggle and the OS setting both work. Rules from the brand pack: minimum height 24 px (28 px on a phone, 32
-px elsewhere), no recoloring, no effects, room around it. On a phone the title is hidden visually (still read by screen
-readers) because the signature already names the app. The browser icons are in `public/`: `favicon.svg`, the Safari
+px elsewhere), no recoloring, no effects, room around it. The page title is not drawn at any size (the signature names the app) but stays in the page for screen readers as the
+h1; the one-line scope text beside the signature shows from 1408 px, and on a phone the signature takes its own row
+above the buttons. Header proportions: signature 40 px high (30 px on a phone), bar 68 px, 12 px vertical padding. The browser icons are in `public/`: `favicon.svg`, the Safari
 `favicon-mono.svg`, `apple-touch-icon.png` (iOS does not take SVG), `icons/` (PWA, normal and maskable) and
 `site.webmanifest`. The signature's name is outlined, so it does not need the display font (see Typography).

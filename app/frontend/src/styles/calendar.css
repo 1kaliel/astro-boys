@@ -341,13 +341,14 @@
 
 .calendar-axis-label {
   fill: var(--color-text-secondary);
+  font-family: var(--font-display-text);
+  font-synthesis: none;
   font-size: var(--font-size-xs);
   transition: fill 120ms ease;
 }
 
 .calendar-axis-label.is-active {
-  fill: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
+  fill: var(--color-text-primary); /* one weight in the display face: the active label differs by color */
 }
 
 /* ---- Cell detail (tooltip) ------------------------------------------------------------------------------ */
@@ -438,6 +439,13 @@
   cursor: pointer;
 }
 
+/* The calendar's own chips (months, All, Peak) take the display face; the Area and CSV chips of the filter bar do not. */
+.calendar .chip,
+.month-chip {
+  font-family: var(--font-display-text);
+  font-synthesis: none;
+}
+
 .chip[aria-pressed="true"],
 .month-chip[data-pressed] {
   background: var(--cal-active);
@@ -462,6 +470,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+/* The display face on the calendar's labels (axes, chips, legend scale and title, zero mark, filter labels). */
+.calendar-legend-title,
+.calendar-legend-label,
+.calendar-cell-zero-label,
+.calendar-side .control-label {
+  font-family: var(--font-display-text);
+  font-synthesis: none;
 }
 
 .calendar-legend-title,
@@ -569,4 +586,13 @@
   outline: calc(1.25 * var(--size-px-2)) solid var(--cal-ink);
   outline-offset: calc(-1.25 * var(--size-px-2));
   box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--neutral-0);
+}
+
+/* The display face is wide: on a phone the month chips use the small size so "Jan" fits its chip. */
+@media (max-width: 40rem) {
+  .month-chip {
+    padding-inline: 0;
+    font-size: var(--font-size-xs);
+    letter-spacing: -0.03em;
+  }
 }

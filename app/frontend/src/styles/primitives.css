@@ -159,6 +159,8 @@
    * triangles of the comparisons). Body text, tables, legends and charts stay in the system font for legibility.
    */
   --font-display: "Neuropolitical", var(--font-sans);
+  /* Letters of the display face, numbers of the system font: for small data labels (axes, legends, chips). */
+  --font-display-text: "Neuropolitical Letters", var(--font-sans);
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -179,7 +181,7 @@
   --size-panel-min: 320px;
   --size-container: 1200px;
   --size-dashboard-max: 1600px;
-  --size-app-bar: 56px;
+  --size-app-bar: 68px;
   --size-heat-label: 40px; /* year column of the heatmap */
   --size-era: 22px; /* era bar column of the heatmap (estimated / observed) */
 
