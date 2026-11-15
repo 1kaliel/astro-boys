@@ -205,6 +205,13 @@ def _hotspot_query(
     return hotspots.HotspotQuery(cells=cells, start=start, end=end, period=period, include_all=include_all)
 
 
+def _unavailable(error: hotspots.HotspotsUnavailable) -> str:
+    """Name the missing years when that is the cause (a local copy, D12); otherwise say nothing internal."""
+    if isinstance(error, hotspots.YearsNotAvailable):
+        return str(error)
+    return "The native hotspots are not available."
+
+
 class HotspotCountOut(BaseModel):
     # Native hotspot detections (NASA FIRMS) of the area cells and dates; never "fires".
     rows: int
@@ -233,7 +240,7 @@ def hotspots_count(
         rows = hotspots.count(query)
     except hotspots.HotspotsUnavailable as error:
         log.warning("Hotspots count failed: %s", error)
-        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+        raise HTTPException(status_code=503, detail=_unavailable(error)) from error
     return HotspotCountOut(
         rows=rows,
         max_rows=hotspots.max_rows(),
@@ -266,7 +273,7 @@ def hotspots_csv(
         raise HTTPException(status_code=413, detail=str(error)) from error
     except hotspots.HotspotsUnavailable as error:
         log.warning("Hotspots export failed: %s", error)
-        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+        raise HTTPException(status_code=503, detail=_unavailable(error)) from error
 
     box = "_".join(f"{v:g}" for v in (west, south, east, north))
     suffix = "" if period == "ALL" else f"_{period}"

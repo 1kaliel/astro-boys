@@ -64,6 +64,10 @@ class HotspotsUnavailable(RuntimeError):
     """hotspots/v1 is not where ASTRO_HOTSPOTS_ROOT says, or it cannot be read."""
 
 
+class YearsNotAvailable(HotspotsUnavailable):
+    """A local copy has none of the requested years: missing data, which must not read as zero detections."""
+
+
 class TooManyRows(ValueError):
     def __init__(self, rows: int, max_rows: int) -> None:
         super().__init__(f"{rows:,} hotspots match; the limit is {max_rows:,}. Narrow the area or the years.")
@@ -134,11 +138,26 @@ def _source(root: str) -> str:
     return f"read_parquet('{glob}', hive_partitioning = true)"
 
 
+def _check_years(root: str, query: HotspotQuery) -> None:
+    """A local copy (the offline fallback, D12) often holds a few years only; a year without its partition
+    would count as 0 detections. The bucket holds every year and is not listed here."""
+    if root.startswith("gs://"):
+        return
+    years = range(query.start.year, query.end.year + 1)
+    present = sorted({p.name.removeprefix("year=") for p in Path(root).glob("*/year=*") if p.is_dir()})
+    if not any(str(year) in present for year in years):
+        asked = str(years[0]) if len(years) == 1 else f"{years[0]}-{years[-1]}"
+        raise YearsNotAvailable(
+            f"The native hotspots of {asked} are not on this server (it has: {', '.join(present) or 'none'})."
+        )
+
+
 def count(query: HotspotQuery, root: str | None = None) -> int:
     root = root or hotspots_root()
     con = _connect(root)
     where, params = _where(query)
     try:
+        _check_years(root, query)
         row = con.execute(f"SELECT count(*) FROM {_source(root)} WHERE {where}", params).fetchone()
     except duckdb.Error as error:
         raise HotspotsUnavailable(f"hotspots/v1 could not be read: {error}") from error

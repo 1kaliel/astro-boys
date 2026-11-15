@@ -97,7 +97,8 @@ gives `{rows, max_rows, cells, ...}`; `GET /api/hotspots.csv` with the same quer
   track_km, cell_l2, cell_l3, country, source_file`, ordered by time. Values as delivered by NASA FIRMS for each
   sensor; never compare brightness or confidence across sensors.
 - Limits: at most `ASTRO_CSV_MAX_ROWS` rows (default 500,000; more is a 413 with "narrow the area or the years"),
-  one export at a time per instance (429 otherwise). Bad box or dates: 422; source unreadable: 503.
+  one export at a time per instance (429 otherwise). Bad box or dates: 422; source unreadable: 503. A local source that
+  has none of the requested years (an offline copy with a few years) is a 503 that names them, never 0 rows.
 
 Source: `$ASTRO_HOTSPOTS_ROOT`, default `$ASTRO_DATA_ROOT/processed/hotspots/v1`. On Cloud Run it is
 `gs://<bucket>/astro/processed/hotspots/v1`, read with the service account (Application Default Credentials, gcsfs;
