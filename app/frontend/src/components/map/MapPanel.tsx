@@ -14,6 +14,7 @@ import { DrillLegend } from "./DrillLegend";
 import { useDrilldown } from "./drill";
 import { MapLayerControl, layerCountLabel, layerUnit } from "./MapLayerControl";
 import { MapTools, type Projection } from "./MapTools";
+import { CoordinateSearch, type PickedPoint } from "./CoordinateSearch";
 
 const EMPTY: CellsResponse["cells"] = [];
 
@@ -27,6 +28,17 @@ export default function MapPanel() {
   const mapRef = useRef<MapRef | null>(null);
   const [projection, setProjection] = useState<Projection>("mercator");
   const [drawing, setDrawing] = useState(false);
+  // Coordinate search: "Pick on map" turns the next map click into a point instead of a drill-down.
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<PickedPoint | null>(null);
+  const onDrawing = useCallback((next: boolean) => {
+    setDrawing(next);
+    if (next) setPicking(false);
+  }, []);
+  const onPick = useCallback((lat: number, lon: number) => {
+    setPicked({ lat, lon, at: Date.now() });
+    setPicking(false);
+  }, []);
   const remote = useRemote<CellsResponse>(cellsUrl(state.period, state.selected, state.sensor));
 
   const data = remote.data;
@@ -40,6 +52,10 @@ export default function MapPanel() {
   const estimated = cells.some((cell) => cell.estimated);
   const partial = cells.some((cell) => cell.partial);
   const monthLabel = data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : null;
+  const mapMonth = useMemo(
+    () => (data && monthLabel ? { year: data.year, month: data.month, label: monthLabel } : null),
+    [data, monthLabel],
+  );
 
   // The drill-down asks for the month on the map (the latest month when none is picked yet).
   const drillCell = state.drillCell;
@@ -58,9 +74,9 @@ export default function MapPanel() {
 
   const onDrill = useCallback(
     (cell: string) => {
-      if (!drawing) dispatch({ type: "drill", cell });
+      if (!drawing && !picking) dispatch({ type: "drill", cell });
     },
-    [dispatch, drawing],
+    [dispatch, drawing, picking],
   );
   const leaveDrill = useCallback(() => {
     dispatch({ type: "undrill" });
@@ -71,10 +87,13 @@ export default function MapPanel() {
   // Escape leaves the drill-down; Enter on the focused map opens the drill-down of the cell at its center, so the
   // keyboard reaches it too (the arrow keys pan the map).
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape" && drillCell) {
+    if (event.key === "Escape" && picking) {
+      event.preventDefault();
+      setPicking(false);
+    } else if (event.key === "Escape" && drillCell) {
       event.preventDefault();
       leaveDrill();
-    } else if (event.key === "Enter" && !drawing && event.target === mapRef.current?.getCanvas()) {
+    } else if (event.key === "Enter" && !drawing && !picking && event.target === mapRef.current?.getCanvas()) {
       const center = mapRef.current.getCenter();
       const id = cellIdAt(center.lat, center.lng);
       if (drillCell || cells.some((cell) => cell.id === id && cell.value > 0)) {
@@ -109,7 +128,17 @@ export default function MapPanel() {
           onArea={(area) => dispatch({ type: "setArea", area })}
           drilled={drillCell !== null}
           onBack={leaveDrill}
-          onDrawing={setDrawing}
+          onDrawing={onDrawing}
+          coords={
+            <CoordinateSearch
+              mapRef={mapRef}
+              month={mapMonth}
+              picking={picking}
+              onPicking={setPicking}
+              picked={picked}
+              drawing={drawing}
+            />
+          }
         />
         <div className="map-stage">
           <CellMap
@@ -122,7 +151,10 @@ export default function MapPanel() {
             onDrill={onDrill}
             monthLabel={monthLabel}
             countLabel={layerCountLabel(state.sensor)}
-            suppressFocus={drawing}
+            suppressFocus={drawing || picking}
+            point={state.point}
+            picking={picking}
+            onPick={onPick}
           />
         </div>
       </div>

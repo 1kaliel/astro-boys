@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 import { checkArea } from "../../lib/area";
 import { cx } from "../../lib/cx";
@@ -24,13 +24,15 @@ type MapToolsProps = {
   onBack: () => void;
   /** Tells the map a rectangle is being drawn, so a click there draws instead of opening a drill-down. */
   onDrawing: (drawing: boolean) => void;
+  /** Search by coordinates (CoordinateSearch), after the area tools; steps aside in the drill-down like them. */
+  coords?: ReactNode;
 };
 
 /**
  * Tools drawn over the map: flat/globe view, draw a rectangle (terra-draw, loaded only when asked) and use the
- * visible map area (easiest on a phone). Typed bounds live in the filter bar.
+ * visible map area (easiest on a phone), and search by coordinates. Typed bounds live in the filter bar.
  */
-export function MapTools({ mapRef, projection, onProjection, onArea, drilled, onBack, onDrawing }: MapToolsProps) {
+export function MapTools({ mapRef, projection, onProjection, onArea, drilled, onBack, onDrawing, coords }: MapToolsProps) {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const drawRef = useRef<{ stop(): void } | null>(null);
@@ -105,6 +107,7 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
             <Button onClick={() => void startDrawing()}>Draw area</Button>
           ))}
         {!drilled && <Button onClick={applyVisibleArea}>Use visible area</Button>}
+        {!drilled && coords}
       </div>
       {(drawing || error) && (
         <p className={cx("map-note", "map-hint", error && "map-error")} role={error ? "alert" : undefined}>
