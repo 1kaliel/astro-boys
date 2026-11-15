@@ -487,6 +487,19 @@ A separate local audit of commit `4be300e64f2bd89749d124fadfcdc66b87711bbb`
 tests, lint, repository hygiene, shell syntax checks and the 30-row smoke test. It had no production data, so it
 checks the toolchain, not the scientific results.
 
+The reproduction ran at commit `5286248`. The ingest code changed afterwards (untyped near-real-time detections keep
+a null `type`), so on Nov 15 the early-years commands and the 2026 API ingest were run again on the current code:
+215,459 detections and 36,558 count keys for 2000–2002 (counts identical; the FRP sums differ by at most
+7 × 10⁻¹²), and 531,036 detections for 2026, of which 460,569 pass the main filter. The full pipeline was not run
+again on the current code.
+
+That check found one difference from the published data: the 2026 partition of `hotspots/v1` in the bucket, written
+by the earlier code (run `20261115T023446Z_ingest-api_189900`), stored `type = 0` for its 402,122 near-real-time
+detections, although FIRMS gives no type for them. It was replaced on Nov 15 at 11:00 UTC by run
+`20261115T110035Z_ingest-api_f89b3b` (code `7a1b759`): the same 531,036 rows, equal in every other column, with
+`type` null in those rows. The 460,569 detections that pass the main filter are the same, so the monthly counts,
+the factors and the calendar are unchanged and were not rebuilt.
+
 Input checksums refer to exact files: hashes for Brazil CSVs and global ZIPs cannot be equated. Every reproduction must check each input against its own manifest, retain its code/settings and compare normalized outputs and scientific metrics separately. The current manifest implementation does not checksum output datasets automatically; verifying output equivalence requires an explicit comparison. Logs should remain outside the clone so they do not mark the code version dirty.
 
 ## Authorship and scope of this text update
