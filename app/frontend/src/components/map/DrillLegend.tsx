@@ -30,7 +30,7 @@ export function DrillLegend({ data, breaks }: DrillLegendProps) {
               </li>
             ))}
           </ol>
-          <span className="legend-unit">per 0.0625° sub-cell (about 7 km) · sub-cells with no detection are not filled</span>
+          <span className="legend-unit">per 0.0625° sub-cell (about 7 km) · sub-cells with no detection are not filled · zoomed in, the colors turn translucent (same classes) and the sub-cell at the center is outlined and described</span>
         </div>
       )}
       <p className="legend-note">

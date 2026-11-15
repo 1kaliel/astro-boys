@@ -526,6 +526,41 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Bottom left over the map: the focus chip (the cell you zoomed into, at the map center or under the mouse) and the
+   offline note, stacked. Leaves room for the attribution button on the right. */
+.map-overlay {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  z-index: var(--layer-sticky);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: calc(100% - var(--space-12) - var(--space-2));
+  pointer-events: none;
+}
+
+.map-overlay .map-offline {
+  position: static;
+}
+
+.map-focus-chip {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-sm);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
+}
+
+/* The live region stays mounted; it is hidden while no cell has the focus. */
+.map-focus-chip:empty {
+  display: none;
+}
+
 /* MapLibre popup, restyled with our tooltip tokens */
 .map-popup .maplibregl-popup-content {
   padding: var(--space-2) var(--space-3);
