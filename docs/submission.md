@@ -191,7 +191,8 @@ https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md
 - [x] Project name confirmed by Jean: FIREWATCHER.
 - [ ] Demo link added and opened in a private window.
 - [ ] Both site and repository links opened in a private window (S5).
-- [ ] Numbers above checked against https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md and the live site.
+- [x] Numbers above checked against https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md and the live site
+      (independent audit, 15 November, 21:30 UTC; recheck only if the data or the site changes).
 - [x] AI section confirmed by Kali (recheck against the final demo slides).
 - [ ] Both confirmation boxes ticked on the form.
 
