@@ -333,6 +333,17 @@ First version for **Ceará** (`uf = ce`; any other state is a 404). Two sources,
 - **Colors.** Fixed classes of the feels-like temperature (22, 24, 26, 28, 30, 32 degrees C) on the cool weather ramp. They
   split the range and are not comfort or alert thresholds; no color means danger.
 
+### Map cells by series (`GET /api/cells`)
+
+`series` (`harmonized` by default, `modis`, `viirs`) and `satellite` (`Aqua`, `Terra`, `SNPP`, `N20`). Harmonized is the
+VIIRS-equivalent count, with a 90% interval (`ci_low`, `ci_high`, `1.645 * sqrt(var_harmonized)` per cell) on estimated
+cells. `modis` and `viirs` are NATIVE counts of ONE satellite (the first available one unless `satellite` is given):
+satellites are never added together and the counts are not harmonized. The answer says what it is: `series`,
+`satellite`, `available_satellites`, and `coverage` (`none` + `reason` when the series has no data at all that month,
+for example VIIRS before February 2012: a gap in coverage, not zero). A cell absent from the list has no record for
+that series: it is not a zero. Breaks are fixed per series. A satellite of the other instrument, or a satellite with
+`harmonized`, is a 422.
+
 ### Daily native detections of one sensor (`GET /api/hotspots/daily`)
 
 The Skyline view of the calendar. Request: `sensor` (one of `SNPP`, `N20`, `Aqua`, `Terra`; never a sum of two), `start`,

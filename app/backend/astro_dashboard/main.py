@@ -60,12 +60,20 @@ def api_cells(
     year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
     month: Annotated[int | None, Query(ge=1, le=12)] = None,
     period: Literal["ALL", "D", "N"] = "ALL",
+    series: Literal["harmonized", "modis", "viirs"] = "harmonized",
+    satellite: Literal["Aqua", "Terra", "SNPP", "N20"] | None = None,
 ) -> dict:
-    """VIIRS-equivalent hotspot counts per 0.25° cell for one month (the map); latest month by default."""
+    """Hotspot counts per 0.25° cell for one month (the map); latest month by default.
+
+    `series=harmonized` (default) is the VIIRS-equivalent count. `modis` or `viirs` return the native
+    count of one
+    satellite (`satellite`, or the first available one): never a sum of satellites, never harmonized."""
     try:
-        return cells.cells_for_month(year, month, period)
+        return cells.cells_for_month(year, month, period, series, satellite)
     except cells.DataNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except cells.BadSeriesError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 # Mounted last, so API routes always win over static files.

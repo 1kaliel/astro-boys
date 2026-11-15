@@ -9,6 +9,8 @@ import {
   weatherGridUrl,
   weatherMonthUrl,
   type CellsResponse,
+  type MapSeries,
+  type Satellite,
   type LiveWindResponse,
   type MunicipalitiesGeoJSON,
   type MonthFieldResponse,
@@ -36,6 +38,28 @@ import { RegionWeatherPanel } from "./RegionWeatherPanel";
 
 const EMPTY: CellsResponse["cells"] = [];
 
+const SERIES_OPTIONS: ReadonlyArray<SegmentOption<MapSeries>> = [
+  { value: "modis", label: "MODIS (raw)" },
+  { value: "viirs", label: "VIIRS (raw)" },
+  { value: "harmonized", label: "VIIRS-equivalent (harmonized)" },
+];
+const SERIES_UNIT: Record<MapSeries, string> = {
+  harmonized: "VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month",
+  modis: "MODIS native hotspot detections per 0.25° cell and month (one satellite, not harmonized)",
+  viirs: "VIIRS native hotspot detections per 0.25° cell and month (one satellite, not harmonized)",
+};
+const SERIES_SHORT: Record<MapSeries, string> = {
+  harmonized: "VIIRS-equivalent hotspots",
+  modis: "MODIS native hotspot detections",
+  viirs: "VIIRS native hotspot detections",
+};
+const SATELLITE_NAME: Record<Satellite, string> = {
+  Aqua: "Aqua MODIS",
+  Terra: "Terra MODIS",
+  SNPP: "S-NPP VIIRS",
+  N20: "NOAA-20 VIIRS",
+};
+
 const LAYER_OPTIONS: ReadonlyArray<SegmentOption<MapLayer>> = (
   ["overview", "hotspots", "temperature", "wind-speed", "wind-direction", "municipalities"] as const
 ).map((value) => ({ value, label: LAYER_LABEL[value] }));
@@ -54,7 +78,9 @@ export default function MapPanel() {
   const mapRef = useRef<MapRef | null>(null);
   const [projection, setProjection] = useState<Projection>("mercator");
   const [layer, setLayer] = useState<MapLayer>("overview");
-  const remote = useRemote<CellsResponse>(cellsUrl(state.period, state.selected));
+  const [series, setSeries] = useState<MapSeries>("harmonized");
+  const [satellite, setSatellite] = useState<Satellite | null>(null);
+  const remote = useRemote<CellsResponse>(cellsUrl(state.period, state.selected, series, satellite));
 
   const data = remote.data;
   const cells = data?.cells ?? EMPTY;
@@ -130,6 +156,15 @@ export default function MapPanel() {
       clicked && field ? regionWeather(clicked.lng, clicked.lat, field.points, clickedState, field.step_deg) : null,
     [clicked, clickedState, field],
   );
+  // What the answer on screen is, taken from the answer itself: while a new choice loads, the old cells keep their own
+  // name (and the panel says it is updating), they are never relabeled with the new choice.
+  const shownSeries: MapSeries = data?.series ?? "harmonized";
+  const unit = SERIES_UNIT[shownSeries];
+  const sourceText =
+    shownSeries === "harmonized"
+      ? "NASA FIRMS, MODIS and VIIRS harmonized to VIIRS-equivalent counts"
+      : `NASA FIRMS, native count of ${data?.satellite ? SATELLITE_NAME[data.satellite] : "one satellite"}, not harmonized`;
+  const noCoverage = data?.coverage === "none";
   const hotspotsMonth = data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : null;
   const estimated = cells.some((cell) => cell.estimated);
   const partial = cells.some((cell) => cell.partial);
@@ -169,6 +204,36 @@ export default function MapPanel() {
         )}
       </div>
 
+      {(layer === "hotspots" || layer === "overview") && (
+        <div className="map-series" role="group" aria-label="Hotspot series on the map">
+          <SegmentedControl
+            label="Hotspot series"
+            options={SERIES_OPTIONS}
+            value={series}
+            onChange={(next) => {
+              setSeries(next);
+              setSatellite(null);
+            }}
+          />
+          {series !== "harmonized" && (data?.available_satellites?.length ?? 0) > 1 && (
+            <SegmentedControl
+              label="Satellite"
+              options={(data?.available_satellites ?? []).map((s) => ({ value: s, label: SATELLITE_NAME[s] }))}
+              value={(satellite ?? data?.satellite ?? data?.available_satellites?.[0]) as Satellite}
+              onChange={setSatellite}
+            />
+          )}
+          <p className="map-series-note" role="status">
+            {remote.loading && data ? "Updating the map… " : ""}
+            {shownSeries === "harmonized"
+              ? estimated
+                ? "Harmonized: months before February 2012 are estimated from MODIS (cells marked as estimated carry a 90% interval)."
+                : "Harmonized: observed by VIIRS in this month."
+              : `Native counts of ${data?.satellite ? SATELLITE_NAME[data.satellite] : "one satellite"}: they do not add up with the other satellites and are not comparable across MODIS and VIIRS.`}
+          </p>
+        </div>
+      )}
+
       {liveOn && (
         <OverviewControls
           showThermal={showThermal}
@@ -195,6 +260,9 @@ export default function MapPanel() {
             mapRef={mapRef}
             cells={cells}
             breaks={breaks}
+            cellUnit={SERIES_SHORT[shownSeries]}
+            cellSource={sourceText}
+            cellDate={hotspotsMonth}
             area={state.area}
             projection={projection}
             layer={layer}
@@ -237,8 +305,17 @@ export default function MapPanel() {
           Could not load the cells: {remote.error}
         </p>
       )}
-      {data && data.cells.length === 0 && (
-        <p className="map-note">No hotspot detections in this month. No detection does not mean no fire.</p>
+      {noCoverage && (
+        <p className="map-note" role="status">
+          {data?.reason ?? "This series has no data in this month."} This is a gap in coverage, not zero detections:
+          pick another series or month.
+        </p>
+      )}
+      {data && data.cells.length === 0 && !noCoverage && (
+        <p className="map-note">
+          No cell has a record for this series in this month. A cell without a record is not a zero, and no detection
+          does not mean no fire.
+        </p>
       )}
 
       {weatherLayer && (
@@ -274,7 +351,7 @@ export default function MapPanel() {
         <Legend
           mode="sequential"
           breaks={breaks}
-          unit="VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month · cells with no detection are not drawn"
+          unit={`${unit} · cells with no record are not drawn`}
           showMarking={false}
         />
       )}

@@ -49,11 +49,29 @@ def _write_calendar(
     ) -> None:
         lat, lon = CELLS[cell]
         est = year <= 2004
-        var = (estimated_var if est else 0.0)
+        var = estimated_var if est else 0.0
         origin = "VIIRS_EQUIVALENT_FROM_MODIS" if est else "VIIRS_OBSERVED"
         sat = "Aqua" if est else "SNPP"
-        rows.append((cell, lat, lat + 0.25, lon, lon + 0.25, year, month, period, count, var, est, partial,
-                     10 if partial else 30, origin, sat, "test-model"))
+        rows.append(
+            (
+                cell,
+                lat,
+                lat + 0.25,
+                lon,
+                lon + 0.25,
+                year,
+                month,
+                period,
+                count,
+                var,
+                est,
+                partial,
+                10 if partial else 30,
+                origin,
+                sat,
+                "test-model",
+            )
+        )
 
     for i, year in enumerate(YEARS):
         add("A", year, 1, "ALL", JAN_A[i])

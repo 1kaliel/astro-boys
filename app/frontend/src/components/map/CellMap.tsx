@@ -151,6 +151,10 @@ type CellMapProps = {
   cells: readonly CellFeatureProps[];
   /** Fixed, strictly increasing class limits from the API (the same for every month). */
   breaks: readonly number[];
+  /** What a value is and where it comes from, for the cell popup (from the answer on screen). */
+  cellUnit?: string;
+  cellSource?: string;
+  cellDate?: string | null;
   area: Bounds;
   projection: "mercator" | "globe"; // the MapLibre projections; the 3D view is GlobeView
   /** What is drawn: the hotspot cells (default) or one ERA5 weather layer. Never both at once. */
@@ -189,6 +193,9 @@ export function CellMap({
   mapRef,
   cells,
   breaks,
+  cellUnit,
+  cellSource,
+  cellDate,
   area,
   projection,
   layer = "hotspots",
@@ -341,6 +348,9 @@ export function CellMap({
         value: Number(p.value),
         estimated: p.estimated === true || p.estimated === "true",
         partial: p.partial === true || p.partial === "true",
+        ci_low: p.ci_low == null ? undefined : Number(p.ci_low),
+        ci_high: p.ci_high == null ? undefined : Number(p.ci_high),
+        satellite: typeof p.satellite === "string" ? p.satellite : undefined,
       },
     });
   };
@@ -636,11 +646,24 @@ export function CellMap({
             offset={10}
             className="map-popup"
           >
-            <strong>{formatCount(hover.cell.value)}</strong> VIIRS-equivalent hotspots
+            <strong>{formatCount(hover.cell.value)}</strong> {cellUnit ?? "VIIRS-equivalent hotspots"}
             <br />
-            Cell {hover.cell.id}
+            {cellDate && <>{cellDate} · </>}Cell {hover.cell.id}
             {hover.cell.estimated && " · Estimated from MODIS"}
+            {hover.cell.estimated && hover.cell.ci_low != null && hover.cell.ci_high != null && (
+              <>
+                {" "}
+                · 90% interval {formatCount(hover.cell.ci_low)} to {formatCount(hover.cell.ci_high)}
+              </>
+            )}
+            {hover.cell.satellite && <> · {hover.cell.satellite}</>}
             {hover.cell.partial && " · Partial month"}
+            {cellSource && (
+              <>
+                <br />
+                Source: {cellSource}
+              </>
+            )}
           </Popup>
         )}
       </Map>

@@ -110,7 +110,17 @@ def test_cells_for_month_lists_values_and_flags_simulated(client):
     body = client.get("/api/cells", params={"year": 2005, "month": 1}).json()
     assert body["simulated"] is True
     assert [c["id"] for c in body["cells"]] == ["G072131.11", "G072131.12", "G080140.01"]
-    assert body["cells"][0] == {"id": "G072131.11", "value": 10.0, "estimated": True, "partial": False}
+    first = body["cells"][0]
+    assert {k: first[k] for k in ("id", "value", "estimated", "partial")} == {
+        "id": "G072131.11",
+        "value": 10.0,
+        "estimated": True,
+        "partial": False,
+    }
+    # The 90% interval of an estimated cell: 10 +/- 1.645 * sqrt(4)
+    assert first["ci_low"] == pytest.approx(10 - 1.645 * 2)
+    assert first["ci_high"] == pytest.approx(10 + 1.645 * 2)
+    assert body["series"] == "harmonized" and body["coverage"] == "ok"
 
 
 def test_missing_data_root_returns_503(tmp_path, monkeypatch):
@@ -122,3 +132,41 @@ def test_missing_data_root_returns_503(tmp_path, monkeypatch):
 def test_invalid_period_and_month_are_rejected(client):
     assert client.get("/api/cells", params={"year": 2005, "month": 1, "period": "X"}).status_code == 422
     assert client.get("/api/cells", params={"year": 2005, "month": 13}).status_code == 422
+
+
+def test_viirs_series_is_native_one_satellite_and_never_the_harmonized_value(client):
+    body = client.get("/api/cells", params={"year": 2013, "month": 1, "series": "viirs"}).json()
+    assert (body["series"], body["satellite"], body["coverage"]) == ("viirs", "SNPP", "ok")
+    assert body["available_satellites"] == ["SNPP"]
+    assert body["cells"] == [
+        {"id": "G072131.11", "value": 8.0, "estimated": False, "partial": False, "satellite": "SNPP"}
+    ]
+
+
+def test_viirs_before_its_coverage_is_unavailable_not_empty_zero(client):
+    body = client.get("/api/cells", params={"year": 2005, "month": 1, "series": "viirs"}).json()
+    assert body["coverage"] == "none"
+    assert body["cells"] == [] and "no data" in body["reason"]
+
+
+def test_modis_series_needs_a_modis_satellite(client):
+    assert (
+        client.get(
+            "/api/cells", params={"year": 2013, "month": 1, "series": "modis", "satellite": "SNPP"}
+        ).status_code
+        == 422
+    )
+    assert (
+        client.get(
+            "/api/cells", params={"year": 2013, "month": 1, "series": "harmonized", "satellite": "Aqua"}
+        ).status_code
+        == 422
+    )
+    assert client.get("/api/cells", params={"series": "x"}).status_code == 422
+
+
+def test_native_breaks_are_their_own_scale(client):
+    body = client.get("/api/cells", params={"year": 2013, "month": 1, "series": "viirs"}).json()
+    assert body["breaks"] == [8.0] or all(
+        x < y for x, y in zip(body["breaks"], body["breaks"][1:], strict=False)
+    )

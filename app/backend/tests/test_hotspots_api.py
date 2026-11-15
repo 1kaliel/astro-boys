@@ -43,9 +43,23 @@ def _write_hotspots(root: Path) -> None:
         con.execute(
             "INSERT INTO h VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10.5, 330.1, 300.2, 29.9, 1.0, 1.0, 0, ?, ?,"
             " 'L1', ?, 'L3', 'Brazil', 'fire_archive.csv', ?, ?)",
-            [hid, lat + 0.1, lon + 0.1, ts, day, int(day[5:7]), sat, dn, "n" if main else "l",
-             "n" if main else "l", "6.1NRT" if instrument == "MODIS" else "2", main, cell, instrument,
-             int(day[:4])],
+            [
+                hid,
+                lat + 0.1,
+                lon + 0.1,
+                ts,
+                day,
+                int(day[5:7]),
+                sat,
+                dn,
+                "n" if main else "l",
+                "n" if main else "l",
+                "6.1NRT" if instrument == "MODIS" else "2",
+                main,
+                cell,
+                instrument,
+                int(day[:4]),
+            ],
         )
     target = root / "processed" / "hotspots" / "v1"
     target.parent.mkdir(parents=True, exist_ok=True)

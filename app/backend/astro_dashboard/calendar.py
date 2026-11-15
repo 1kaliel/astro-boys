@@ -290,7 +290,6 @@ class CalendarStore:
             months=months,
         )
 
-
     def _same_days(
         self,
         cursor: duckdb.DuckDBPyConnection,

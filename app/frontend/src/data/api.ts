@@ -3,7 +3,19 @@ import type { Period } from "../state/dashboard";
 
 /** The map endpoint (`/api/cells`, app/backend/astro_dashboard/data.py), following docs/data-dictionary.md.
  * The calendar has its own client: data/calendarSource.ts. */
-export type CellValue = { id: string; value: number; estimated: boolean; partial: boolean };
+export type CellValue = {
+  id: string;
+  value: number;
+  estimated: boolean;
+  partial: boolean;
+  ci_low?: number;
+  ci_high?: number;
+  satellite?: string;
+};
+
+/** What the map shows: the harmonized VIIRS-equivalent count, or the native count of one MODIS or VIIRS satellite. */
+export type MapSeries = "harmonized" | "modis" | "viirs";
+export type Satellite = "Aqua" | "Terra" | "SNPP" | "N20";
 
 export type CellsResponse = {
   year: number;
@@ -13,6 +25,14 @@ export type CellsResponse = {
   simulated: boolean;
   /** Fixed class limits for the map, the same for every month (quantiles of all cell-months). */
   breaks?: number[];
+  /** What the values are. The labels of the map come from here, not from the selector, so a late answer is never
+   * shown under the name of a newer choice. */
+  series?: MapSeries;
+  satellite?: Satellite | null;
+  available_satellites?: Satellite[];
+  /** "none": the series has no data at all in this month (for example VIIRS before February 2012). */
+  coverage?: "ok" | "none";
+  reason?: string | null;
   cells: CellValue[];
 };
 
@@ -80,8 +100,15 @@ export function useRemote<T>(url: string | null): Remote<T> {
   return { ...state, retry };
 }
 
-export function cellsUrl(period: Period, selected: { year: number; month: number } | null): string {
+export function cellsUrl(
+  period: Period,
+  selected: { year: number; month: number } | null,
+  series: MapSeries = "harmonized",
+  satellite: Satellite | null = null,
+): string {
   const params = new URLSearchParams({ period });
+  if (series !== "harmonized") params.set("series", series);
+  if (satellite) params.set("satellite", satellite);
   if (selected) {
     params.set("year", String(selected.year));
     params.set("month", String(selected.month));

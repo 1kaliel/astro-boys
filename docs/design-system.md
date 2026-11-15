@@ -355,3 +355,19 @@ is linear, so equal heights have equal lengths on screen anywhere in the grid. C
 (`--magma-*`); the legend uses the same tokens. The view is for reading one year: the year picker covers 2013 to 2025 of
 VIIRS S-NPP. Keys: arrows move between days, Escape clears, Home and End go to the first and last day. The skyline is
 not a replacement of the harmonized calendar and carries its own label: "native hotspot detections, not harmonized".
+
+## Calendar filters, legend selection and the card panels
+
+- **Filters mask, they do not move.** Range shortcuts (latest 12 months, latest 5 years, full record, counted back from
+  the last month in the data), a volume range (hotspot detections in a month) and the deviation bands (robust z-score:
+  below ≤ −1, near, above ≥ +1, and "no valid comparison") hide months by drawing them as a dashed empty box. That look
+  is not the hatching of "no data" and not the printed 0 of a measured zero. The chart and the table use the same
+  records. The color limits come from the unfiltered series, so they stay put while picking.
+- **The legend is a control.** Each color of the key beside the calendar is a button (`aria-pressed`, a check and a heavier
+  edge when picked). Picked colors are cleared when the scale is recomputed (area, period, series or view change).
+- **High contrast** swaps the ramp (`.calendar[data-palette="contrast"]`): the grid and the legend read the same tokens.
+- **Cards open their records.** Exact value, unit, area, time of day, source, the rule, the records, what was left out, a
+  link to NASA FIRMS, the API answer and a CSV of the shown rows. Sample data is badged as simulated.
+- **Map series.** MODIS (raw), VIIRS (raw), VIIRS-equivalent (harmonized). Labels come from the answer on screen, not from
+  the selector, so a late answer is never shown under a newer choice.
+
