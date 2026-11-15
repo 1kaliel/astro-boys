@@ -93,6 +93,40 @@ Texture (hatching at 45°/135°) is **opt-in only**: an accessibility setting, p
   (the three consecutive months with the highest typical activity, partial months left out), not fixed. In the
   Northeast pilot it is September to November, about 65% of the activity of a typical year. No month pressed = all.
 
+## Calendar theme (an island inside the dashboard)
+
+The burning calendar card has its own theme, applied only to that card (`.calendar-theme` in `calendar.css`), in light
+and in dark OS mode alike. It re-points the global tokens inside the card, so the buttons, tabs and tooltip there follow
+it; nothing outside the card changes. The map and the other cards keep the global tokens (including the magma ramp).
+
+- **Plane and ink:** light gray plane (`--ash-100`), petrol ink (`--petrol-700`), secondary ink (`--petrol-500`), active
+  controls and the selection in petrol (`--petrol-600`, `--petrol-700`). Filters are capsules.
+- **Scale (ember):** `--ember-100` to `--ember-700`, from cream through peach and orange to earth red, even lightness
+  steps (L\* 97 to 22). The colors are quantile steps of the months on screen; the legend is horizontal, under the grid,
+  and labels each color with its **range of detections per month**.
+- **Cells:** rounded corners and the same 3 px gap in every direction.
+- **Month names:** Portuguese (Jan, Fev, Mar, Abr, Mai, Jun, Jul, Ago, Set, Out, Nov, Dez) by request. This is **one
+  constant** (`MONTH_LOCALE` in `calendarText.ts`); the rest of the app is English and the challenge requires English
+  in every linked material, so set it to `"en"` before submitting unless the team decides otherwise.
+
+States of a month, each with its own look (never color alone):
+
+| State | Look |
+|-------|------|
+| A count | Solid fill from the ember ramp |
+| A valid zero | The palest fill (`--ember-zero`), a hairline and a printed **0**. It is a measurement, so it is not drawn like a gap, and it is set aside from the quantiles |
+| Estimated from MODIS | A small white dot with an ink ring in the corner (replaces the dashed outline in this theme) |
+| Partial month | A white corner mark with an ink edge: the count is not comparable with full months |
+| No data / no estimate | Neutral diagonal **hatching** and no number. Hatching is normally opt-in in this system; the calendar uses it by request, because a missing month must never look like a low one |
+| Selected month | A petrol outline with a white edge, so it shows on the darkest fills |
+| Keyboard focus | A ring outside the cell, always visible |
+
+Checks (`uv run python scripts/check_viz_ramp.py --theme calendar`, reads the real tokens): neighbouring steps ΔE ≥ 16.2
+(≥ 12.7 under protanopia, deuteranopia and tritanopia); least step vs no data ΔE 14.4 (≥ 12.8 with deficiencies; the
+pattern is a second channel, so the threshold for this theme is 10); peak vs the plane 10.1:1; ink on the plane 8.2:1;
+secondary ink 4.9:1; white on the active control 6.5:1. Known limits: on a phone the grid scrolls sideways and the year
+labels scroll with it.
+
 ## Words
 
 - Say **hotspots** or **fire activity**. Never "fires", "burned area", "risk", "probability" or "forecast".

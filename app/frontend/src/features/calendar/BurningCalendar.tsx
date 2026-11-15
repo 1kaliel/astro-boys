@@ -3,18 +3,18 @@ import { useCallback, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
-import { Legend } from "../../components/viz/Legend";
 import type { CalendarDataset } from "../../data/calendarSource";
 import { useCalendarDataset } from "../../data/useCalendar";
-import { MONTHS_LONG, MONTHS_SHORT, formatCount } from "../../lib/format";
+import { formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
-import { CalendarAxes, CalendarCell, CalendarCellContext } from "./CalendarCell";
+import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
+import { CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
 import { MonthFilter } from "./MonthFilter";
 import {
   buildScale,
   buildSeries,
-  legendStops,
+  legendRanges,
   monthSpan,
   peakSeason,
   provenanceText,
@@ -22,13 +22,14 @@ import {
   type CalendarDatum,
   type CalendarSerie,
 } from "./calendarModel";
+import { monthLong, monthShort } from "./calendarText";
 
 export const CALENDAR_UNIT = "VIIRS-equivalent hotspot detections per month";
 
 // Chart geometry in pixels (nivo needs numbers; colors and strokes come from tokens in calendar.css).
-const ROW_PX = 22;
-const MARGIN = { top: 28, right: 8, bottom: 8, left: 44 };
-const CELL_PADDING = 0.1;
+const ROW_PX = 26;
+const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
+const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
 const MAX_CELL_PX = 72; // with few months the cells stop growing instead of turning into long bars
 
 const THEME = {
@@ -36,12 +37,13 @@ const THEME = {
   tooltip: { container: { background: "transparent", boxShadow: "none", padding: 0 } },
 };
 
+/** The detail of a cell: month, year, count and the state of the data (observed, estimated, partial, zero, none). */
 function CalendarTooltip({ cell, approximate }: TooltipProps<CalendarDatum> & { approximate: boolean }) {
   const { entry, year, month } = cell.data;
   return (
     <div className="tooltip calendar-tooltip">
       <p className="calendar-tooltip-title">
-        {MONTHS_LONG[month - 1]} {year}
+        {monthLong(month)} {year}
       </p>
       {entry ? (
         <>
@@ -54,6 +56,7 @@ function CalendarTooltip({ cell, approximate }: TooltipProps<CalendarDatum> & { 
               <strong>{formatCount(entry.count)}</strong> hotspot detections
             </p>
           )}
+          {entry.count === 0 && <p>Zero detections: a valid count, not missing data</p>}
           {entry.isEstimated && entry.count !== null && (
             <p>
               {entry.ciLow !== null && entry.ciHigh !== null
@@ -64,7 +67,9 @@ function CalendarTooltip({ cell, approximate }: TooltipProps<CalendarDatum> & { 
           <p>{provenanceText(entry)}</p>
         </>
       ) : (
-        <p>No data</p>
+        <p>
+          <strong>No data</strong> for this month
+        </p>
       )}
     </div>
   );
@@ -109,19 +114,27 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const onSelect = useCallback((year: number, month: number) => dispatch({ type: "select", year, month }), [dispatch]);
 
   const selectedHasData = state.selected
-    ? series.some((row) => row.data.some((c) => c.entry && c.year === state.selected?.year && c.month === state.selected.month))
+    ? series.some((row) =>
+        row.data.some((c) => c.entry && c.year === state.selected?.year && c.month === state.selected.month),
+      )
     : false;
   const tabStop = selectedHasData ? state.selected : latestWithData(series);
   // A month the filter just hid cannot stay highlighted.
-  const hoverShown = hovered && series.some((row) => row.id === String(hovered.year) && row.data.some((c) => c.month === hovered.month));
+  const hoverShown =
+    hovered && series.some((row) => row.id === String(hovered.year) && row.data.some((c) => c.month === hovered.month));
   const contextValue = useMemo(
     () => ({ selected: state.selected, tabStop, onSelect, hovered: hoverShown ? hovered : null, setHovered }),
     [state.selected, tabStop, onSelect, hovered, hoverShown],
   );
 
+  // A valid zero has its own fill and is printed as "0"; a count takes a step of the ramp; no data is hatched
+  // by the cell itself (it never reaches this function with a number).
   const colors = useCallback(
-    (cell: Omit<ComputedCell<CalendarDatum>, "color" | "opacity" | "borderColor" | "labelTextColor">) =>
-      cell.value === null || !scale ? "var(--viz-null)" : `var(--viz-seq-${scaleStep(cell.value, scale)})`,
+    (cell: Omit<ComputedCell<CalendarDatum>, "color" | "opacity" | "borderColor" | "labelTextColor">) => {
+      if (cell.value === null || !scale) return "var(--viz-null)";
+      if (cell.value === 0) return "var(--cal-zero)";
+      return `var(--viz-seq-${scaleStep(cell.value, scale)})`;
+    },
     [scale],
   );
 
@@ -149,39 +162,42 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
 
   const columns = series[0]?.data.length ?? 12;
   const chart = (
-    <div
-      className="calendar-chart"
-      style={{
-        height: series.length * ROW_PX + MARGIN.top + MARGIN.bottom,
-        maxWidth: MARGIN.left + MARGIN.right + columns * MAX_CELL_PX,
-      }}
-    >
-      <CalendarCellContext.Provider value={contextValue}>
-        <ResponsiveHeatMap
-          data={series}
-          margin={MARGIN}
-          layers={["cells", CalendarAxes]}
-          cellComponent={CalendarCell}
-          tooltip={tooltip}
-          colors={colors}
-          emptyColor="var(--viz-null)"
-          borderColor="var(--viz-cell-outline)"
-          labelTextColor="var(--color-text-primary)"
-          enableLabels={false}
-          xInnerPadding={CELL_PADDING}
-          yInnerPadding={CELL_PADDING}
-          axisTop={null}
-          axisLeft={null}
-          axisRight={null}
-          axisBottom={null}
-          hoverTarget="cell"
-          inactiveOpacity={1}
-          animate={false}
-          theme={THEME}
-          role="group"
-          ariaLabel={`Burning calendar: ${CALENDAR_UNIT}, ${MONTHS_SHORT[0]} to ${MONTHS_SHORT[11]}, by year`}
-        />
-      </CalendarCellContext.Provider>
+    <div className="calendar-scroll">
+      <div
+        className="calendar-chart"
+        style={{
+          height: series.length * ROW_PX + MARGIN.top + MARGIN.bottom,
+          minWidth: MARGIN.left + MARGIN.right + columns * MIN_CELL_PX,
+          maxWidth: MARGIN.left + MARGIN.right + columns * MAX_CELL_PX,
+        }}
+      >
+        <CalendarCellContext.Provider value={contextValue}>
+          <ResponsiveHeatMap
+            data={series}
+            margin={MARGIN}
+            layers={[CalendarDefs, "cells", CalendarAxes]}
+            cellComponent={CalendarCell}
+            tooltip={tooltip}
+            colors={colors}
+            emptyColor="var(--viz-null)"
+            borderColor="var(--viz-cell-outline)"
+            labelTextColor="var(--color-text-primary)"
+            enableLabels={false}
+            xInnerPadding={0}
+            yInnerPadding={0}
+            axisTop={null}
+            axisLeft={null}
+            axisRight={null}
+            axisBottom={null}
+            hoverTarget="cell"
+            inactiveOpacity={1}
+            animate={false}
+            theme={THEME}
+            role="group"
+            ariaLabel={`Burning calendar: ${CALENDAR_UNIT}, ${monthShort(1)} to ${monthShort(12)}, by year`}
+          />
+        </CalendarCellContext.Provider>
+      </div>
     </div>
   );
 
@@ -215,12 +231,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         chart={chart}
         table={<CalendarTable series={series} unit={CALENDAR_UNIT} />}
       />
-      <Legend
-        mode="sequential"
-        unit={CALENDAR_UNIT}
-        stops={legendStops(scale)}
-        note="Each color holds about the same number of months, so the limits are not evenly spaced. They are recomputed for the months on screen."
-      />
+      <CalendarLegend ranges={legendRanges(scale)} unit={CALENDAR_UNIT} />
     </div>
   );
 }

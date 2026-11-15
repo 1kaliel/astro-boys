@@ -1,8 +1,8 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { Button } from "../../components/ui/Button";
-import { MONTHS_LONG, MONTHS_SHORT } from "../../lib/format";
 import { monthSpan } from "./calendarModel";
+import { monthLong, monthShort } from "./calendarText";
 
 type MonthFilterProps = {
   /** Months shown (1..12). Empty means every month. */
@@ -46,9 +46,9 @@ export function MonthFilter({ months, peak, onChange }: MonthFilterProps) {
         value={months.map(String)}
         onValueChange={(next) => onChange(next.map(Number))}
       >
-        {MONTHS_SHORT.map((label, index) => (
-          <Toggle key={label} value={String(index + 1)} className="month-chip" aria-label={MONTHS_LONG[index]}>
-            {label}
+        {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+          <Toggle key={month} value={String(month)} className="month-chip" aria-label={monthLong(month)}>
+            {monthShort(month)}
           </Toggle>
         ))}
       </ToggleGroup>

@@ -72,7 +72,7 @@ export function DashboardPage() {
         </Card>
         <Card
           title="Burning calendar"
-          className="dashboard-calendar"
+          className="dashboard-calendar calendar-theme"
           caption={`Source: NASA FIRMS · ${state.startYear}–${state.endYear} · ${UNIT}`}
         >
           <BurningCalendar />
