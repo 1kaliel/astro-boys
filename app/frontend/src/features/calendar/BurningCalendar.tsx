@@ -13,6 +13,7 @@ import { FIRST_YEAR, LAST_YEAR, useDashboard, type Period } from "../../state/da
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
+import { CalendarKey } from "./CalendarLegend";
 import { SkylineTab } from "./SkylineTab";
 import { MonthFilter } from "./MonthFilter";
 import {
@@ -197,6 +198,11 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         options={PERIOD_OPTIONS}
         value={state.period}
         onChange={(next) => dispatch({ type: "setPeriod", period: next })}
+      />
+      <CalendarKey
+        ranges={scale ? legendRanges(scale) : []}
+        anomaly={anomaly}
+        unit={anomaly ? ANOMALY_UNIT : raw ? RAW_UNIT : CALENDAR_UNIT}
       />
     </aside>
   );
