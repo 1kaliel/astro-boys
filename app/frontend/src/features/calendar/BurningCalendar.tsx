@@ -159,7 +159,9 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     (props: TooltipProps<CalendarDatum>) => <CalendarTooltip {...props} approximate={dataset.intervalApproximate} />,
     [dataset.intervalApproximate],
   );
-  const showsIntervals = dataset.intervalApproximate && dataset.months.some((m) => m.isEstimated && m.ciLow !== null);
+  // The raw view has no intervals: they belong to the harmonized estimates.
+  const showsIntervals =
+    !raw && dataset.intervalApproximate && dataset.months.some((m) => m.isEstimated && m.ciLow !== null);
 
   const filter = (
     <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
@@ -210,7 +212,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
             animate={false}
             theme={THEME}
             role="group"
-            ariaLabel={`Burning calendar: ${CALENDAR_UNIT}, ${monthShort(1)} to ${monthShort(12)}, by year`}
+            ariaLabel={`Burning calendar: ${raw ? RAW_UNIT : CALENDAR_UNIT}, ${monthShort(1)} to ${monthShort(12)}, by year`}
           />
         </CalendarCellContext.Provider>
       </div>

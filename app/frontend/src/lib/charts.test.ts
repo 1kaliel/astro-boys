@@ -139,7 +139,7 @@ describe("anomaly steps", () => {
 
 describe("axes", () => {
   it("rounds the top of an axis up to a round number", () => {
-    expect([0, 1, 7, 18, 23, 4100, 733000].map(niceCeil)).toEqual([1, 1, 10, 20, 25, 5000, 1000000]);
+    expect([0, 1, 7, 18, 23, 4100, 733000, 1003458].map(niceCeil)).toEqual([1, 1, 8, 20, 24, 6000, 800000, 1200000]);
   });
 
   it("spreads ticks evenly from zero", () => {

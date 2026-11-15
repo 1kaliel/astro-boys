@@ -183,8 +183,10 @@ labels scroll with it.
   0.5, 1, 2 and 3 (`lib/charts.ts`): blue below the median, orange above, neutral without a comparison. The legend
   prints the limits. A z-score is never worded as a probability or a risk.
 - Both charts are plain SVG in a fixed 640 x 280 box, with a table view; on a narrow screen they scroll sideways
-  instead of shrinking the labels. **Not yet checked by eye in a browser** (written without a local Node; CI ran
-  typecheck, unit tests and the build).
+  instead of shrinking the labels. Seen in Chrome on the deployed page (2026-11-15, dark OS mode, 1568 px wide);
+  not seen yet: a phone, the light theme.
+- Inside the calendar card the diverging tokens are re-pointed to their light values in every OS mode (the card is
+  always light): about the median is white, "no comparison" takes the plane color.
 
 ## Words
 

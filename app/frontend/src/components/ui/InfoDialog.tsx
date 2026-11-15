@@ -15,7 +15,11 @@ export function InfoDialog({ triggerLabel, title, children }: InfoDialogProps) {
         <Dialog.Backdrop className="dialog-backdrop" />
         <Dialog.Popup className="dialog-popup">
           <Dialog.Title className="dialog-title">{title}</Dialog.Title>
-          <div className="dialog-body">{children}</div>
+          {/* Focusable: the dialog opens at the top of the text (not at its first link, far below), and the
+              keyboard can scroll it. */}
+          <div className="dialog-body" tabIndex={0}>
+            {children}
+          </div>
           <div className="dialog-actions">
             <Dialog.Close className="button">Close</Dialog.Close>
           </div>

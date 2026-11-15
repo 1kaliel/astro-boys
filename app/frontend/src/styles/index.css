@@ -4,8 +4,9 @@
 @import "./viz.css";
 @import "./components.css";
 @import "./calendar.css";
-@import "./charts.css";
 @import "./layout.css";
+/* After layout.css: the chart cards override the full-row default of `.dash > *`. */
+@import "./charts.css";
 
 *,
 *::before,
