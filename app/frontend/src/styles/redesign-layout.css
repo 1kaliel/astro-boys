@@ -13,12 +13,20 @@
   background: var(--color-page);
 }
 
+.mobile-views .control {
+  flex: 1;
+  min-width: 0;
+}
+
 .mobile-views .segmented {
+  display: flex;
   width: 100%;
 }
 
 .mobile-views .segmented-item {
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 @media (max-width: 56rem) {
