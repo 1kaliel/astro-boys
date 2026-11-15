@@ -181,7 +181,7 @@ button.month-day {
 
 /* The darkest steps take white text. */
 .month-day.is-dark {
-  color: var(--neutral-0);
+  color: var(--cal-mark);
 }
 
 /* After the last day of data: hatched, no number. Never drawn as zero. */
@@ -214,7 +214,7 @@ button.month-day {
 }
 
 .month-day.is-dark.is-latest::after {
-  background: var(--neutral-0);
+  background: var(--cal-mark);
 }
 
 .month-day-latest {
@@ -233,7 +233,7 @@ button.month-day {
 .month-day.is-selected {
   outline: calc(1.25 * var(--size-px-2)) solid var(--cal-ink);
   outline-offset: calc(-1.25 * var(--size-px-2));
-  box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--neutral-0);
+  box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--cal-mark);
 }
 
 button.month-day:hover {

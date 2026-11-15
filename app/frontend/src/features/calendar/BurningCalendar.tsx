@@ -1,9 +1,10 @@
 import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/heatmap";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { ImageDownload, TextDownload } from "../../components/ui/DownloadBar";
+import { ExportMenu } from "../../components/ui/ExportMenu";
 import { Fold } from "../../components/ui/Fold";
 import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
@@ -116,6 +117,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const [state, dispatch] = useDashboard();
   const phone = useMediaQuery(PHONE);
   const [hovered, setHovered] = useState<{ year: number; month: number } | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   // Only years the data covers are shown: the selector can go past the last published year.
   const startYear = Math.max(state.startYear, dataset.firstYear);
   const endYear = Math.min(state.endYear, dataset.lastYear);
@@ -226,7 +228,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   if (!scale) {
     return (
       <div className="calendar">
-        {filter}
+        <div className="tabs-bar">{filter}</div>
         <p className="calendar-status" role="status">
           No hotspot data for this selection. Try another time of day, other months or a wider range of years.
         </p>
@@ -309,37 +311,21 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         </CalendarCellContext.Provider>
       </div>
     </div>
-    <ImageDownload
-      meta={exportMeta}
-      fileName={(ext) => exportFileName("calendar", [raw ? "raw" : anomaly ? "anomaly" : "harmonized", shownYears, period], ext)}
-      svgSelector=".calendar-chart svg"
-    />
     </>
   );
 
-  return (
-    <div className="calendar">
-      {filter}
-      {dataset.synthetic && (
-        <p className="calendar-notice">
-          <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
-        </p>
-      )}
-      {raw && (
-        <p className="calendar-notice">
-          <strong>Raw by sensor:</strong> native counts. The 2012 jump is the change of sensor, not of activity.
-        </p>
-      )}
-      {anomaly && (
-        <p className="calendar-notice">
-          <strong>Anomaly:</strong> how unusual each month is for its month of the year. Not a forecast.
-        </p>
-      )}
-      <ChartTableTabs label="Burning calendar" chart={chart} table={<CalendarTable series={series} unit={unit} />} />
+  const exportMenu = (
+    <ExportMenu label="Export the burning calendar">
+      <ImageDownload
+        meta={exportMeta}
+        fileName={(ext) => exportFileName("calendar", [raw ? "raw" : anomaly ? "anomaly" : "harmonized", shownYears, period], ext)}
+        svgSelector=".calendar-chart svg"
+        findSvg={() => rootRef.current?.querySelector<SVGSVGElement>(".calendar-chart svg") ?? null}
+      />
       <div className="download-bar" role="group" aria-label="Download the calendar table">
         <span className="download-label">Table</span>
         <TextDownload
-          label="Download CSV"
+          label="CSV"
           mime="text/csv"
           fileName={exportFileName("calendar", [raw ? "raw" : "harmonized", shownYears, period], "csv")}
           build={() =>
@@ -356,12 +342,40 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           }
         />
       </div>
+    </ExportMenu>
+  );
+
+  return (
+    <div className="calendar" ref={rootRef}>
+      <ChartTableTabs
+        label="Burning calendar"
+        lead={filter}
+        actions={exportMenu}
+        chart={chart}
+        table={<CalendarTable series={series} unit={unit} />}
+      />
+      {dataset.synthetic && (
+        <p className="calendar-notice">
+          <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
+        </p>
+      )}
+      {raw && (
+        <p className="calendar-notice">
+          <strong>Raw by sensor:</strong> native counts. The 2012 jump is the change of sensor, not of activity.
+        </p>
+      )}
+      {anomaly && (
+        <p className="calendar-notice">
+          <strong>Anomaly:</strong> how unusual each month is for its month of the year. Not a forecast.
+        </p>
+      )}
       {anomaly ? (
         <AnomalyLegend unit={ANOMALY_UNIT} hidden={hidden} onToggle={toggleClass} onReset={resetClasses} />
       ) : (
         <CalendarLegend
           ranges={legendRanges(scale)}
           unit={raw ? RAW_UNIT : CALENDAR_UNIT}
+          showUnit={raw}
           hidden={hidden}
           onToggle={toggleClass}
           onReset={resetClasses}

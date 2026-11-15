@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { Icon } from "../../components/ui/Icon";
 import { Popover } from "../../components/ui/Popover";
 import { formatCount } from "../../lib/format";
 import {
@@ -66,7 +67,6 @@ export function DownloadCsv() {
 
   return (
     <div className="control">
-      <span className="control-label">Download</span>
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -74,10 +74,8 @@ export function DownloadCsv() {
         title="Native hotspots (NASA FIRMS) as CSV"
         trigger={
           <>
+            <Icon name="download" />
             CSV
-            <span className="chip-icon" aria-hidden="true">
-              ▾
-            </span>
           </>
         }
       >

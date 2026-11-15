@@ -3,9 +3,10 @@
  * calendar theme (ember, petrol, ash) are in primitives.css and checked by
  * `uv run python scripts/check_viz_ramp.py --theme calendar`.
  *
- * The calendar theme is an island: light gray plane, petrol ink, ember ramp. It applies to the calendar card only
- * (`.calendar-theme`), in light and in dark OS mode alike, and re-points the global tokens inside the card so the
- * buttons, tabs and tooltip that live there follow it. Nothing outside the card changes.
+ * The calendar theme: light gray plane, petrol ink, ember ramp in the light theme. It applies to the calendar card
+ * only (`.calendar-theme`) and re-points the global tokens inside the card so the buttons, tabs and tooltip that live
+ * there follow it. In the dark theme the card follows the page like every other card (dark plane, light ink) and the
+ * ember ramp flips like the map's ramp (viz.css): more is lighter, so the busiest months stand out on the dark plane.
  */
 .calendar-theme {
   --cal-plane: var(--ash-100);
@@ -17,6 +18,7 @@
   --cal-on-active: var(--neutral-0);
   --cal-zero: var(--ember-zero);
   --cal-nodata-bg: var(--ash-100);
+  --cal-mark: var(--neutral-0); /* fill of the estimated dot, the partial corner and the selection casing */
 
   --card-bg: var(--cal-plane);
   --card-border: var(--cal-line);
@@ -60,6 +62,87 @@
   --viz-partial-mark: var(--cal-ink);
 
   color: var(--cal-ink);
+}
+
+/* Dark theme: the card follows the page. Declared twice like semantic.css: OS setting, then the explicit toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .calendar-theme {
+    --cal-plane: var(--neutral-900);
+    --cal-ink: var(--neutral-100);
+    --cal-ink-soft: var(--neutral-300);
+    --cal-line: var(--neutral-800);
+    --cal-hatch: var(--neutral-700);
+    --cal-active: var(--neutral-100);
+    --cal-on-active: var(--neutral-950);
+    --cal-zero: var(--neutral-900);
+    --cal-nodata-bg: var(--neutral-850);
+    --cal-mark: var(--neutral-950);
+
+    --color-surface-raised: var(--neutral-850);
+    --color-border-strong: var(--neutral-800);
+    --input-bg: var(--neutral-900);
+    --input-border: var(--neutral-800);
+    --button-bg: var(--neutral-900);
+    --button-border: var(--neutral-800);
+    --tooltip-bg: var(--neutral-900);
+    --tooltip-border: var(--neutral-800);
+
+    --viz-seq-1: var(--ember-700);
+    --viz-seq-2: var(--ember-600);
+    --viz-seq-3: var(--ember-500);
+    --viz-seq-4: var(--ember-400);
+    --viz-seq-5: var(--ember-300);
+    --viz-seq-6: var(--ember-200);
+    --viz-seq-7: var(--ember-100);
+    --viz-div-mid: var(--neutral-800);
+    --viz-div-neg-1: var(--blue-600);
+    --viz-div-neg-2: var(--blue-500);
+    --viz-div-neg-3: var(--blue-400);
+    --viz-div-neg-4: var(--blue-300);
+    --viz-div-pos-1: var(--orange-600);
+    --viz-div-pos-2: var(--orange-500);
+    --viz-div-pos-3: var(--orange-400);
+    --viz-div-pos-4: var(--orange-300);
+  }
+}
+
+:root[data-theme="dark"] .calendar-theme {
+  --cal-plane: var(--neutral-900);
+  --cal-ink: var(--neutral-100);
+  --cal-ink-soft: var(--neutral-300);
+  --cal-line: var(--neutral-800);
+  --cal-hatch: var(--neutral-700);
+  --cal-active: var(--neutral-100);
+  --cal-on-active: var(--neutral-950);
+  --cal-zero: var(--neutral-900);
+  --cal-nodata-bg: var(--neutral-850);
+  --cal-mark: var(--neutral-950);
+
+  --color-surface-raised: var(--neutral-850);
+  --color-border-strong: var(--neutral-800);
+  --input-bg: var(--neutral-900);
+  --input-border: var(--neutral-800);
+  --button-bg: var(--neutral-900);
+  --button-border: var(--neutral-800);
+  --tooltip-bg: var(--neutral-900);
+  --tooltip-border: var(--neutral-800);
+
+  --viz-seq-1: var(--ember-700);
+  --viz-seq-2: var(--ember-600);
+  --viz-seq-3: var(--ember-500);
+  --viz-seq-4: var(--ember-400);
+  --viz-seq-5: var(--ember-300);
+  --viz-seq-6: var(--ember-200);
+  --viz-seq-7: var(--ember-100);
+  --viz-div-mid: var(--neutral-800);
+  --viz-div-neg-1: var(--blue-600);
+  --viz-div-neg-2: var(--blue-500);
+  --viz-div-neg-3: var(--blue-400);
+  --viz-div-neg-4: var(--blue-300);
+  --viz-div-pos-1: var(--orange-600);
+  --viz-div-pos-2: var(--orange-500);
+  --viz-div-pos-3: var(--orange-400);
+  --viz-div-pos-4: var(--orange-300);
 }
 
 .calendar {
@@ -156,7 +239,7 @@
 
 /* Estimated from MODIS: a small dot in the corner, white with an ink ring so it shows on every fill. */
 .calendar-cell-estimated-dot {
-  fill: var(--neutral-0);
+  fill: var(--cal-mark);
   stroke: var(--cal-ink);
   stroke-width: 1px;
   pointer-events: none;
@@ -164,7 +247,7 @@
 
 /* Partial month: a corner mark, white with an ink edge. */
 .calendar-cell-partial {
-  fill: var(--neutral-0);
+  fill: var(--cal-mark);
   stroke: var(--cal-ink);
   stroke-width: 1px;
   pointer-events: none;
@@ -172,7 +255,7 @@
 
 .calendar-cell-selected-casing {
   fill: none;
-  stroke: var(--neutral-0);
+  stroke: var(--cal-mark);
   stroke-width: calc(2.5 * var(--size-px-2));
   pointer-events: none;
 }
@@ -406,7 +489,7 @@
   height: var(--space-2);
   border: 1px solid var(--cal-ink);
   border-radius: var(--radius-full);
-  background: var(--neutral-0);
+  background: var(--cal-mark);
 }
 
 .calendar-chip-partial::after {
@@ -416,7 +499,7 @@
   right: 0;
   width: 55%;
   height: 55%;
-  background: var(--neutral-0);
+  background: var(--cal-mark);
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
@@ -431,7 +514,7 @@
 .calendar-chip-selected {
   outline: calc(1.25 * var(--size-px-2)) solid var(--cal-ink);
   outline-offset: calc(-1.25 * var(--size-px-2));
-  box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--neutral-0);
+  box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--cal-mark);
 }
 
 /* The legend is the color filter: each segment is a toggle. Off = the bar is faded and the label struck through. */

@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { InfoTip } from "../../components/ui/InfoTip";
 import { Popover } from "../../components/ui/Popover";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
 import { YearSelect } from "../../components/ui/YearSelect";
@@ -160,9 +161,9 @@ function activeFilters(state: DashboardState, dispatch: (action: DashboardAction
 
 /**
  * Global filters, under the header: they drive the KPIs, the calendar and the map. Geography (Region → Country →
- * State), years, data series and time of day stay in view; intensity, relevance and the calendar metric sit behind
- * "More filters". A row of chips says what is applied, with Reset. Under 56rem the controls fold into one
- * "Filters · N active" button; the chips stay visible.
+ * State), years, data series and time of day stay in view, in one row from 75rem; intensity, relevance and the
+ * calendar metric sit behind "More filters", and the CSV download ends the row. Under 56rem the controls fold into
+ * one "Filters · N active" button and every chip stays visible; wider, only the changed filters show as chips.
  */
 export function FilterBar() {
   const [state, dispatch] = useDashboard();
@@ -242,9 +243,13 @@ export function FilterBar() {
             value={series === "mixed" ? ("mixed" as DataSeries) : series}
             onChange={(next) => setDataSeries(next, state.sensor, dispatch)}
           />
-          <p className="fbar-note" id={hintId} data-tone={series === "mixed" ? "warn" : undefined}>
-            {DATA_HINT[series]}
-          </p>
+          {series === "mixed" ? (
+            <p className="fbar-note" id={hintId} data-tone="warn">
+              {DATA_HINT[series]}
+            </p>
+          ) : (
+            <InfoTip label="About the data series">{DATA_HINT[series]}</InfoTip>
+          )}
         </div>
 
         <div className="fbar-group">
@@ -268,7 +273,13 @@ export function FilterBar() {
         </div>
       </div>
 
-      <div className="fbar-active">
+      {/* An action on the filtered view, not a filter: at the end of the row, in view on a phone too. */}
+      <div className="fbar-download">
+        <DownloadCsv />
+      </div>
+
+      {/* What is applied. On wide screens only the changed filters show (the controls already say the rest). */}
+      <div className="fbar-active" data-changed={active > 0 || undefined}>
         <span className="fbar-active-label" id={`${panelId}-chips`}>
           Showing
         </span>
@@ -285,12 +296,8 @@ export function FilterBar() {
           ))}
         </ul>
         <button type="button" className="fbar-reset" onClick={resetAll} disabled={active === 0}>
-          Reset
+          Reset all
         </button>
-        {/* An action on the filtered view, not a filter: next to the chips, in view on a phone too. */}
-        <div className="fbar-download">
-          <DownloadCsv />
-        </div>
       </div>
     </section>
   );
@@ -319,10 +326,7 @@ function MoreFilters({
   const [open, setOpen] = useState(false);
   const active = [metric !== "count", minFrp > 0, relevance !== "l"].filter(Boolean).length;
   return (
-    <div className="control">
-      <span className="control-label" aria-hidden="true">
-        Detections
-      </span>
+    <div className="control fbar-more">
       <Popover
         open={open}
         onOpenChange={setOpen}

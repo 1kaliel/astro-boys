@@ -1,6 +1,8 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/Button";
 import { CoordinateField } from "../../components/ui/CoordinateField";
+import { Icon } from "../../components/ui/Icon";
+import { InfoTip } from "../../components/ui/InfoTip";
 import { Popover } from "../../components/ui/Popover";
 import { formatDegrees, formatSizeKm, previewBounds, sameBounds } from "../../lib/area";
 import { cellsInBounds, type Bounds } from "../../lib/grid";
@@ -160,10 +162,8 @@ export function AreaPicker({
           title="Custom box: every 0.25° cell that overlaps it is counted"
           trigger={
             <>
-              Edit box
-              <span className="chip-icon" aria-hidden="true">
-                ▾
-              </span>
+              <Icon name="edit" />
+              Box
             </>
           }
         >
@@ -214,12 +214,12 @@ export function AreaPicker({
             <Button onClick={() => apply(PILOT_BOUNDS)}>Reset to the study area</Button>
           </div>
         </Popover>
+        {current.kind === "preset" && (
+          <InfoTip label="About state areas">
+            A rectangle around the state, not its border: cells of neighbouring states are included.
+          </InfoTip>
+        )}
       </div>
-      {current.kind === "preset" && (
-        <p className="fbar-note">
-          A rectangle around the state, not its border: cells of neighbouring states are included.
-        </p>
-      )}
     </div>
   );
 }
