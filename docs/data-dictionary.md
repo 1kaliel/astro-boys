@@ -235,7 +235,9 @@ Answer: the same source and period fields, `status`, `step_deg` and `points`, on
 
 The wind "now", for a **fixed, wide region** (longitude -75 to -25, latitude -35 to 8, far beyond the study area), as a
 regular lattice of 4 degrees (132 points). It comes from the **Open-Meteo Forecast API**, `current` block: the weather
-model's analysis of the present moment, refreshed by the service every 15 minutes. It is **not** ERA5 (ERA5 is published
+model's analysis of the present moment, refreshed by the service every 15 minutes. The map **clips it to the outline
+of Brazil** (Natural Earth 1:50m, `lib/brazil.ts`): streaks are born and live only inside the country, and points outside
+it are not drawn. The ERA5 wind layers (speed, direction) are clipped the same way. It is **not** ERA5 (ERA5 is published
 days late, so it cannot show "now") and **not** a station observation, and it has nothing to do with the hotspot data.
 
 Answer: `source`, `region`, `step_deg`, `fetched_at` (when this server asked), `model_time` (the latest time the service

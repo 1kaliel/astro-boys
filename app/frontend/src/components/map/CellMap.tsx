@@ -26,7 +26,9 @@ import {
   type Bounds,
   type CellFeatureProps,
 } from "../../lib/grid";
-import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } from "../../lib/hooks";
+import { LABELS_STYLE_URL, ON_IMAGERY, ON_IMAGERY_HALO, satelliteStyle } from "../../lib/basemap";
+import { contains, loadBrazil, type Outline } from "../../lib/brazil";
+import { prefersReducedMotion, readTokens, useColorScheme } from "../../lib/hooks";
 import { FEELS_LIKE_BREAKS, centroidPoints, joinWeather } from "../../lib/municipalities";
 import { rampStep } from "../../lib/scale";
 import { LAYER_LABEL, breaksOf, unitOf, weatherGeoJSON, type MapLayer } from "../../lib/weatherLayers";
@@ -37,11 +39,6 @@ import { PILOT_BOUNDS } from "../../state/dashboard";
 
 setWorkerUrl(workerUrl);
 
-/** OpenFreeMap: free, no key, provided as-is. Attribution comes with the style and stays visible. */
-const STYLE_URLS: Record<ColorScheme, string> = {
-  light: "https://tiles.openfreemap.org/styles/positron",
-  dark: "https://tiles.openfreemap.org/styles/dark",
-};
 const STYLE_TIMEOUT_MS = 5000;
 
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
@@ -80,27 +77,14 @@ function windArrow(): {
 
 /** Pan limits in the flat view, [west, south, east, north]: the pilot extent with a margin. */
 const MERCATOR_LIMITS: [number, number, number, number] = [-80, -40, -20, 14];
-/** The region of the live wind layer, until the API says it (it is wider than the study area). */
+/** The region of the live wind lattice (wider than Brazil), framed until the outline of Brazil is loaded. */
 /** How far the map is tilted while the municipalities are shown (degrees; MapLibre allows up to 60). */
 const MUNI_PITCH = 50;
 const LIVE_REGION: Bounds = { west: -75, south: -35, east: -25, north: 8 };
 
-function minimalStyle(background: string): StyleSpecification {
-  return {
-    version: 8,
-    sources: {},
-    layers: [
-      {
-        id: "background",
-        type: "background",
-        paint: { "background-color": background },
-      },
-    ],
-  };
-}
 
-/** Loads the basemap style; falls back to a plain background so the cells still show if the service is down. */
-function useBasemap(scheme: ColorScheme): {
+/** Loads the names and borders for the satellite basemap; without them (service down) the imagery shows alone. */
+function useBasemap(): {
   style: StyleSpecification | null;
   offline: boolean;
 } {
@@ -112,18 +96,15 @@ function useBasemap(scheme: ColorScheme): {
     let cancelled = false;
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), STYLE_TIMEOUT_MS);
-    fetch(STYLE_URLS[scheme], { signal: controller.signal })
+    fetch(LABELS_STYLE_URL, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`Basemap style failed (${response.status})`);
         return response.json() as Promise<StyleSpecification>;
       })
-      .then((style) => !cancelled && setState({ style, offline: false }))
+      .then((labels) => !cancelled && setState({ style: satelliteStyle(labels), offline: false }))
       .catch(() => {
         if (cancelled) return;
-        setState({
-          style: minimalStyle(readTokens(["--color-surface"])["--color-surface"]),
-          offline: true,
-        });
+        setState({ style: satelliteStyle(null), offline: true });
       })
       .finally(() => window.clearTimeout(timer));
     return () => {
@@ -131,8 +112,24 @@ function useBasemap(scheme: ColorScheme): {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [scheme]);
+  }, []);
   return state;
+}
+
+/** The outline of Brazil, loaded the first time `wanted` is true (null until then, or if it fails to load). */
+function useBrazil(wanted: boolean): Outline | null {
+  const [outline, setOutline] = useState<Outline | null>(null);
+  useEffect(() => {
+    if (!wanted || outline) return;
+    let cancelled = false;
+    loadBrazil()
+      .then((o) => !cancelled && setOutline(o))
+      .catch(() => undefined); // bundled with the app: only a broken build gets here; the wind then stays hidden
+    return () => {
+      cancelled = true;
+    };
+  }, [wanted, outline]);
+  return outline;
 }
 
 type CellMapProps = {
@@ -166,7 +163,7 @@ export function CellMap({
   municipal = null,
 }: CellMapProps) {
   const scheme = useColorScheme();
-  const { style, offline } = useBasemap(scheme);
+  const { style, offline } = useBasemap();
   // Re-read the tokens whenever the theme changes.
   const colors = useMemo(() => readTokens(TOKENS), [scheme]);
   const [hover, setHover] = useState<Hover | null>(null);
@@ -179,6 +176,11 @@ export function CellMap({
   const hideCells = layer !== "hotspots";
   const showWeather = layer !== "hotspots" && !muniOn;
   const liveOn = layer === "live-wind";
+  // Every wind layer is clipped to Brazil: the live lattice is a rectangle much wider than the country, and the ERA5
+  // points of the selected area include ocean and neighbors.
+  const windOn = liveOn || layer === "wind-speed" || layer === "wind-direction";
+  const brazil = useBrazil(windOn);
+  const brazilData = useMemo(() => brazil?.geojson ?? null, [brazil]);
   const [muniHover, setMuniHover] = useState<{ lng: number; lat: number; props: Record<string, unknown> } | null>(null);
   const muniShapes = useMemo(() => (municipal ? joinWeather(municipal.geo, municipal.weather) : null), [municipal]);
   const muniPoints = useMemo(
@@ -200,11 +202,19 @@ export function CellMap({
   // Live wind is streaks that move; with reduced motion it is the same data as static arrows.
   const liveStreaks = liveOn && !reduceMotion;
   const arrows = layer === "wind-direction" || (liveOn && reduceMotion);
-  const wxData = useMemo(
-    () => weatherGeoJSON((liveOn ? live?.points : weather?.points) ?? [], layer),
-    [weather, live, layer, liveOn],
+  const wxData = useMemo(() => {
+    const points = (liveOn ? live?.points : weather?.points) ?? [];
+    // Wind points outside Brazil are dropped (and no wind is shown until the outline is there).
+    const shown = windOn ? (brazil ? points.filter((p) => contains(brazil, p.lon, p.lat)) : []) : points;
+    return weatherGeoJSON(shown, layer);
+  }, [weather, live, layer, liveOn, windOn, brazil]);
+  const windField = useMemo(
+    () =>
+      live && brazil
+        ? new WindField(live.points, { bounds: brazil.bounds, contains: (lon, lat) => contains(brazil, lon, lat) })
+        : null,
+    [live, brazil],
   );
-  const windField = useMemo(() => (live ? new WindField(live.points) : null), [live]);
   const wxFill = useMemo((): ExpressionSpecification | string => {
     const limits = breaksOf(layer);
     const color = (cls: number) => colors[`--wx-seq-${rampStep(cls, limits.length + 1)}` as (typeof TOKENS)[number]];
@@ -237,7 +247,7 @@ export function CellMap({
 
   // Follow the selected area, or show the whole wide region while the live wind is on (no animation when the user
   // asked for reduced motion).
-  const target = muniOn && municipal ? municipal.geo.bounds : liveOn ? (live?.region ?? LIVE_REGION) : area;
+  const target = muniOn && municipal ? municipal.geo.bounds : liveOn ? (brazil?.bounds ?? LIVE_REGION) : area;
   useEffect(() => {
     mapRef.current?.fitBounds(
       [
@@ -365,8 +375,8 @@ export function CellMap({
                   "icon-size": ["interpolate", ["linear"], ["zoom"], 3, 0.35, 6, 0.6, 9, 0.9],
                 }}
                 paint={{
-                  "icon-color": colors["--color-text-primary"],
-                  "icon-halo-color": colors["--color-surface"],
+                  "icon-color": ON_IMAGERY,
+                  "icon-halo-color": ON_IMAGERY_HALO,
                   "icon-halo-width": 1,
                 }}
               />
@@ -410,6 +420,11 @@ export function CellMap({
               />
             </Source>
           </>
+        )}
+        {windOn && brazilData && (
+          <Source id="brazil" type="geojson" data={brazilData}>
+            <Layer id="brazil-line" type="line" paint={{ "line-color": ON_IMAGERY, "line-width": 1.5, "line-opacity": 0.9 }} />
+          </Source>
         )}
         <Source id="area-cells" type="geojson" data={areaCellData}>
           <Layer
@@ -499,9 +514,9 @@ export function CellMap({
       </Map>
       {muniOn && <CompassRing mapRef={mapRef} />}
       {liveStreaks && windField && (
-        <WindParticles mapRef={mapRef} field={windField} color={colors["--color-text-primary"]} />
+        <WindParticles mapRef={mapRef} field={windField} color={ON_IMAGERY} />
       )}
-      {offline && <p className="map-note map-offline">Basemap unavailable: showing the cells only.</p>}
+      {offline && <p className="map-note map-offline">Place names unavailable: showing the imagery only.</p>}
     </div>
   );
 }

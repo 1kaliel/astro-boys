@@ -50,3 +50,26 @@ describe("wind field", () => {
     expect(lonHigh).toBeGreaterThan(1.9); // about 2 degrees at 60 degrees latitude
   });
 });
+
+describe("wind field clipped to a shape", () => {
+  // A 3 x 3 lattice from 0 to 8, all known; the clip keeps the left half (lon < 4).
+  const grid: WindSample[] = [0, 4, 8].flatMap((lat) =>
+    [0, 4, 8].map((lon) => ({ lat, lon, wind_speed_kmh: 10, wind_from_deg: 90 })),
+  );
+  const clip = { bounds: { west: 0, south: 0, east: 4, north: 8 }, contains: (lon: number) => lon < 4 };
+
+  it("is unknown outside the clip, even where the lattice has values", () => {
+    const field = new WindField(grid, clip);
+    expect(field.sample(2, 2)?.speed).toBeCloseTo(10);
+    expect(field.sample(6, 2)).toBeNull();
+  });
+
+  it("spawns streaks only in the box of the clip, inside the lattice", () => {
+    expect(new WindField(grid, clip).spawnBounds).toEqual({ west: 0, south: 0, east: 4, north: 8 });
+    expect(new WindField(grid).spawnBounds).toEqual({ west: 0, south: 0, east: 8, north: 8 });
+  });
+
+  it("a streak with no position yet (NaN) is outside the field", () => {
+    expect(new WindField(grid).sample(Number.NaN, Number.NaN)).toBeNull();
+  });
+});

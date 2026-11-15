@@ -4,7 +4,15 @@
  * The points are a regular lattice (a sample of the weather model, 4° apart). The field between them is a bilinear
  * interpolation of the east and north components, which is what any wind animation does with gridded data. Outside the
  * lattice, or where a corner has no value, the field is unknown (null): nothing is invented there.
+ *
+ * An optional clip (the outline of Brazil) limits the field to a shape: outside it, the field is null too, so the
+ * streaks are born and live only inside the country, even though the lattice is a wider rectangle.
  */
+import type { Bounds } from "./grid";
+
+/** A shape the field is limited to: its bounding box and a point test. */
+export type FieldClip = { bounds: Bounds; contains: (lon: number, lat: number) => boolean };
+
 export type WindSample = { lat: number; lon: number; wind_speed_kmh: number | null; wind_from_deg: number | null };
 
 /** East (u) and north (v) components in km/h of a wind that blows FROM `fromDeg` (meteorological convention). */
@@ -30,8 +38,10 @@ export class WindField {
   readonly south: number;
   readonly north: number;
   private readonly cells = new Map<string, { u: number; v: number }>();
+  private readonly clip: FieldClip | null;
 
-  constructor(points: readonly WindSample[]) {
+  constructor(points: readonly WindSample[], clip: FieldClip | null = null) {
+    this.clip = clip;
     const lons = new Set<number>();
     const lats = new Set<number>();
     for (const p of points) {
@@ -54,9 +64,23 @@ export class WindField {
     return this.lons.length >= 2 && this.lats.length >= 2;
   }
 
-  /** u, v (km/h) and speed at a position, or null outside the lattice or where a corner has no value. */
+  /** Where streaks can be born: the lattice, narrowed to the clip's bounding box when there is a clip. */
+  get spawnBounds(): Bounds {
+    const c = this.clip?.bounds;
+    if (!c) return { west: this.west, south: this.south, east: this.east, north: this.north };
+    return {
+      west: Math.max(this.west, c.west),
+      south: Math.max(this.south, c.south),
+      east: Math.min(this.east, c.east),
+      north: Math.min(this.north, c.north),
+    };
+  }
+
+  /** u, v (km/h) and speed at a position, or null outside the lattice, outside the clip or where a corner has no value. */
   sample(lon: number, lat: number): { u: number; v: number; speed: number } | null {
-    if (!this.usable || lon < this.west || lon > this.east || lat < this.south || lat > this.north) return null;
+    // Written so that NaN (a streak with no position yet) is outside too.
+    if (!this.usable || !(lon >= this.west && lon <= this.east && lat >= this.south && lat <= this.north)) return null;
+    if (this.clip && !this.clip.contains(lon, lat)) return null;
     const i = Math.min(this.lons.length - 2, Math.max(0, upperIndex(this.lons, lon)));
     const j = Math.min(this.lats.length - 2, Math.max(0, upperIndex(this.lats, lat)));
     const corners = [
