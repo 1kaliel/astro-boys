@@ -95,6 +95,7 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 
 | What | Tool | Notes |
 |------|------|-------|
+| D12 offline fallback test (`deploy/local/run-offline.sh`, `docs/d12-offline-test.md`), the CSV answer for years missing from a local copy (`app/backend/astro_dashboard/hotspots.py`, `api.py`, tests), the favicon and the app-bar badge CSS, and the review of PR 53 | Claude Code (Anthropic) | Written with AI assistance for Guilherme. The offline run used headless Chromium driven by Playwright from a temporary folder (not a project dependency), with every non-localhost request aborted. No data, model or metric was changed |
 | H13 audit of the VM reproduction: logs, manifests and data (`artifacts/h13-reproducibility/vm-audit.md`) and the evidence-status text | Claude (Anthropic) | Read-only checks on the VM and against the bucket, written up for Justino |
 | H13 methodology completion, limitations, local 84-test audit, PR 38 evidence review and integration package | AI assistance | Prepared for Jean Gustavo from existing team work. No new model or production dataset was generated. Full VM reproduction is attributed to its original report; the local audit did not have production inputs. |
 | Historical FIRMS ingestion and monthly aggregation implementation, regression fixture, and runbook | Codex | Assisted with pipeline code and verification. Historical detections come from NASA FIRMS. See [historical batch](historical-batch.md). |

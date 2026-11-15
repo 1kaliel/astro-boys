@@ -13,6 +13,13 @@ reproducible on a laptop.
 | Cloud Run deploy fails or the URL breaks | Deploy error, 5xx | Roll back the revision; if still broken, run the container locally |
 | Out of budget | Budget alert at 90–100% | Stop the VM; keep Cloud Run at scale-to-zero; finish locally |
 
+## Running the dashboard offline
+
+`./deploy/local/run-offline.sh` builds the Cloud Run image from the local `data/` (calendar and `month_to_date` baked
+in) and serves it on http://localhost:8080 with the local `hotspots/v1` mounted read-only. Tested with the external
+network cut: everything works except the basemap tiles (the map shows the cells only) and the CSV of years not pulled
+locally (a clear 503). Record, commands and limits: [D12 offline test](../d12-offline-test.md).
+
 ## Running the pipeline locally
 
 Same code, smaller data. On a 5–8 GB laptop:
@@ -42,4 +49,4 @@ at ~50–60% of RAM.
 
 - [ ] Screenshots of every key view in `artifacts/screenshots/`.
 - [ ] The demo video recorded from whichever environment works.
-- [ ] A local build of the dashboard that runs from `data/` with no network.
+- [x] A local build of the dashboard that runs from `data/` with no network ([D12 offline test](../d12-offline-test.md)).
