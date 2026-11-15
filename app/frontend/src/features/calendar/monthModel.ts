@@ -1,7 +1,7 @@
 import type { CalendarMonth } from "../../data/calendarSource";
 import type { DailyDay, DailyPass, DailyResponse } from "../../data/daily";
 import { formatCount } from "../../lib/format";
-import type { Sensor } from "../../state/dashboard";
+import type { Scale, Sensor } from "../../state/dashboard";
 import { buildScale, scaleStep, sensorName, type ColorScale } from "./calendarModel";
 import { monthLong } from "./calendarText";
 
@@ -164,6 +164,21 @@ export function monthBounds(months: readonly CalendarMonth[]): { first: MonthRef
 /** The satellite a map layer asks for; the harmonized layer lets the server pick the month's source satellite. */
 export function satelliteForSensor(sensor: Sensor): string | undefined {
   return { harmonized: undefined, aqua: "Aqua", terra: "Terra", snpp: "SNPP", n20: "N20" }[sensor];
+}
+
+/**
+ * The satellite of the days, from the same series the "Data" filter shows (FilterBar `dataSeriesOf`): harmonized
+ * (scale and map layer harmonized) lets the server pick the month's source satellite; raw + a satellite layer asks
+ * for that satellite; "mixed" when the scale and the layer disagree.
+ */
+export function dailySatellite(state: { scale: Scale; sensor: Sensor }): { satellite: string | undefined } | "mixed" {
+  if (state.sensor === "harmonized") return state.scale === "harmonized" ? { satellite: undefined } : "mixed";
+  return state.scale === "raw" ? { satellite: satelliteForSensor(state.sensor) } : "mixed";
+}
+
+/** The note for a month before VIIRS, built from the satellite the answer names. */
+export function estimatedEraText(satellite: string, instrument?: string): string {
+  return `This month is before VIIRS (February 2012): its days are native ${satelliteText(satellite, instrument)} detections; only the month total is harmonized (estimated from MODIS).`;
 }
 
 /** "S-NPP VIIRS", "Aqua MODIS". Falls back to the satellite and instrument the API gave. */

@@ -7,16 +7,17 @@ type DayDetailsProps = {
   cell: DayItem;
   /** "Native detections · S-NPP VIIRS · not harmonized". */
   source: string;
-  /** The month is before February 2012: native Aqua MODIS days, harmonized month estimated from MODIS. */
-  estimatedEra: boolean;
+  /** For a month before February 2012: which satellite the days are, built from the answer. Null otherwise. */
+  eraNote: string | null;
   onClose: () => void;
 };
 
 /**
  * One day of the month view: its native count and the satellite passes behind it. A side panel inside the calendar
- * card on wide screens, a bottom sheet on narrow ones (calendar-month.css). Close button and Escape close it.
+ * card on wide screens, a bottom sheet on narrow ones (calendar-month.css). Close button, or Escape inside the month
+ * view (MonthView handles it, so Escape in the tour or a dialog does not close it).
  */
-export function DayDetails({ cell, source, estimatedEra, onClose }: DayDetailsProps) {
+export function DayDetails({ cell, source, eraNote, onClose }: DayDetailsProps) {
   const titleId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
 
@@ -24,14 +25,6 @@ export function DayDetails({ cell, source, estimatedEra, onClose }: DayDetailsPr
   useEffect(() => {
     titleRef.current?.focus();
   }, [cell.date]);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const observed = cell.status === "observed";
 
@@ -84,12 +77,7 @@ export function DayDetails({ cell, source, estimatedEra, onClose }: DayDetailsPr
           Local time is solar time at the center of the area.
         </p>
       )}
-      {estimatedEra && (
-        <p className="day-details-note">
-          Before February 2012 the daily numbers are native Aqua MODIS detections. Only the month total is harmonized
-          (estimated from MODIS).
-        </p>
-      )}
+      {eraNote && <p className="day-details-note">{eraNote}</p>}
     </aside>
   );
 }

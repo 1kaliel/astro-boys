@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useRemote, type Remote } from "./api";
 import type { Bounds, Period } from "../state/dashboard";
 
@@ -55,6 +56,19 @@ export function dailyUrl({ area, year, month, period, satellite }: DailyRequest)
   return `/api/daily?${params}`;
 }
 
-export function useDaily(request: DailyRequest | null): Remote<DailyResponse> {
-  return useRemote<DailyResponse>(request ? dailyUrl(request) : null);
+/** The answer with the URL it was fetched for: `useRemote` keeps the last data after a failed refetch, so a view
+ * compares `dataUrl` with the URL of its current request before showing `data`. */
+export type DailyRemote = Remote<DailyResponse> & { dataUrl: string | null };
+
+export function useDaily(request: DailyRequest | null): DailyRemote {
+  const url = request ? dailyUrl(request) : null;
+  const remote = useRemote<DailyResponse>(url);
+  // New data only ever arrives for the URL being fetched, so the URL at the render where it changes is its owner.
+  const [owner, setOwner] = useState<{ data: DailyResponse | null; url: string | null }>({ data: null, url: null });
+  let dataUrl = owner.url;
+  if (owner.data !== remote.data) {
+    dataUrl = remote.data ? url : null;
+    setOwner({ data: remote.data, url: dataUrl });
+  }
+  return { ...remote, dataUrl };
 }

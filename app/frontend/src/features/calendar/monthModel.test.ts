@@ -3,6 +3,8 @@ import type { DailyDay } from "../../data/daily";
 import {
   buildMonthGrid,
   dailyErrorText,
+  dailySatellite,
+  estimatedEraText,
   dayAriaLabel,
   dayCountText,
   dayFill,
@@ -135,5 +137,17 @@ describe("words", () => {
     expect(satelliteForSensor("n20")).toBe("N20");
     expect(timeRange("13:05", "13:12")).toBe("13:05–13:12");
     expect(timeRange("13:05", "13:05")).toBe("13:05");
+  });
+
+  it("follows the Data series, mixed when scale and layer disagree", () => {
+    expect(dailySatellite({ scale: "harmonized", sensor: "harmonized" })).toEqual({ satellite: undefined });
+    expect(dailySatellite({ scale: "raw", sensor: "terra" })).toEqual({ satellite: "Terra" });
+    expect(dailySatellite({ scale: "raw", sensor: "harmonized" })).toBe("mixed");
+    expect(dailySatellite({ scale: "harmonized", sensor: "snpp" })).toBe("mixed");
+  });
+
+  it("names the satellite of an estimated month from the answer", () => {
+    expect(estimatedEraText("Terra", "MODIS")).toContain("native Terra MODIS detections");
+    expect(estimatedEraText("Aqua", "MODIS")).toContain("native Aqua MODIS detections");
   });
 });
