@@ -156,3 +156,54 @@ export function estimatedEvidence(months: readonly CalendarMonth[], context: Evi
     source: source(inRange, context, [firstYear, lastYear], `Native detections ${firstYear}–${lastYear} (CSV)`),
   };
 }
+
+const inRange = (months: readonly CalendarMonth[], context: EvidenceContext) =>
+  months.filter((m) => m.year >= context.startYear && m.year <= context.endYear);
+
+/** KPI 1: every month of the selected years with its count. */
+export function totalEvidence(months: readonly CalendarMonth[], context: EvidenceContext): Evidence {
+  const rows = inRange(months, context);
+  const total = rows.reduce((sum, m) => sum + (m.count ?? 0), 0);
+  return {
+    value: `${formatCount(total)} VIIRS-equivalent detections, ${context.startYear}–${context.endYear}`,
+    how: "Sum of the monthly hotspot detections of the area over the selected years. Months before February 2012 are estimated from MODIS; months without an estimate are left out, never counted as zero. The comparison uses only complete months, against the sum of their medians.",
+    columns: MONTH_COLUMNS,
+    rows: rows.map(monthRow),
+    source: source(
+      rows,
+      context,
+      [context.startYear, context.endYear],
+      `Native detections ${context.startYear}–${context.endYear} (CSV)`,
+    ),
+  };
+}
+
+/** KPI 2: the month of the selected years with the most detections, and the next nine. */
+export function peakEvidence(months: readonly CalendarMonth[], context: EvidenceContext): Evidence {
+  const ranked = inRange(months, context)
+    .filter((m) => m.count != null)
+    .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+    .slice(0, 10);
+  const best = ranked[0];
+  return {
+    value: best ? `${monthLabel(best)}: ${formatCount(best.count ?? 0)} detections` : "No data",
+    how: "The single month of the selected years with the highest count. The table lists the ten highest.",
+    columns: MONTH_COLUMNS,
+    rows: ranked.map(monthRow),
+    source: source(ranked, context, best ? [best.year, best.year] : null, best ? `Native detections of ${best.year} (CSV)` : ""),
+  };
+}
+
+/** KPI 3: the complete months above the median of their month of the year, with the robust z. */
+export function aboveEvidence(months: readonly CalendarMonth[], context: EvidenceContext): Evidence {
+  const rows = inRange(months, context).filter(
+    (m) => !m.isPartial && m.count != null && m.medianHist != null && m.count > m.medianHist,
+  );
+  return {
+    value: `${rows.length} months above the usual level`,
+    how: "A complete month is above usual when its count is above the median of the same month of the year over the baseline years. It is unusually high when its robust z-score, (count − median) / (1.4826 × MAD), is 2 or more. These are product thresholds, not NASA ones, and not a risk level. Partial months are not judged.",
+    columns: [...MONTH_COLUMNS, "Robust z"],
+    rows: rows.map((m) => [...monthRow(m), m.anomalyZ == null ? "–" : m.anomalyZ.toFixed(1)]),
+    source: source(rows, context, [context.startYear, context.endYear], `Native detections ${context.startYear}–${context.endYear} (CSV)`),
+  };
+}

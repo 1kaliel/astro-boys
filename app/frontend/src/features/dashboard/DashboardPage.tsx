@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
 import { useApiStatus } from "../../data/useApiStatus";
 import { useCalendarDataset } from "../../data/useCalendar";
 import { cx } from "../../lib/cx";
@@ -13,6 +13,7 @@ import { TREND_UNIT, TrendChart } from "../charts/TrendChart";
 import { AppBar } from "./AppBar";
 import { FilterBar } from "./FilterBar";
 import { KpiRow } from "./KpiRow";
+import "../../styles/redesign-layout.css";
 
 // The map (MapLibre, ~300 KB gzip) is a separate chunk: phones download it only when they open the map.
 const MapPanel = lazy(() => import("../../components/map/MapPanel"));
@@ -20,11 +21,19 @@ const MapPanel = lazy(() => import("../../components/map/MapPanel"));
 const NARROW = "(max-width: 56rem)";
 const PERIOD_TEXT: Record<Period, string> = { ALL: "day and night", D: "day", N: "night" };
 
+/** Phones show one view at a time (team proposal, mobile order): the calendar first, then the map or the charts. */
+type MobileView = "calendar" | "map" | "charts";
+const MOBILE_VIEWS: ReadonlyArray<SegmentOption<MobileView>> = [
+  { value: "calendar", label: "Calendar" },
+  { value: "map", label: "Map" },
+  { value: "charts", label: "Charts" },
+];
+
 /** Dashboard layout: app bar, one filter row, KPI row, calendar + map. */
 export function DashboardPage() {
   const [state] = useDashboard();
   const narrow = useMediaQuery(NARROW);
-  const [mapOpen, setMapOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>("calendar");
   const apiStatus = useApiStatus();
   // One request for the area, shared by the KPI row and the calendar.
   const [load, reload] = useCalendarDataset(state.area, state.period);
@@ -41,7 +50,9 @@ export function DashboardPage() {
   // The mock calendar is labeled by its model version; the offline fixture by its own flag.
   const simulated = dataset ? dataset.synthetic || /^mock/i.test(dataset.modelVersion) : false;
   const exportContext = dataset ? { area: state.area, modelVersion: dataset.modelVersion, period: state.period } : null;
-  const showMap = !narrow || mapOpen;
+  const showCalendar = !narrow || mobileView === "calendar";
+  const showMap = !narrow || mobileView === "map";
+  const showCharts = !narrow || mobileView === "charts";
   // The seasonal profile draws the year of the month picked in the calendar, or the latest year of the data.
   const profileYear = dataset ? Math.min(state.selected?.year ?? dataset.lastYear, dataset.lastYear) : null;
 
@@ -73,7 +84,15 @@ export function DashboardPage() {
           />
         )}
 
+        {narrow && (
+          <div className="mobile-views" data-tour="views">
+            <SegmentedControl label="Show" hideLabel options={MOBILE_VIEWS} value={mobileView} onChange={setMobileView} />
+          </div>
+        )}
+
+        {showCalendar && (
         <Card
+          data-tour="calendar"
           className="dash-calendar calendar-theme"
           title="Burning calendar"
           actions={
@@ -85,8 +104,11 @@ export function DashboardPage() {
         >
           <BurningCalendar load={load} reload={reload} />
         </Card>
+        )}
 
+        {showMap && (
         <Card
+          data-tour="map"
           className="dash-map"
           title="Map"
           caption={
@@ -95,7 +117,7 @@ export function DashboardPage() {
               : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"
           }
         >
-          {showMap ? (
+          {(
             <Suspense
               fallback={
                 <div className="map-stage">
@@ -105,17 +127,14 @@ export function DashboardPage() {
             >
               <MapPanel />
             </Suspense>
-          ) : (
-            <div className="map-collapsed">
-              <p>The map shows the 0.25° cells of the selected month and lets you draw the area.</p>
-              <Button onClick={() => setMapOpen(true)}>Show map</Button>
-            </div>
           )}
         </Card>
+        )}
 
-        {dataset && exportContext && profileYear !== null && (
+        {showCharts && dataset && exportContext && profileYear !== null && (
           <>
             <Card
+              data-tour="charts"
               className="dash-season"
               title="Seasonal profile"
               actions={

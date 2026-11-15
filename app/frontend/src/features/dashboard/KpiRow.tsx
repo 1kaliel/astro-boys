@@ -1,13 +1,13 @@
 import { Badge } from "../../components/ui/Badge";
 import { KpiTile } from "../../components/viz/KpiTile";
 import type { CalendarMonth } from "../../data/calendarSource";
-import { formatCompact, MONTHS_LONG } from "../../lib/format";
+import { formatCompact, formatCount, MONTHS_LONG } from "../../lib/format";
+import { aboveUsual, busiestMonth, deltaText, latestKpiText, peakMonth, totalActivity, UNUSUAL_Z } from "../../lib/metrics";
 import type { Bounds, Period } from "../../state/dashboard";
-import { busiestEvidence, estimatedEvidence, latestEvidence, yearToDateEvidence } from "./kpiEvidence";
-import { busiestMonth, deltaText, estimatedShare, latestKpiText, yearToDate } from "../../lib/metrics";
+import { aboveEvidence, peakEvidence, totalEvidence } from "./kpiEvidence";
 
 type KpiRowProps = {
-  /** The whole series of the area (not cut to the year range): "latest" means the latest month in the data. */
+  /** The whole series of the area; each card cuts it to the selected years itself. */
   months: readonly CalendarMonth[];
   startYear: number;
   endYear: number;
@@ -18,59 +18,85 @@ type KpiRowProps = {
   modelVersion: string;
 };
 
+/**
+ * The three indicators of the team proposal, all for the selected area, years and time of day:
+ * total activity, the peak month, and how many months were above the usual level.
+ */
 export function KpiRow({ months, startYear, endYear, baselineYears, area, period, modelVersion }: KpiRowProps) {
   const context = { area, period, modelVersion, startYear, endYear };
+  const years = startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
+  const total = totalActivity(months, startYear, endYear);
+  const peak = peakMonth(months, startYear, endYear);
+  const usualPeak = busiestMonth(months);
+  const above = aboveUsual(months, startYear, endYear);
+  const baseline = baselineYears ? `${baselineYears[0]}–${baselineYears[1]}` : "the baseline years";
   const latest = months.at(-1) ?? null;
-  const busiest = busiestMonth(months);
-  const ytd = yearToDate(months);
-  // The whole record, not the years on screen: with a 10-year window it would always read "0 of 118".
-  const share = estimatedShare(months);
-  const recordYears = months.length > 0 ? `${months[0].year}–${months[months.length - 1].year}` : "";
-  const baseline = baselineYears ? `${baselineYears[0]}–${baselineYears[1]}` : "the baseline";
-  const monthName = latest ? MONTHS_LONG[latest.month - 1] : "";
-  const hero = latestKpiText(latest);
+  const latestText = latest && latest.year <= endYear && latest.year >= startYear ? latestKpiText(latest) : null;
 
   return (
-    <section className="kpi-row" aria-label="Key figures for the selected area">
+    <section className="kpi-row kpi-row-3" aria-label="Key figures for the selected area" data-tour="kpis">
       <KpiTile
         hero
-        evidence={latest ? latestEvidence(latest, context) : null}
-        label={latest ? `${monthName} ${latest.year}${latest.isPartial ? " so far" : ""}` : "Latest month"}
-        value={formatCompact(latest?.count)}
-        detail={hero.detail}
-        comparison={hero.comparison}
+        label={`Total activity, ${years}`}
+        evidence={total ? totalEvidence(months, context) : null}
+        value={formatCompact(total?.value)}
+        detail={
+          total
+            ? `VIIRS-equivalent hotspots in ${total.months} months${
+                total.estimated > 0 ? ` · ${total.estimated} estimated from MODIS` : ""
+              }${total.missing > 0 ? ` · ${total.missing} without an estimate, left out` : ""}`
+            : "No data for these years"
+        }
+        comparison={
+          total?.complete
+            ? `${deltaText(total.complete.value, total.complete.median, `the usual level of the same ${total.complete.months} months`)}${
+                latestText?.comparison && latest?.isPartial
+                  ? ` · ${MONTHS_LONG[latest.month - 1]} so far: ${latestText.comparison.replace(/^[▲▼] /, "")}`
+                  : ""
+              }`
+            : undefined
+        }
         badges={
-          latest && (
+          total &&
+          (total.estimated > 0 || total.partial) && (
             <>
-              {latest.isEstimated && <Badge kind="estimated" />}
-              {latest.isPartial && <Badge kind="partial">{`Partial: ${latest.daysObserved} days observed`}</Badge>}
+              {total.estimated > 0 && <Badge kind="estimated" />}
+              {total.partial && latest?.isPartial && (
+                <Badge kind="partial">{`${MONTHS_LONG[latest.month - 1]} ${latest.year}: ${latest.daysObserved} days so far`}</Badge>
+              )}
             </>
           )
         }
       />
       <KpiTile
-        label="Busiest month of the year"
-        evidence={busiest ? busiestEvidence(months, context) : null}
-        value={busiest ? MONTHS_LONG[busiest.month - 1] : "No data"}
-        detail={busiest ? `Median ${formatCompact(busiest.median)} hotspots, ${baseline}` : undefined}
-      />
-      <KpiTile
-        label={ytd ? `${ytd.year} so far` : "Year so far"}
-        evidence={ytd ? yearToDateEvidence(months, context) : null}
-        value={formatCompact(ytd?.value)}
+        label={`Peak month, ${years}`}
+        evidence={peak ? peakEvidence(months, context) : null}
+        value={peak ? `${MONTHS_LONG[peak.month - 1]} ${peak.year}` : "No data"}
         detail={
-          ytd
-            ? `${deltaText(ytd.value, ytd.median, `the sum of ${ytd.months} monthly medians`)}${
-                ytd.partial ? " · partial month left out" : ""
-              }`
+          peak
+            ? `${formatCount(peak.count ?? 0)} VIIRS-equivalent hotspots${peak.isEstimated ? " (estimated)" : ""}`
+            : undefined
+        }
+        comparison={
+          usualPeak
+            ? `Usual peak: ${MONTHS_LONG[usualPeak.month - 1]} (median ${formatCompact(usualPeak.median)}, ${baseline})`
             : undefined
         }
       />
       <KpiTile
-        label="Months estimated from MODIS"
-        evidence={share.total > 0 ? estimatedEvidence(months, context) : null}
-        value={`${share.estimated} of ${share.total}`}
-        detail={`Whole record, ${recordYears}. Observed by VIIRS from February 2012.`}
+        label="Months above usual"
+        evidence={above.judged > 0 ? aboveEvidence(months, context) : null}
+        value={above.judged > 0 ? `${above.above} of ${above.judged}` : "No data"}
+        detail={
+          above.judged > 0
+            ? `complete months above the median of their month of the year, ${baseline}`
+            : "No complete month in these years"
+        }
+        comparison={
+          above.judged > 0
+            ? `${above.unusual} unusually high (robust z ≥ ${UNUSUAL_Z}). An anomaly, not a risk level.`
+            : undefined
+        }
       />
     </section>
   );

@@ -1,0 +1,59 @@
+/* Redesign layout (team proposal): three KPIs, and on phones one view at a time with a carousel of KPIs. */
+.kpi-row-3 {
+  grid-template-columns: 1.3fr 1fr 1fr;
+}
+
+.mobile-views {
+  position: sticky;
+  top: var(--size-app-bar);
+  z-index: var(--layer-sticky);
+  display: flex;
+  justify-content: center;
+  padding-block: var(--space-2);
+  background: var(--color-page);
+}
+
+.mobile-views .segmented {
+  width: 100%;
+}
+
+.mobile-views .segmented-item {
+  flex: 1;
+}
+
+@media (max-width: 56rem) {
+  /* KPIs: a swipeable row, each card most of the screen wide, the next one peeking in. */
+  .kpi-row.kpi-row-3 {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(16rem, 82%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    padding-bottom: var(--space-2);
+  }
+
+  .kpi-row.kpi-row-3 > .kpi {
+    scroll-snap-align: start;
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  .kpi-row.kpi-row-3 > .kpi-hero,
+  .kpi-row.kpi-row-3 > .kpi:last-child:nth-child(even) {
+    grid-column: auto;
+  }
+}
+
+/* The sticky filter bar stays above the map's floating tools (same layer, later in the page). */
+.fbar {
+  z-index: calc(var(--layer-sticky) + 1);
+}
+
+/* Between phone and wide desktop the bar wraps to two rows: sticky, it would hide a third of the screen. */
+@media (min-width: 56rem) and (max-width: 75rem) {
+  .fbar {
+    position: static;
+  }
+}
