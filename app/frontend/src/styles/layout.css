@@ -37,12 +37,38 @@
   min-width: 0;
 }
 
-.app-logo {
+/* The brand signature (symbol and name). Minimum height 24 px, and it keeps its own colors and proportions. */
+.brand-logo {
   flex: none;
-  width: var(--size-target-min);
-  height: var(--size-target-min);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--viz-seq-3), var(--viz-seq-6));
+  display: inline-flex;
+}
+
+.brand-logo img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.brand-logo-dark {
+  display: none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .brand-logo-light {
+    display: none !important;
+  }
+
+  :root:where(:not([data-theme="light"])) .brand-logo-dark {
+    display: block !important;
+  }
+}
+
+:root[data-theme="dark"] .brand-logo-light {
+  display: none !important;
+}
+
+:root[data-theme="dark"] .brand-logo-dark {
+  display: block !important;
 }
 
 .app-title {
@@ -693,6 +719,22 @@
   .api-status,
   .app-subtitle {
     display: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  /* The logo already says what the app is: on a phone the title stays for screen readers but is not drawn. */
+  .app-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .brand-logo img {
+    height: 28px;
   }
 }
 

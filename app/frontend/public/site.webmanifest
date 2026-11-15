@@ -1,0 +1,15 @@
+{
+  "name": "Firewatcher",
+  "short_name": "Firewatcher",
+  "description": "Harmonized MODIS and VIIRS hotspot calendar for Northeast Brazil",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#080d14",
+  "background_color": "#080d14",
+  "icons": [
+    { "src": "/icons/app-icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icons/app-icon-maskable.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" },
+    { "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}

@@ -296,3 +296,13 @@ and `font-synthesis: none` so the browser never fakes a bold.
 file, needs their paid **Webfont license** (their licensing page, "Live website text"). So the file is **not in git**:
 it lives in `app/frontend/public/fonts/` and `fonts/`, both git-ignored, and a build without it uses the fallback. To
 ship the font on the public site, buy the Webfont license first, or swap `--font-display` for an open (OFL) face.
+
+## Brand: logo and icons
+
+The header shows the Firewatcher signature (symbol and name, `src/assets/brand/`): the normal file on light surfaces and
+the `-negativo` file on dark ones, both in the page and switched by CSS from the same dark-theme selectors as the tokens,
+so the theme toggle and the OS setting both work. Rules from the brand pack: minimum height 24 px (28 px on a phone, 32
+px elsewhere), no recoloring, no effects, room around it. On a phone the title is hidden visually (still read by screen
+readers) because the signature already names the app. The browser icons are in `public/`: `favicon.svg`, the Safari
+`favicon-mono.svg`, `apple-touch-icon.png` (iOS does not take SVG), `icons/` (PWA, normal and maskable) and
+`site.webmanifest`. The signature's name is outlined, so it does not need the display font (see Typography).

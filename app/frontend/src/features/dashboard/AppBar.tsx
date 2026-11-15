@@ -3,6 +3,8 @@ import { Button } from "../../components/ui/Button";
 import type { ApiStatus } from "../../data/useApiStatus";
 import { useColorScheme } from "../../lib/hooks";
 import { applyTheme } from "../../lib/theme";
+import logoDark from "../../assets/brand/firewatcher-logo-horizontal-compacto-negativo.svg";
+import logoLight from "../../assets/brand/firewatcher-logo-horizontal-compacto.svg";
 import { AboutDialog } from "./AboutDialog";
 
 const API_TEXT = {
@@ -24,7 +26,12 @@ export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
   return (
     <header className="app-bar">
       <div className="app-brand">
-        <span className="app-logo" aria-hidden="true" />
+        {/* Two signatures, one per theme: the "negative" one is drawn for dark backgrounds. CSS shows the right one,
+            so it follows the theme toggle as well as the OS setting. */}
+        <span className="brand-logo">
+          <img className="brand-logo-light" src={logoLight} alt="Firewatcher" />
+          <img className="brand-logo-dark" src={logoDark} alt="Firewatcher" />
+        </span>
         <div>
           <h1 className="app-title">Hotspot calendar</h1>
           <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
