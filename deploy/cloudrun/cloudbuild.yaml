@@ -1,0 +1,27 @@
+# Build the dashboard image on Cloud Build, for machines without Docker and BuildKit.
+# Used by `BUILDER=cloudbuild ./deploy/cloudrun/deploy.sh`, which uploads a staged folder:
+#   app/             the app at the deployed commit (git archive)
+#   calendar/        data/processed/calendar/v1        (named build context, D8)
+#   month_to_date/   data/processed/month_to_date/v1   (named build context)
+# The same build as the local one: same Dockerfile, same build contexts, same MODEL_VERSION check.
+steps:
+  - name: gcr.io/cloud-builders/docker:24.0.9
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        # A docker-container builder brings its own BuildKit: named build contexts do not depend on the
+        # version of the worker's Docker daemon. --load hands the image to the daemon; `images` pushes it.
+        docker buildx create --name astro --driver docker-container --use
+        docker buildx build --platform linux/amd64 \
+          --build-context calendar=calendar --build-context month_to_date=month_to_date \
+          --build-arg "MODEL_VERSION=${_MODEL_VERSION}" \
+          -t "${_IMAGE}" --load app
+images:
+  - ${_IMAGE}
+substitutions:
+  _IMAGE: ""
+  _MODEL_VERSION: ""
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1200s

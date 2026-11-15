@@ -46,7 +46,9 @@ export function KpiRow({ months, startYear, endYear, baselineYears }: KpiRowProp
             ? latest.isPartial
               ? // A partial month is never compared with full months: it would read as "little activity".
                 `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
-              : `VIIRS-equivalent hotspots · ${delta(latest.count, latest.medianHist, `the ${monthName} median`)}`
+              : latest.count == null
+                ? "VIIRS-equivalent hotspots · no estimate for this month"
+                : `VIIRS-equivalent hotspots · ${delta(latest.count, latest.medianHist, `the ${monthName} median`)}`
             : "No data"
         }
         badges={

@@ -8,8 +8,8 @@ export type CalendarMonth = {
   year: number;
   month: number; // 1..12
   period: Period;
-  /** VIIRS-equivalent hotspot detections (never "fires"). */
-  count: number;
+  /** VIIRS-equivalent hotspot detections (never "fires"). Null = the month has no estimate (never zero). */
+  count: number | null;
   /** 90% interval. Null = not delivered yet for an estimated month (never zero). Equal to `count` when observed. */
   ciLow: number | null;
   ciHigh: number | null;
@@ -49,7 +49,7 @@ export type CalendarRequest = { area: Bounds; period: Period };
 type ApiMonth = {
   year: number;
   month: number;
-  count_harmonized: number;
+  count_harmonized: number | null;
   ci_low: number | null;
   ci_high: number | null;
   is_estimated: boolean;
