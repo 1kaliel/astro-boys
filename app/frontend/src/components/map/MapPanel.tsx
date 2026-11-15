@@ -1,6 +1,13 @@
-import { lazy, Suspense, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
-import { cellsUrl, useRemote, weatherGridUrl, type CellsResponse, type WeatherGridResponse } from "../../data/api";
+import {
+  cellsUrl,
+  useRemote,
+  weatherGridUrl,
+  type CellsResponse,
+  type LiveWindResponse,
+  type WeatherGridResponse,
+} from "../../data/api";
 import { MONTHS_LONG } from "../../lib/format";
 import { sequentialEdges } from "../../lib/scale";
 import { LAYER_LABEL, type MapLayer } from "../../lib/weatherLayers";
@@ -8,6 +15,7 @@ import { useDashboard } from "../../state/dashboard";
 import { Badge } from "../ui/Badge";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 import { Legend } from "../viz/Legend";
+import { LiveWindLegend } from "../viz/LiveWindLegend";
 import { WeatherLegend } from "../viz/WeatherLegend";
 import { CellMap } from "./CellMap";
 import { MapTools, type Projection } from "./MapTools";
@@ -15,7 +23,7 @@ import { MapTools, type Projection } from "./MapTools";
 const EMPTY: CellsResponse["cells"] = [];
 
 const LAYER_OPTIONS: ReadonlyArray<SegmentOption<MapLayer>> = (
-  ["hotspots", "temperature", "wind-speed", "wind-direction"] as const
+  ["hotspots", "temperature", "wind-speed", "wind-direction", "live-wind"] as const
 ).map((value) => ({ value, label: LAYER_LABEL[value] }));
 
 /** The 3D view and MapLibre both need WebGL; without it the flat map is the only choice that can still try. */
@@ -50,11 +58,22 @@ export default function MapPanel() {
     [data],
   );
   // The weather layers are ERA5 context for the month on screen: asked only while one of them is open.
-  const weatherLayer = layer !== "hotspots" && projection !== "3d" && data !== null ? layer : null;
+  const weatherLayer =
+    layer !== "hotspots" && layer !== "live-wind" && projection !== "3d" && data !== null ? layer : null;
   const weatherOn = weatherLayer !== null;
   const weather = useRemote<WeatherGridResponse>(
     weatherOn && data ? weatherGridUrl(state.area, { year: data.year, month: data.month }) : null,
   );
+  // The live wind is a fixed, wide region that is not tied to the month or the area. It refreshes by itself: the
+  // server answers from a shared cache (a new request inside its 30 minutes costs nothing at the weather service).
+  const liveOn = layer === "live-wind" && projection !== "3d";
+  const [liveTick, setLiveTick] = useState(0);
+  useEffect(() => {
+    if (!liveOn) return;
+    const timer = window.setInterval(() => setLiveTick((tick) => tick + 1), 5 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [liveOn]);
+  const live = useRemote<LiveWindResponse>(liveOn ? `/api/weather/live?r=${liveTick}` : null);
   const estimated = cells.some((cell) => cell.estimated);
   const partial = cells.some((cell) => cell.partial);
 
@@ -62,8 +81,8 @@ export default function MapPanel() {
     <div className="map-panel">
       <div className="map-head">
         <p className="map-month">
-          {data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : "Loading…"}
-          {remote.loading && data ? " · updating…" : ""}
+          {liveOn ? "Now" : data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : "Loading…"}
+          {!liveOn && remote.loading && data ? " · updating…" : ""}
         </p>
         <div className="map-badges">
           {layer === "hotspots" && estimated && <Badge kind="estimated" />}
@@ -93,6 +112,7 @@ export default function MapPanel() {
             projection={projection}
             layer={layer}
             weather={weatherOn ? weather.data : null}
+            live={liveOn ? live.data : null}
           />
         )}
         <MapTools
@@ -121,7 +141,10 @@ export default function MapPanel() {
           onRetry={weather.retry}
         />
       )}
-      {data && !weatherLayer && (
+      {liveOn && (
+        <LiveWindLegend data={live.data} loading={live.loading} error={live.error} onRetry={live.retry} />
+      )}
+      {data && !weatherLayer && !liveOn && (
         <Legend
           mode="sequential"
           breaks={breaks}

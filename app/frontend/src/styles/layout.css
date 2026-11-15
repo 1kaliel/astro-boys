@@ -704,3 +704,13 @@
     display: inline;
   }
 }
+
+/* Live wind streaks: a canvas over the map, never in the way of the pointer. */
+.wind-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: var(--layer-raised);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

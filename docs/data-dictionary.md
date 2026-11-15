@@ -231,6 +231,27 @@ Answer: the same source and period fields, `status`, `step_deg` and `points`, on
   `scripts/check_viz_ramp.py --theme weather` checks it. The two legends are never combined.
 - **Arrows** point where the wind blows **toward** (the opposite of the meteorological "from"); the legend says so.
 
+### Live wind (`GET /api/weather/live`)
+
+The wind "now", for a **fixed, wide region** (longitude -75 to -25, latitude -35 to 8, far beyond the study area), as a
+regular lattice of 4 degrees (132 points). It comes from the **Open-Meteo Forecast API**, `current` block: the weather
+model's analysis of the present moment, refreshed by the service every 15 minutes. It is **not** ERA5 (ERA5 is published
+days late, so it cannot show "now") and **not** a station observation, and it has nothing to do with the hotspot data.
+
+Answer: `source`, `region`, `step_deg`, `fetched_at` (when this server asked), `model_time` (the latest time the service
+reported), `interval_seconds`, `ttl_seconds`, `stale`, `stale_reason` and `points` (`lat`, `lon`, `temperature_c`,
+`wind_speed_kmh`, `wind_from_deg`, `gust_kmh`; `null` is "no value").
+
+- **Shared and cached.** One answer for the whole server, kept 30 minutes: a request inside that time costs nothing at
+  the weather service. Every location of a request counts as one call, the free limits are fewer than 10,000 calls a day
+  and 600 a minute, so the server also keeps a daily budget (6,000 locations, at most 45 refreshes of 132 points).
+- **Never a made-up answer.** If the service fails, or the budget is spent, the last good answer is served with
+  `stale: true` and the reason; with no answer at all the endpoint is a 502.
+- **The animation** (client side, `lib/windField.ts`) interpolates the east and north components bilinearly between the
+  points and moves streaks through that field. It shows the pattern of the current field, time-lapsed (6 hours of flow
+  per second), not the path of an air parcel; a spot where any of the four corners has no value is not drawn. With
+  reduced motion the same points are static arrows.
+
 ## API shape (if the app has a backend)
 
 Suggested, not mandatory; the functional contract is what matters ([spec/dashboard.md](spec/dashboard.md)).

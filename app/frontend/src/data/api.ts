@@ -162,3 +162,30 @@ export function weatherGridUrl(
 ): string {
   return weatherUrl(area, month).replace("/api/weather?", "/api/weather/grid?");
 }
+
+/** Live wind for a wide, fixed region (`/api/weather/live`): the weather model's current conditions, every 15 minutes. */
+export type LiveWindResponse = {
+  source: string;
+  region: { west: number; south: number; east: number; north: number };
+  /** Spacing of the sampled points: a sample of the model grid, not a surface. */
+  step_deg: number;
+  fetched_at: string;
+  /** The latest model time the service reported (UTC, ISO). */
+  model_time: string | null;
+  interval_seconds: number;
+  ttl_seconds: number;
+  /** true = the service could not be reached (or the daily budget is spent): this is the last good answer. */
+  stale: boolean;
+  stale_reason: string | null;
+  points: LiveWindPoint[];
+};
+
+export type LiveWindPoint = {
+  lat: number;
+  lon: number;
+  temperature_c: number | null;
+  wind_speed_kmh: number | null;
+  /** Where the wind blows FROM (meteorological convention). */
+  wind_from_deg: number | null;
+  gust_kmh: number | null;
+};

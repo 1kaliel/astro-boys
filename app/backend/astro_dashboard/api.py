@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import asdict
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -34,6 +34,8 @@ from astro_dashboard.weather import (
     WeatherService,
     WeatherUnavailable,
 )
+from astro_dashboard.weather_live import INTERVAL_SECONDS, LIVE_TTL_SECONDS, LiveWindService
+from astro_dashboard.weather_live import SOURCE as LIVE_SOURCE
 
 log = logging.getLogger("astro_dashboard")
 
@@ -311,6 +313,67 @@ def weather_grid(
         days_requested=grid.days_requested,
         step_deg=grid.step_deg,
         points=[WeatherPointOut(**asdict(p)) for p in grid.points],
+    )
+
+
+_DEFAULT_LIVE = LiveWindService()
+
+
+def get_live(request: Request) -> LiveWindService:
+    service: LiveWindService | None = getattr(request.app.state, "live_wind", None)
+    return service or _DEFAULT_LIVE
+
+
+class LivePointOut(BaseModel):
+    lat: float
+    lon: float
+    temperature_c: float | None
+    wind_speed_kmh: float | None
+    # Where the wind blows FROM (meteorological convention).
+    wind_from_deg: float | None
+    gust_kmh: float | None
+
+
+class LiveWindOut(BaseModel):
+    source: str
+    region: AreaOutNoCells
+    step_deg: float
+    # When this server asked the service, and the model time the service reported (UTC, ISO).
+    fetched_at: datetime
+    model_time: str | None
+    interval_seconds: int
+    ttl_seconds: int
+    # True when the service could not be reached (or the daily budget is spent): the last good answer.
+    stale: bool
+    stale_reason: str | None
+    points: list[LivePointOut]
+
+
+class AreaOutNoCells(BaseModel):
+    west: float
+    south: float
+    east: float
+    north: float
+
+
+@router.get("/weather/live", response_model=LiveWindOut, tags=["weather"])
+def weather_live(service: Annotated[LiveWindService, Depends(get_live)]) -> LiveWindOut:
+    """Live wind for a fixed, wide region, shared and cached for every visitor. Context only."""
+    try:
+        snap = service.snapshot()
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    return LiveWindOut(
+        source=LIVE_SOURCE,
+        region=AreaOutNoCells(**asdict(snap.region)),
+        step_deg=snap.step_deg,
+        fetched_at=datetime.fromtimestamp(snap.fetched_at, tz=UTC),
+        model_time=snap.model_time,
+        interval_seconds=INTERVAL_SECONDS,
+        ttl_seconds=LIVE_TTL_SECONDS,
+        stale=snap.stale,
+        stale_reason=snap.stale_reason,
+        points=[LivePointOut(**asdict(p)) for p in snap.points],
     )
 
 

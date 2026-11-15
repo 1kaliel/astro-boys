@@ -277,3 +277,8 @@ the cool `--wx-seq-*` ramp, mint to deep blue, flipped in the dark theme like ma
 with the page ink). Only one layer is on at a time, each with its own legend, unit, period and source, and the hotspot
 cells and their 0.25 degree outlines are hidden while a weather layer is on. The ramp is raw in `primitives.css`
 (`--teal-100..700`), checked by `scripts/check_viz_ramp.py --theme weather`, and never used for hotspot counts.
+
+The fifth layer, **Live wind**, is the wind of the weather model *now* over a wide region (not ERA5, not tied to the
+month or the area). It is drawn as streaks on a canvas over the map, in the page ink with brightness following speed (so
+no color is spent on it), and as static arrows with reduced motion. It refreshes by itself and the legend says the model
+time, that the animation is time-lapsed and interpolated, and when the answer is stale.

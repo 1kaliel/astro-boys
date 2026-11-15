@@ -11,7 +11,7 @@ import Map, {
   type MapLayerMouseEvent,
   type MapRef,
 } from "react-map-gl/maplibre";
-import type { WeatherGridResponse } from "../../data/api";
+import type { LiveWindResponse, WeatherGridResponse } from "../../data/api";
 import { formatCount } from "../../lib/format";
 import {
   boundsToGeoJSON,
@@ -24,6 +24,8 @@ import {
 import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } from "../../lib/hooks";
 import { rampStep } from "../../lib/scale";
 import { LAYER_LABEL, breaksOf, unitOf, weatherGeoJSON, type MapLayer } from "../../lib/weatherLayers";
+import { WindField } from "../../lib/windField";
+import { WindParticles } from "./WindParticles";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 
 setWorkerUrl(workerUrl);
@@ -63,7 +65,9 @@ function windArrow(): {
 }
 
 /** Pan limits in the flat view, [west, south, east, north]: the pilot extent with a margin. */
-const MERCATOR_LIMITS: [number, number, number, number] = [-56, -26, -27, 6];
+const MERCATOR_LIMITS: [number, number, number, number] = [-80, -40, -20, 14];
+/** The region of the live wind layer, until the API says it (it is wider than the study area). */
+const LIVE_REGION: Bounds = { west: -75, south: -35, east: -25, north: 8 };
 
 function minimalStyle(background: string): StyleSpecification {
   return {
@@ -126,11 +130,13 @@ type CellMapProps = {
   layer?: MapLayer;
   /** ERA5 monthly means at sampled points, for the weather layers. */
   weather?: WeatherGridResponse | null;
+  /** The live wind of a wide region: animated streaks (static arrows when the user prefers reduced motion). */
+  live?: LiveWindResponse | null;
 };
 
 type Hover = { lng: number; lat: number; cell: CellFeatureProps };
 
-export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hotspots", weather = null }: CellMapProps) {
+export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hotspots", weather = null, live = null }: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap(scheme);
   // Re-read the tokens whenever the theme changes.
@@ -142,7 +148,16 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
     props: Record<string, unknown>;
   } | null>(null);
   const showWeather = layer !== "hotspots";
-  const wxData = useMemo(() => weatherGeoJSON(weather?.points ?? [], layer), [weather, layer]);
+  const liveOn = layer === "live-wind";
+  const reduceMotion = useMemo(() => prefersReducedMotion(), []);
+  // Live wind is streaks that move; with reduced motion it is the same data as static arrows.
+  const liveStreaks = liveOn && !reduceMotion;
+  const arrows = layer === "wind-direction" || (liveOn && reduceMotion);
+  const wxData = useMemo(
+    () => weatherGeoJSON((liveOn ? live?.points : weather?.points) ?? [], layer),
+    [weather, live, layer, liveOn],
+  );
+  const windField = useMemo(() => (live ? new WindField(live.points) : null), [live]);
   const wxFill = useMemo((): ExpressionSpecification | string => {
     const limits = breaksOf(layer);
     const color = (cls: number) => colors[`--wx-seq-${rampStep(cls, limits.length + 1)}` as (typeof TOKENS)[number]];
@@ -173,16 +188,18 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
     ] as unknown as ExpressionSpecification;
   }, [colors, breaks]);
 
-  // Follow the selected area (no animation when the user asked for reduced motion).
+  // Follow the selected area, or show the whole wide region while the live wind is on (no animation when the user
+  // asked for reduced motion).
+  const target = liveOn ? (live?.region ?? LIVE_REGION) : area;
   useEffect(() => {
     mapRef.current?.fitBounds(
       [
-        [area.west, area.south],
-        [area.east, area.north],
+        [target.west, target.south],
+        [target.east, target.north],
       ],
       { padding: 24, duration: prefersReducedMotion() ? 0 : 400 },
     );
-  }, [area, mapRef]);
+  }, [target.west, target.south, target.east, target.north, mapRef]);
 
   const onPointer = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
@@ -242,7 +259,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
         pixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
         fadeDuration={0}
         attributionControl={{ compact: true }}
-        interactiveLayerIds={showWeather ? ["wx-circle", "wx-arrow"] : ["cells-fill"]}
+        interactiveLayerIds={liveStreaks ? [] : showWeather ? [arrows ? "wx-arrow" : "wx-circle"] : ["cells-fill"]}
         onMouseMove={showWeather ? onWeatherPointer : onPointer}
         onClick={showWeather ? onWeatherPointer : onPointer}
         onMouseLeave={() => {
@@ -273,9 +290,9 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
             paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
           />
         </Source>
-        {showWeather && (
+        {showWeather && !liveStreaks && (
           <Source id="weather" type="geojson" data={wxData}>
-            {layer === "wind-direction" ? (
+            {arrows ? (
               <Layer
                 key="wx-arrow"
                 id="wx-arrow"
@@ -335,12 +352,14 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
             offset={10}
             className="map-popup"
           >
-            <strong>{LAYER_LABEL[layer]}</strong> · ERA5 grid point, {weather?.year}-
-            {String(weather?.month ?? 0).padStart(2, "0")}
+            <strong>{LAYER_LABEL[layer]}</strong>
+            {liveOn
+              ? " · model point, now"
+              : ` · ERA5 grid point, ${weather?.year}-${String(weather?.month ?? 0).padStart(2, "0")}`}
             <br />
             {layer === "temperature" && `${Number(wxHover.props.temperature).toFixed(1)} ${unitOf(layer)}`}
             {layer === "wind-speed" && `${Number(wxHover.props.speed).toFixed(1)} ${unitOf(layer)}`}
-            {layer === "wind-direction" &&
+            {(layer === "wind-direction" || liveOn) &&
               `Wind blows toward ${Math.round(Number(wxHover.props.toward))}° (from ${Math.round(Number(wxHover.props.from))}°), ${Number(wxHover.props.speed).toFixed(1)} km/h`}
           </Popup>
         )}
@@ -362,6 +381,9 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
           </Popup>
         )}
       </Map>
+      {liveStreaks && windField && (
+        <WindParticles mapRef={mapRef} field={windField} color={colors["--color-text-primary"]} />
+      )}
       {offline && <p className="map-note map-offline">Basemap unavailable: showing the cells only.</p>}
     </div>
   );

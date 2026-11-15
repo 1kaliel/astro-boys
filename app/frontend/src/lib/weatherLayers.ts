@@ -1,13 +1,20 @@
 import type { WeatherGridPoint } from "../data/api";
 
+/** The fields a map layer needs from a point (a month of ERA5, or the live wind). */
+export type WeatherSample = Pick<
+  WeatherGridPoint,
+  "lat" | "lon" | "temperature_c" | "wind_speed_kmh" | "wind_from_deg"
+>;
+
 /** What the map shows. "hotspots" is the science of the project; the others are ERA5 context. */
-export type MapLayer = "hotspots" | "temperature" | "wind-speed" | "wind-direction";
+export type MapLayer = "hotspots" | "temperature" | "wind-speed" | "wind-direction" | "live-wind";
 
 export const LAYER_LABEL: Record<MapLayer, string> = {
   hotspots: "Hotspots",
   temperature: "Temperature",
   "wind-speed": "Wind speed",
   "wind-direction": "Wind direction",
+  "live-wind": "Live wind",
 };
 
 /**
@@ -22,7 +29,11 @@ export function breaksOf(layer: MapLayer): readonly number[] {
 }
 
 export function unitOf(layer: MapLayer): string {
-  return layer === "temperature" ? "°C" : layer === "wind-speed" || layer === "wind-direction" ? "km/h" : "";
+  return layer === "temperature"
+    ? "°C"
+    : layer === "wind-speed" || layer === "wind-direction" || layer === "live-wind"
+      ? "km/h"
+      : "";
 }
 
 /** The arrow of the wind points where it blows TOWARD; the direction ERA5 and the card give is where it blows FROM. */
@@ -40,7 +51,7 @@ export type WeatherFeatureProps = {
 
 /** GeoJSON points for a layer. A point with no value for that layer is left out: missing is never drawn as zero. */
 export function weatherGeoJSON(
-  points: readonly WeatherGridPoint[],
+  points: readonly WeatherSample[],
   layer: MapLayer,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, WeatherFeatureProps> {
   const features: GeoJSON.Feature<GeoJSON.Point, WeatherFeatureProps>[] = [];
@@ -48,7 +59,7 @@ export function weatherGeoJSON(
     const value =
       layer === "temperature" ? p.temperature_c : layer === "wind-speed" ? p.wind_speed_kmh : p.wind_speed_kmh;
     const hasDirection = p.wind_from_deg !== null;
-    if (value === null || (layer === "wind-direction" && !hasDirection)) continue;
+    if (value === null || ((layer === "wind-direction" || layer === "live-wind") && !hasDirection)) continue;
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [p.lon, p.lat] },
