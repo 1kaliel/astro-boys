@@ -28,7 +28,7 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 |---|------|-------|-------------|--------|-------------|
 | H1 | Mock `calendar` sample with the v1 columns | Mateus (delivered by Kali) | Sat 19:30 | ✅ | `uv run astro-fire mock-calendar` → `data/processed/calendar/mock/` ([how](data-dictionary.md#6-sample-for-app-development)); synthetic numbers |
 | H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ✅ | Full 2003–2025 MVP local Parquet + manifest prepared for H3 QA; bucket publication pending |
-| H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
+| H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ✅ | `artifacts/20261115T003611Z_ingest_2e2b2e/qa.md` |
 | H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ✅ | **Checkpoint A**: full 2003–2025 local Parquet + manifest; bucket publication pending |
 | H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ✅ | `src/astro_fire/calibration.py` + `tests/test_calibration.py` (synthetic sample; real data comes with H4) |
 | H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ✅ | Real counts: 74,592 factor rows, pooling to L1, K = 50, M = 5, Terra-aware background, reconciled with λ = 0.75 ([results](methodology.md)). Published to the bucket (`fb-l1-terra-rec-4`) |
@@ -36,7 +36,7 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 | H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ✅ | `artifacts/figures/before_after_2012.png` (+ `.svg`, `.json`); `scripts/figure_before_after.py`. No uncertainty band yet |
 | H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ✅ | `raw/firms/api/<SOURCE>/-48.8_-18.4_-34.7_-1.0/`: 127 chunk files, SP to 2026-07-31, NRT to 2026-11-14 (S-NPP to 11-02); on the VM, bucket upload pending |
 | H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | ✅ | Final test on 2022–2023, opened once: passes the pre-set rule (cell MAE 3.46 vs 4.22 for the best baseline; regional totals level). All methods are 6% high there and 20% high in 2024–2025 ([methodology.md](methodology.md)) |
-| H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | ⬜ | **Checkpoint C** |
+| H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | 🔄 | Done: intervals from out-of-year error (94% coverage on 2020–2021), anomalies, continuity factor measured (1.041). Open: ingest 2026, apply the continuity factor, mark the current month partial |
 | H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Kali | Sun 15:00 | ⬜ | Only if H10–H11 are done |
 | H13 | Methodology and limitations text ([methodology.md](methodology.md)); reproducibility run from a clean clone | Justino + Jean | Sun 18:00 | ⬜ | |
 
@@ -47,7 +47,7 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
 | D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ✅ | On `main` (FastAPI + React/Vite, design system, shared state) |
-| D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Guilherme + Cleber | Sat 23:00 | ⬜ | Function or endpoint + test |
+| D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Guilherme + Cleber | Sat 23:00 | ✅ | `GET /api/calendar` on the real `calendar/v1` (Cleber). Open: widen the interval of a summed area for correlated cells (`n^0.32`) |
 | D3 | Map with L2 cells; rectangle draw and lat/lon bounds → list of cells | Guilherme | Sat 23:00 | ⬜ | **Checkpoint A** |
 | D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ✅ | **Checkpoint A**: on `main`, running on a synthetic fixture; real `calendar/v1` comes with D2 |
 | D5 | This month vs historical median card; date-range selector | Cleber | Sun 02:00 | ⬜ | |

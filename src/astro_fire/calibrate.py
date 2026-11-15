@@ -19,7 +19,7 @@ from pathlib import Path
 import duckdb
 
 from astro_fire import calibration as cal
-from astro_fire import coverage, storage
+from astro_fire import coverage, storage, uncertainty
 from astro_fire.config import Settings
 from astro_fire.manifest import Manifest, new_run_id
 
@@ -180,6 +180,43 @@ def months_to_exclude(
     return sorted(months), sorted(gaps), incomplete is not None
 
 
+def continuity(con: duckdb.DuckDBPyConnection, settings: Settings, counts: str = "counts") -> dict | None:
+    """Ratio of S-NPP to NOAA-20 detections, for carrying the observed series past the end of S-NPP.
+
+    Ratio of sums over the months in which both satellites were fully observing, overall, by day/night and
+    by month of year. None when NOAA-20 or the coverage table is missing.
+    """
+    location = storage.uri(settings, "processed", "coverage_monthly", settings.dataset_version)
+    try:
+        con.execute(
+            f"""
+            CREATE OR REPLACE TEMP TABLE _both_complete AS
+            SELECT year, month FROM read_parquet('{storage.parquet_glob(location)}')
+            WHERE satellite IN ('SNPP', 'N20') GROUP BY ALL HAVING bool_and(is_complete) AND count(*) = 2
+            """
+        )
+    except duckdb.Error:
+        return None
+    ratio = ("sum(n_hotspots) FILTER (WHERE satellite = 'SNPP')::DOUBLE "
+             "/ nullif(sum(n_hotspots) FILTER (WHERE satellite = 'N20'), 0)")
+    source = f"{counts} JOIN _both_complete USING (year, month) WHERE satellite IN ('SNPP', 'N20')"
+    months, overall = con.execute(f"SELECT count(DISTINCT (year, month)), {ratio} FROM {source}").fetchone()
+    if not months or overall is None:
+        return None
+    return {
+        "months": months,
+        "overall": overall,
+        "by_period": _records(
+            con, f"SELECT daynight AS period, {ratio} AS ratio FROM {source} GROUP BY 1 ORDER BY 1"
+        ),
+        "by_year": _records(con, f"SELECT year, {ratio} AS ratio FROM {source} GROUP BY 1 ORDER BY 1"),
+        "by_month_period": _records(
+            con,
+            f"SELECT month, daynight AS period, {ratio} AS ratio FROM {source} GROUP BY ALL ORDER BY 2, 1",
+        ),
+    }
+
+
 def _records(con: duckdb.DuckDBPyConnection, sql: str) -> list[dict]:
     cur = con.execute(sql)
     names = [d[0] for d in cur.description]
@@ -222,6 +259,16 @@ def run(
     cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name,
                     witness=witness, m_witness=m_witness, reconcile_lambda=lam)
 
+    # Prediction error measured out of year, for the intervals of the estimates.
+    uncertainty.out_of_year_estimates(con, "panel", k=k, m=m, pool=pool, witness=witness,
+                                      m_witness=m_witness, reconcile_lambda=lam)
+    uncertainty.error_table(con, "out_of_year")
+    con.execute("CREATE OR REPLACE TEMP TABLE _oy_obs AS "
+                "SELECT cell_l2, year, month, period, observed AS v FROM out_of_year")
+    uncertainty.add_intervals(con, "out_of_year", "uncertainty")
+    interval_check = uncertainty.coverage(con, "estimates_ci", "_oy_obs")
+    inflation = uncertainty.sum_inflation(con, "out_of_year", "uncertainty")
+
     panel = _records(con, """
         SELECT count(*) AS rows, count(DISTINCT cell_l2) AS cells, sum(a) AS sum_aqua, sum(v) AS sum_viirs,
                sum(v) / nullif(sum(a), 0) AS overall_ratio,
@@ -261,9 +308,17 @@ def run(
         "leave_one_year_out": scores,
         "panel": panel,
         "factors": factors,
+        "intervals": {
+            "method": "empirical out-of-year error by size of the estimate, regime and period",
+            "coverage_of_90pct_interval_out_of_year": interval_check,
+            "sum_inflation": inflation,
+            "note": "the variance of a sum of cells is larger than the sum of their variances by this factor",
+        },
+        "continuity_snpp_over_noaa20": continuity(con, settings),
         "region_by_month_period": region,
     }
 
+    uncertainty_target = storage.uri(settings, "processed", "uncertainty", version)
     factors_target = storage.uri(settings, "processed", "factors", version)
     artifacts_target = storage.uri(settings, "artifacts", run_id)
     staging = Path(tempfile.mkdtemp(prefix="astro_calibrate_"))
@@ -273,6 +328,12 @@ def run(
             f"COPY (SELECT {', '.join(FACTOR_COLUMNS)} FROM factors ORDER BY cell_l2, period, month) "
             f"TO '{staging / 'factors' / 'part-0.parquet'}' (FORMAT parquet, COMPRESSION zstd)"
         )
+        (staging / "uncertainty").mkdir()
+        con.execute(
+            f"COPY (SELECT * FROM uncertainty ORDER BY regime, period, bin) "
+            f"TO '{staging / 'uncertainty' / 'part-0.parquet'}' (FORMAT parquet, COMPRESSION zstd)"
+        )
+        storage.publish_dir(settings, str(staging / "uncertainty"), uncertainty_target, replace=True)
         (staging / "artifacts" / "metrics").mkdir(parents=True)
         (staging / "artifacts" / "metrics" / "calibration.json").write_text(
             json.dumps(report, indent=2, default=float) + "\n"
@@ -283,6 +344,8 @@ def run(
         shutil.rmtree(staging, ignore_errors=True)
 
     manifest.add_output(factors_target, rows=factors["rows"])
+    error_rows = con.execute("SELECT count(*) FROM uncertainty").fetchone()[0]
+    manifest.add_output(uncertainty_target, rows=error_rows)
     manifest.add_output(f"{artifacts_target}/metrics/calibration.json", fmt="json")
     manifest.checks = {
         "calibration_years": list(years),
@@ -299,6 +362,7 @@ def run(
     return {
         "status": manifest.status,
         "factors": factors_target,
+        "uncertainty": uncertainty_target,
         "report": f"{artifacts_target}/metrics/calibration.json",
         "manifest": manifest.save(settings),
         **manifest.checks,

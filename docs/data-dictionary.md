@@ -46,8 +46,8 @@ One row per L2 cell × local year-month × period. Partitioned by `year`.
 | `year`, `month` | int | Local solar year and month |
 | `period` | string | `D` day, `N` night, `ALL` (= D + N) |
 | `count_harmonized` | double | VIIRS-equivalent hotspot count. Observed value from 2012-02, estimate before |
-| `ci_low`, `ci_high` | double | 90% interval (bootstrap). Equal to the value for observed months |
-| `var_harmonized` | double | Variance of the estimate (0 if observed); lets the app approximate intervals for summed areas |
+| `ci_low`, `ci_high` | double | 90% interval from measured out-of-year error ([how](methodology.md#uncertainty-of-the-estimates)). Equal to the value for observed months; null when the estimate is null |
+| `var_harmonized` | double | Prediction variance of the estimate (0 if observed). For a sum of `n` cells use `Σ var × n^0.32`: errors of nearby cells are correlated (measured 2.4× for 16 cells, 13.7× for the whole extent) |
 | `origin` | string | `VIIRS_OBSERVED` or `VIIRS_EQUIVALENT_FROM_MODIS` |
 | `source_satellite` | string | `SNPP`, `N20`, `Aqua`, `Terra` |
 | `is_estimated` | bool | True when `origin` is an estimate. The UI must mark these months |
@@ -56,9 +56,9 @@ One row per L2 cell × local year-month × period. Partitioned by `year`.
 | `days_observed` | int | Days of the month covered by the data |
 | `raw_aqua`, `raw_terra`, `raw_snpp`, `raw_n20` | int, nullable | Native filtered counts per satellite; null when the satellite had no data yet |
 | `frp_sum_mw_native` | double | FRP sum of the `source_satellite`, native scale (not harmonized) |
-| `median_hist` | double | Historical median for this cell, month of year and period (baseline window in the manifest) |
+| `median_hist` | double | Median over all fully observed years 2003–2025 for this cell, month of year and period; a fully observed month with no row counts as 0 |
 | `anomaly_abs`, `anomaly_pct` | double | `count − median`; percent is null when the median is 0 |
-| `anomaly_z` | double | Robust z-score; null when MAD is 0 |
+| `anomaly_z` | double | Robust z-score `anomaly_abs / (1.4826 × MAD)`; null when MAD is 0 or the month is partial. Noisy in sparse cells |
 | `model_version` | string | Factor set and code version used |
 
 Rules for consumers:
@@ -123,6 +123,13 @@ the minimum. **The sums run over the whole extent, so estimates must be computed
 
 **Do not reimplement any of this: call `astro_fire.calibration.build_source` and `apply_factors`** on the
 whole extent. `apply_factors` returns `estimate` (final) and `estimate_unreconciled`.
+
+## 4b. `processed/uncertainty/v1/`
+
+Per `regime` (`aqua_positive`, `aqua_zero`) × `period` (`D`, `N`, `ALL`) × `bin` (floor of log2 of the estimate,
+−4 to 9): `n_rows`, `bin_used`, `n_rows_used`, `variance_ratio`, `q05_ratio`, `q95_ratio`. Written by `calibrate`,
+read by `harmonize`: `ci_low = estimate × q05_ratio`, `ci_high = estimate × q95_ratio` (never excluding the
+estimate), `var = estimate × variance_ratio`.
 
 ## 5. `processed/coverage_daily/v1/` and `processed/coverage_monthly/v1/`
 
