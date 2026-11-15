@@ -43,6 +43,17 @@
   --viz-seq-5: var(--ember-500);
   --viz-seq-6: var(--ember-600);
   --viz-seq-7: var(--ember-700);
+  /* Anomaly mode: the light diverging ramp in every OS mode (the card is always light). About the median is
+     white, so it stays apart from "no comparison", which takes the plane color. */
+  --viz-div-mid: var(--neutral-0);
+  --viz-div-neg-1: var(--blue-300);
+  --viz-div-neg-2: var(--blue-400);
+  --viz-div-neg-3: var(--blue-500);
+  --viz-div-neg-4: var(--blue-600);
+  --viz-div-pos-1: var(--orange-300);
+  --viz-div-pos-2: var(--orange-400);
+  --viz-div-pos-3: var(--orange-500);
+  --viz-div-pos-4: var(--orange-600);
   --viz-null: var(--cal-nodata-bg);
   --viz-cell-outline: transparent;
   --viz-selection: var(--cal-ink);

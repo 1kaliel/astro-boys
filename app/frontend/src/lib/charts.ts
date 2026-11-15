@@ -142,12 +142,15 @@ export function anomalyLegend(): Array<{ step: number; label: string }> {
 // ---------------------------------------------------------------------------------------------------------
 // Axes
 
-/** A round number at or above `value`, for the top of a count axis (1, 2, 2.5, 5 or 10 times a power of ten). */
+/**
+ * A round number at or above `value`, for the top of a count axis. The steps are close enough that the axis is
+ * never much taller than the data, and each divides into four round ticks (1.2M gives 300K, 600K, 900K).
+ */
 export function niceCeil(value: number): number {
   if (!(value > 0)) return 1;
   const power = 10 ** Math.floor(Math.log10(value));
   const fraction = value / power;
-  const nice = [1, 2, 2.5, 5, 10].find((step) => fraction <= step) ?? 10;
+  const nice = [1, 1.2, 1.6, 2, 2.4, 3.2, 4, 6, 8, 10].find((step) => fraction <= step) ?? 10;
   return nice * power;
 }
 
