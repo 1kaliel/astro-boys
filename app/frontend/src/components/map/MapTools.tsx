@@ -7,7 +7,7 @@ import { PILOT_BOUNDS } from "../../state/dashboard";
 import { Button } from "../ui/Button";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 
-/** "3d" is the react-globe.gl view; the other two are MapLibre projections. */
+/** All three are MapLibre: flat, globe, and "3d" (the globe tilted, with the cells raised by class). */
 export type Projection = "mercator" | "globe" | "3d";
 
 /** What each view is, in one line, so the choice is not a guess. Shown under the selector. */
@@ -16,7 +16,7 @@ export const VIEW_HELP: Record<Projection, string> = {
     "Flat: a standard flat map (Mercator), north up. Shapes are close to true near the equator, the Northeast included; areas stretch toward the poles.",
   globe:
     "Globe: the same map wrapped on a sphere. Good for the whole continent; the cells and layers stay where they are.",
-  "3d": "3D: a separate globe with satellite imagery, where the hotspot cells are drawn as tiles. Weather layers are not in this view yet.",
+  "3d": "3D: the globe tilted, with each hotspot cell raised and colored by its class (taller = a higher class, not a measured height). Drag with the right button to turn it. Weather layers are not in this view yet.",
 };
 
 const PROJECTIONS: ReadonlyArray<SegmentOption<Projection>> = [
@@ -104,14 +104,12 @@ export function MapTools({ mapRef, projection, onProjection, onArea, note }: Map
           {VIEW_HELP[projection]}
           {note && <> {note}</>}
         </p>
-        {/* Drawing and "visible area" belong to MapLibre; the 3D view has its own two-click selection. */}
-        {projection !== "3d" &&
-          (drawing ? (
-            <Button onClick={stopDrawing}>Cancel</Button>
-          ) : (
-            <Button onClick={() => void startDrawing()}>Draw area</Button>
-          ))}
-        {projection !== "3d" && <Button onClick={applyVisibleArea}>Use visible area</Button>}
+        {drawing ? (
+          <Button onClick={stopDrawing}>Cancel</Button>
+        ) : (
+          <Button onClick={() => void startDrawing()}>Draw area</Button>
+        )}
+        <Button onClick={applyVisibleArea}>Use visible area</Button>
       </div>
       {(drawing || error) && (
         <p className={cx("map-note", "map-hint", error && "map-error")} role={error ? "alert" : undefined}>

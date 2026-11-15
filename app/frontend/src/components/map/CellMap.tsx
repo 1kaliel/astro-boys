@@ -95,6 +95,9 @@ const MERCATOR_LIMITS: [number, number, number, number] = [-80, -40, -20, 14];
 /** The region of the live wind lattice (wider than Brazil), framed until the outline of Brazil is loaded. */
 /** How far the map is tilted while the municipalities are shown (degrees; MapLibre allows up to 60). */
 const MUNI_PITCH = 50;
+/** Tilt of the 3D view, and the height of one class of cells in meters (the heights are classes, not measurements). */
+const RELIEF_PITCH = 55;
+const RELIEF_STEP_M = 9000;
 const LIVE_REGION: Bounds = { west: -75, south: -35, east: -25, north: 8 };
 
 /** Loads the names and borders for the satellite basemap; without them (service down) the imagery shows alone. */
@@ -156,7 +159,8 @@ type CellMapProps = {
   cellSource?: string;
   cellDate?: string | null;
   area: Bounds;
-  projection: "mercator" | "globe"; // the MapLibre projections; the 3D view is GlobeView
+  /** "3d" is the globe projection tilted, with the cells extruded by class. */
+  projection: "mercator" | "globe" | "3d";
   /** What is drawn: the hotspot cells (default) or one ERA5 weather layer. Never both at once. */
   layer?: MapLayer;
   /** ERA5 monthly means at sampled points, for the weather layers. */
@@ -204,6 +208,7 @@ export function CellMap({
   municipal = null,
   overview = null,
 }: CellMapProps) {
+  const relief = projection === "3d";
   const scheme = useColorScheme();
   const { style, offline } = useBasemap();
   // Re-read the tokens whenever the theme changes.
@@ -318,6 +323,17 @@ export function CellMap({
     ] as unknown as ExpressionSpecification;
   }, [colors, breaks]);
 
+  // Height of a cell in the 3D view: its class (the same classes as the colors) times a fixed step.
+  const reliefHeight = useMemo((): ExpressionSpecification => {
+    if (breaks.length === 0) return RELIEF_STEP_M as unknown as ExpressionSpecification;
+    return [
+      "step",
+      ["get", "value"],
+      RELIEF_STEP_M,
+      ...breaks.flatMap((edge, i) => [edge, RELIEF_STEP_M * (i + 2)]),
+    ] as unknown as ExpressionSpecification;
+  }, [breaks]);
+
   // Follow the selected area, or show the whole wide region while the live wind is on (no animation when the user
   // asked for reduced motion).
   // The overview opens on the selected area (the Northeast by default): the wind covers Brazil, the view stays on the study area.
@@ -329,9 +345,14 @@ export function CellMap({
         [target.east, target.north],
       ],
       // The municipalities are seen from an angle (a tilted map); every other layer is flat and north up.
-      { padding: 24, duration: prefersReducedMotion() ? 0 : 400, pitch: muniOn ? MUNI_PITCH : 0, bearing: 0 },
+      {
+        padding: 24,
+        duration: prefersReducedMotion() ? 0 : 400,
+        pitch: muniOn ? MUNI_PITCH : relief ? RELIEF_PITCH : 0,
+        bearing: 0,
+      },
     );
-  }, [target.west, target.south, target.east, target.north, muniOn, mapRef]);
+  }, [target.west, target.south, target.east, target.north, muniOn, relief, mapRef]);
 
   const onPointer = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
@@ -393,13 +414,13 @@ export function CellMap({
           ],
           fitBoundsOptions: { padding: 16 },
         }}
-        projection={projection}
+        projection={projection === "mercator" ? "mercator" : "globe"}
         maxBounds={projection === "mercator" ? MERCATOR_LIMITS : undefined}
-        minZoom={projection === "globe" ? 1 : 3}
+        minZoom={projection === "mercator" ? 3 : 1}
         maxZoom={10}
-        dragRotate={muniOn}
-        pitchWithRotate={muniOn}
-        touchPitch={muniOn}
+        dragRotate={muniOn || relief}
+        pitchWithRotate={muniOn || relief}
+        touchPitch={muniOn || relief}
         pixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
         fadeDuration={0}
         attributionControl={{ compact: true }}
@@ -440,19 +461,35 @@ export function CellMap({
         <NavigationControl position="top-right" showCompass={false} />
         <Source id="cells" type="geojson" data={cellData}>
           {/* No stroke around cells: an estimated month is flagged once (badge), not on thousands of cells. */}
-          <Layer
-            id="cells-fill"
-            type="fill"
-            beforeId={bordersBefore}
-            layout={{ visibility: hideCells ? "none" : "visible" }}
-            paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
-          />
+          {relief ? (
+            // Same cells, raised by class. The id stays "cells-fill" for the pointer and the layers placed under it.
+            <Layer
+              id="cells-fill"
+              key="cells-extrusion"
+              type="fill-extrusion"
+              paint={{
+                "fill-extrusion-color": fillColor,
+                "fill-extrusion-height": reliefHeight,
+                "fill-extrusion-opacity": 0.92,
+                "fill-extrusion-vertical-gradient": true,
+              }}
+            />
+          ) : (
+            <Layer
+              id="cells-fill"
+              key="cells-flat"
+              type="fill"
+              beforeId={bordersBefore}
+              layout={{ visibility: hideCells ? "none" : "visible" }}
+              paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
+            />
+          )}
           {/* A fine light outline, so the hotspot cells stay readable over the temperature colors. */}
           <Layer
             id="cells-outline"
             type="line"
             beforeId={bordersBefore}
-            layout={{ visibility: hideCells ? "none" : "visible" }}
+            layout={{ visibility: hideCells || relief ? "none" : "visible" }}
             paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.6 }}
           />
         </Source>
