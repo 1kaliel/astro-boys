@@ -113,35 +113,39 @@ export function foldWord(ratio: number): string {
   return FOLD[n] ? FOLD[n] : `${Math.round(ratio)}×`;
 }
 
-/** Degrees the study area spans (PILOT_BOUNDS), used to frame the globe. */
-const STUDY_SPAN = { lon: 14.1, lat: 17.4 } as const;
 /** Width at which the hero text sits beside the globe instead of under it. */
 export const WIDE_HERO_PX = 900;
 
 export type GlobeFraming = {
   zoom: number;
   padding: { top: number; bottom: number; left: number; right: number };
+  /** Diameter of the globe on screen, px. */
+  diameter: number;
 };
 
+/** MapLibre tiles are 512 px: the globe is (512 * 2^zoom) / pi px across. */
+function zoomForDiameter(px: number): number {
+  return Math.log2((px * Math.PI) / 512);
+}
+
 /**
- * Where the globe sits behind the hero text. Wide screens: the text takes the left, so the study area is centered in
- * the right part. Narrow screens: the text takes the bottom, so the study area sits in the top part. The zoom shows
- * the study area at about a third of the free height, so the curve of the globe still reads.
+ * Where the globe sits in the hero. The camera centre is the study area, so it is centred in the globe's visible
+ * face. Wide screens: the text takes the left 40%, the globe fills the right 60% at about 90% of the hero height.
+ * Narrow screens: a smaller globe above the text, which takes the bottom.
  */
 export function globeFraming(width: number, height: number, header: number = 64): GlobeFraming {
   const wide = width >= WIDE_HERO_PX;
   const padding = wide
     ? { top: header, bottom: 0, left: Math.round(width * 0.4), right: 0 }
-    : { top: header, bottom: Math.round(height * 0.52), left: 0, right: 0 };
-  const freeW = Math.max(1, width - padding.left - padding.right);
-  const freeH = Math.max(1, height - padding.top - padding.bottom);
-  const pxPerDegree = Math.min((0.36 * freeH) / STUDY_SPAN.lat, (0.55 * freeW) / STUDY_SPAN.lon);
-  // A 512 px tile holds 360 degrees at zoom 0.
-  const zoom = Math.log2((pxPerDegree * 360) / 512);
-  return { zoom: Math.min(3.4, Math.max(1.4, zoom)), padding };
+    : { top: header, bottom: Math.round(height * 0.38), left: 0, right: 0 };
+  const diameter = wide
+    ? Math.min(0.9 * height, 0.95 * (width - padding.left))
+    : Math.min(0.98 * width, 0.6 * height);
+  const zoom = Math.min(3.4, Math.max(0.6, zoomForDiameter(Math.max(1, diameter))));
+  return { zoom, padding, diameter };
 }
 
 /** A slow drift around the study area: degrees of longitude away from it at `ms` after the drift starts. */
-export function driftOffset(ms: number, amplitude = 9, periodMs = 140_000): number {
+export function driftOffset(ms: number, amplitude = 6, periodMs = 120_000): number {
   return amplitude * Math.sin((2 * Math.PI * ms) / periodMs);
 }
