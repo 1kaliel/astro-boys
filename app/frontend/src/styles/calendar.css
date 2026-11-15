@@ -816,3 +816,31 @@ button.calendar-key-pick[aria-pressed="true"]::after {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+/* Touch: on phones and other coarse pointers every control of the calendar column is at least 44 px tall. Desktop keeps
+   the compact size (24 px meets WCAG 2.2 AA; 44 px is the touch guideline). */
+@media (pointer: coarse), (max-width: 40rem) {
+  .calendar-side .chip,
+  .calendar-side .month-chip,
+  .calendar-volume input,
+  button.calendar-key-pick,
+  .tabs-tab {
+    min-height: 44px;
+  }
+
+  .calendar-side .chip,
+  .calendar-side .month-chip,
+  .tabs-tab {
+    min-width: 44px;
+  }
+
+  .calendar-filters-row {
+    gap: var(--space-2);
+  }
+
+  .calendar-key-clear {
+    display: inline-block;
+    min-height: 44px;
+    line-height: 44px;
+  }
+}
