@@ -725,10 +725,6 @@
   .app-subtitle {
     display: none;
   }
-
-  .csv-download .button {
-    min-height: 44px;
-  }
 }
 
 @media (max-width: 30rem) {
