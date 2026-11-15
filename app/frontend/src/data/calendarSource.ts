@@ -31,7 +31,40 @@ export type CalendarMonth = {
   /** For "same_days": days 1..comparisonDays of the month, and how many earlier years the median is over. */
   comparisonDays: number | null;
   comparisonYears: number | null;
+  /** Satellite the month comes from: `Aqua` (estimated months), `SNPP` or `N20` (observed). */
+  sourceSatellite?: string | null;
+  /**
+   * Native counts per satellite, summed over the area (API data only). Never add them together: MODIS and VIIRS
+   * are different instruments. Null = the satellite had no data in that month.
+   */
+  raw?: RawCounts;
+  /** Native count of `sourceSatellite`, not harmonized: what a chart of raw counts shows. */
+  rawSource?: number | null;
+  /** True when `count` holds `rawSource` (the "Raw by sensor" view of the calendar). */
+  rawView?: boolean;
 };
+
+export type RawCounts = { aqua: number | null; terra: number | null; snpp: number | null; n20: number | null };
+
+/**
+ * The months as the "Raw by sensor" view shows them: each month is the native count of its source satellite,
+ * with no interval and no anomaly (those belong to the harmonized series). The two eras are not comparable.
+ */
+export function rawView(months: readonly CalendarMonth[]): CalendarMonth[] {
+  return months.map((m) => ({
+    ...m,
+    count: m.rawSource ?? null,
+    isEstimated: false, // the number shown is a native count, not an estimate
+    ciLow: null,
+    ciHigh: null,
+    medianHist: null,
+    anomalyAbs: null,
+    anomalyPct: null,
+    anomalyZ: null,
+    comparison: null,
+    rawView: true,
+  }));
+}
 
 export type CalendarDataset = {
   /** True while the data is the mock: synthetic numbers, for building screens only. */
@@ -72,6 +105,12 @@ type ApiMonth = {
   /** Years the median is over, and the days it covers: null = whole months, N = days 1..N of the month. */
   median_n_years?: number | null;
   median_days?: number | null;
+  source_satellite?: string | null;
+  raw_aqua?: number | null;
+  raw_terra?: number | null;
+  raw_snpp?: number | null;
+  raw_n20?: number | null;
+  raw_source?: number | null;
 };
 
 export type ApiCalendar = {
@@ -118,6 +157,14 @@ export function parseApiResponse(doc: ApiCalendar): CalendarDataset {
         comparison: m.median_hist == null ? null : m.median_days != null ? "same_days" : "month",
         comparisonDays: m.median_days ?? null,
         comparisonYears: m.median_n_years ?? null,
+        sourceSatellite: m.source_satellite ?? null,
+        raw: {
+          aqua: m.raw_aqua ?? null,
+          terra: m.raw_terra ?? null,
+          snpp: m.raw_snpp ?? null,
+          n20: m.raw_n20 ?? null,
+        },
+        rawSource: m.raw_source ?? null,
       }),
     ),
   };

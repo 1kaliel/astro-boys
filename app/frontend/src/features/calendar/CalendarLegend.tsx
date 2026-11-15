@@ -1,3 +1,4 @@
+import { anomalyColor, anomalyLegend } from "../../lib/charts";
 import { formatCount } from "../../lib/format";
 import type { LegendRange } from "./calendarModel";
 
@@ -57,6 +58,48 @@ export function CalendarLegend({ ranges, unit }: CalendarLegendProps) {
       <p className="calendar-legend-note">
         Each color holds about the same number of months, so the ranges are not evenly spaced. They are recomputed for the
         months on screen.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Legend of the anomaly mode: nine classes of the robust z-score, from far below to far above the median of that
+ * month of the year. Blue is below and orange is above; the labels carry the numbers, so color is not alone.
+ */
+export function AnomalyLegend({ unit }: { unit: string }) {
+  return (
+    <div className="calendar-legend" aria-label="Legend">
+      <p className="calendar-legend-title">{unit}</p>
+      <ol className="calendar-legend-scale" aria-label="Robust z-score, by color">
+        {anomalyLegend().map((item) => (
+          <li key={item.step} className="calendar-legend-segment">
+            <span className="calendar-legend-bar" style={{ background: anomalyColor(item.step) }} />
+            <span className="calendar-legend-label">{item.label}</span>
+          </li>
+        ))}
+      </ol>
+      <ul className="calendar-legend-states">
+        <li>
+          <span className="calendar-chip calendar-chip-estimated" aria-hidden="true" />
+          Estimated from MODIS
+        </li>
+        <li>
+          <span className="calendar-chip calendar-chip-partial" aria-hidden="true" />
+          Partial month
+        </li>
+        <li>
+          <span className="calendar-chip calendar-chip-nodata" aria-hidden="true" />
+          No data
+        </li>
+        <li>
+          <span className="calendar-chip calendar-chip-selected" aria-hidden="true" />
+          Selected month
+        </li>
+      </ul>
+      <p className="calendar-legend-note">
+        Below the median is blue, above it is orange, and a month without a comparison is neutral. The z-score is robust
+        (median and MAD of the baseline years); it is not a probability of fire.
       </p>
     </div>
   );

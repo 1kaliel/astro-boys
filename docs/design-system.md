@@ -166,6 +166,26 @@ pattern is a second channel, so the threshold for this theme is 10); peak vs the
 secondary ink 4.9:1; white on the active control 6.5:1. Known limits: on a phone the grid scrolls sideways and the year
 labels scroll with it.
 
+## Line charts, raw view and anomaly mode (D9)
+
+- **Trend** (`features/charts/TrendChart.tsx`): yearly totals of complete years only (an incomplete year is not a
+  low year). Three lines on the series tokens, each with its own line style so they read without color: harmonized
+  (`--viz-series-1`, solid, on top), Aqua MODIS raw (`--viz-series-2`, dashed), S-NPP VIIRS raw (`--viz-series-3`,
+  wide and translucent under the harmonized line, which equals it after 2012). A hollow point is a year with months
+  estimated from MODIS. Raw counts of different satellites are separate lines and are never added.
+- **Seasonal profile** (`features/charts/SeasonalProfile.tsx`): band from the 10th to the 90th percentile and median
+  (dashed) of the complete months of the years shown, at least 5 years; one year over it (the year of the month
+  picked in the calendar, or the latest). Error bars are the 90% interval of that year's estimated months; a hollow
+  point is a partial month.
+- **Raw by sensor** (calendar): each month shows the native count of its source satellite, with no estimate mark,
+  interval or anomaly, and a notice that the 2012 jump is the change of sensor.
+- **Anomaly** (calendar): months colored by robust z-score on the diverging tokens, in nine classes with limits at
+  0.5, 1, 2 and 3 (`lib/charts.ts`): blue below the median, orange above, neutral without a comparison. The legend
+  prints the limits. A z-score is never worded as a probability or a risk.
+- Both charts are plain SVG in a fixed 640 x 280 box, with a table view; on a narrow screen they scroll sideways
+  instead of shrinking the labels. **Not yet checked by eye in a browser** (written without a local Node; CI ran
+  typecheck, unit tests and the build).
+
 ## Words
 
 - Say **hotspots** or **fire activity**. Never "fires", "burned area", "risk", "probability" or "forecast".

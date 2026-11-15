@@ -105,6 +105,14 @@ class MonthOut(BaseModel):
     anomaly_abs: float | None
     anomaly_pct: float | None
     anomaly_z: float | None
+    # Native filtered counts per satellite, summed over the area. Never add them together: MODIS and VIIRS are
+    # different instruments. None = the satellite had no data in that month.
+    raw_aqua: int | None
+    raw_terra: int | None
+    raw_snpp: int | None
+    raw_n20: int | None
+    # Native count of source_satellite: what a chart of raw counts shows (the false step of 2012).
+    raw_source: int | None
 
 
 class CalendarResponse(BaseModel):

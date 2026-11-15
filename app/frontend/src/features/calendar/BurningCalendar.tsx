@@ -3,15 +3,17 @@ import { useCallback, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
-import type { CalendarDataset } from "../../data/calendarSource";
+import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
-import { MONTHS_LONG, MONTHS_SHORT, formatCount } from "../../lib/format";
+import { anomalyColor, anomalyStep } from "../../lib/charts";
+import { formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
-import { CalendarLegend } from "./CalendarLegend";
+import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
 import { MonthFilter } from "./MonthFilter";
 import {
+  anomalyText,
   buildScale,
   buildSeries,
   legendRanges,
@@ -25,6 +27,8 @@ import {
 import { monthLong, monthShort } from "./calendarText";
 
 export const CALENDAR_UNIT = "VIIRS-equivalent hotspot detections per month";
+const RAW_UNIT = "Native hotspot detections per month, counted by the month's source satellite (not harmonized)";
+const ANOMALY_UNIT = "Robust z-score of the month against the median of that month of the year";
 
 // Chart geometry in pixels (nivo needs numbers; colors and strokes come from tokens in calendar.css).
 const ROW_PX = 26;
@@ -53,9 +57,10 @@ function CalendarTooltip({ cell, approximate }: TooltipProps<CalendarDatum> & { 
             </p>
           ) : (
             <p>
-              <strong>{formatCount(entry.count)}</strong> hotspot detections
+              <strong>{formatCount(entry.count)}</strong> {entry.rawView ? "native detections" : "hotspot detections"}
             </p>
           )}
+          {anomalyText(entry) && <p>{anomalyText(entry)}</p>}
           {entry.count === 0 && <p>Zero detections: a valid count, not missing data</p>}
           {entry.isEstimated && entry.count !== null && (
             <p>
@@ -96,15 +101,21 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   // While a new period loads, the old dataset is still on screen: read it with its own period.
   const period = dataset.period ?? state.period;
 
+  // "Raw by sensor" shows the native count of each month's source satellite instead of the harmonized count.
+  const raw = state.scale === "raw";
+  // Anomalies belong to the harmonized series: the raw view has none.
+  const anomaly = state.metric === "anomaly" && !raw;
+  const months = useMemo(() => (raw ? rawView(dataset.months) : dataset.months), [dataset, raw]);
+
   // Every month of the years shown: the "Peak" shortcut is found here, so it does not move with the filter.
   const fullSeries = useMemo(
-    () => buildSeries(dataset.months, period, startYear, endYear),
-    [dataset, period, startYear, endYear],
+    () => buildSeries(months, period, startYear, endYear),
+    [months, period, startYear, endYear],
   );
   const peak = useMemo(() => peakSeason(fullSeries), [fullSeries]);
   const series = useMemo(
-    () => buildSeries(dataset.months, period, startYear, endYear, state.months),
-    [dataset, period, startYear, endYear, state.months],
+    () => buildSeries(months, period, startYear, endYear, state.months),
+    [months, period, startYear, endYear, state.months],
   );
   // The colors are recomputed for what is on screen, so a season filter uses the whole ramp.
   const scale = useMemo(
@@ -132,10 +143,15 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const colors = useCallback(
     (cell: Omit<ComputedCell<CalendarDatum>, "color" | "opacity" | "borderColor" | "labelTextColor">) => {
       if (cell.value === null || !scale) return "var(--viz-null)";
+      if (anomaly) {
+        // A month with a count and no comparison (partial, or too few years) stays neutral.
+        const z = cell.data.entry?.anomalyZ;
+        return z == null ? "var(--viz-null)" : anomalyColor(anomalyStep(z));
+      }
       if (cell.value === 0) return "var(--cal-zero)";
       return `var(--viz-seq-${scaleStep(cell.value, scale)})`;
     },
-    [scale],
+    [scale, anomaly],
   );
 
   // Intervals of an area are approximate; say so where the interval is shown and once above the chart.
@@ -223,15 +239,30 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           widened (variance sum × n<sup>0.32</sup>).
         </p>
       )}
-      {state.scale === "raw" && (
-        <p className="calendar-notice">Raw counts by sensor are not available yet. Showing harmonized counts.</p>
+      {raw && (
+        <p className="calendar-notice">
+          <strong>Raw by sensor:</strong> each month shows the native count of its source satellite, Aqua MODIS until
+          January 2012 and VIIRS after. The two instruments do not count the same way, so the jump in 2012 is the
+          change of sensor, not a change in fire activity. Switch to Harmonized to compare years.
+          {state.metric === "anomaly" && " Anomalies are computed on the harmonized series only."}
+        </p>
+      )}
+      {anomaly && (
+        <p className="calendar-notice">
+          <strong>Anomaly:</strong> each month is colored by how far it is from the median of that month of the year
+          (robust z-score). It says how unusual a month was; it is not a probability of fire and not a forecast.
+        </p>
       )}
       <ChartTableTabs
         label="Burning calendar"
         chart={chart}
-        table={<CalendarTable series={series} unit={CALENDAR_UNIT} />}
+        table={<CalendarTable series={series} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />}
       />
-      <CalendarLegend ranges={legendRanges(scale)} unit={CALENDAR_UNIT} />
+      {anomaly ? (
+        <AnomalyLegend unit={ANOMALY_UNIT} />
+      ) : (
+        <CalendarLegend ranges={legendRanges(scale)} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />
+      )}
     </div>
   );
 }

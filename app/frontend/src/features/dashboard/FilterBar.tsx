@@ -6,7 +6,15 @@ import { SegmentedControl, type SegmentOption } from "../../components/ui/Segmen
 import { YearSelect } from "../../components/ui/YearSelect";
 import { checkArea, sameBounds } from "../../lib/area";
 import { cellsInBounds, type Bounds } from "../../lib/grid";
-import { FIRST_YEAR, LAST_YEAR, PILOT_BOUNDS, useDashboard, type Period, type Scale } from "../../state/dashboard";
+import {
+  FIRST_YEAR,
+  LAST_YEAR,
+  PILOT_BOUNDS,
+  useDashboard,
+  type Metric,
+  type Period,
+  type Scale,
+} from "../../state/dashboard";
 import { DownloadCsv } from "./DownloadCsv";
 
 const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
@@ -17,6 +25,10 @@ const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
 const SCALE_OPTIONS: ReadonlyArray<SegmentOption<Scale>> = [
   { value: "harmonized", label: "Harmonized" },
   { value: "raw", label: "Raw by sensor" },
+];
+const METRIC_OPTIONS: ReadonlyArray<SegmentOption<Metric>> = [
+  { value: "count", label: "Count" },
+  { value: "anomaly", label: "Anomaly" },
 ];
 const YEARS = Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
 
@@ -56,6 +68,12 @@ export function FilterBar() {
         options={SCALE_OPTIONS}
         value={state.scale}
         onChange={(scale) => dispatch({ type: "setScale", scale })}
+      />
+      <SegmentedControl
+        label="Calendar shows"
+        options={METRIC_OPTIONS}
+        value={state.metric}
+        onChange={(metric) => dispatch({ type: "setMetric", metric })}
       />
       <DownloadCsv />
     </div>

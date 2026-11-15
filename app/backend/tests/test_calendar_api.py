@@ -456,3 +456,71 @@ def test_a_partial_month_never_gets_the_full_month_median(
     assert partial["count_harmonized"] == 3
     assert partial["median_hist"] is None and partial["median_n_years"] is None
     assert partial["anomaly_abs"] is None
+
+
+# ---------------------------------------------------------------------------------------------------------
+# Raw counts per satellite (D9): summed over the area, never across satellites
+
+
+def _add_raw_rows(root: Path, year: int, rows: list[tuple]) -> None:
+    """One more file of `year` with the raw columns: (cell, month, source, count, aqua, terra, snpp, n20)."""
+    con = duckdb.connect()
+    con.execute(
+        """CREATE TABLE t (cell_l2 VARCHAR, lat_min DOUBLE, lat_max DOUBLE, lon_min DOUBLE, lon_max DOUBLE,
+           month INTEGER, period VARCHAR, count_harmonized DOUBLE, var_harmonized DOUBLE,
+           is_estimated BOOLEAN, is_partial BOOLEAN, days_observed INTEGER, origin VARCHAR,
+           source_satellite VARCHAR, model_version VARCHAR, raw_aqua INTEGER, raw_terra INTEGER,
+           raw_snpp INTEGER, raw_n20 INTEGER)"""
+    )
+    for cell, month, source, count, aqua, terra, snpp, n20 in rows:
+        lat, lon = CELLS[cell]
+        estimated = source == "Aqua"
+        origin = "VIIRS_EQUIVALENT_FROM_MODIS" if estimated else "VIIRS_OBSERVED"
+        con.execute(
+            "INSERT INTO t VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [cell, lat, lat + 0.25, lon, lon + 0.25, month, "ALL", count, 0.0, estimated, False, 30, origin,
+             source, "test-model", aqua, terra, snpp, n20],
+        )  # fmt: skip
+    folder = root / "processed" / "calendar" / "v1" / f"year={year}"
+    folder.mkdir(parents=True, exist_ok=True)
+    con.execute(f"COPY t TO '{folder / 'raw.parquet'}' (FORMAT parquet)")
+
+
+def test_raw_counts_are_summed_per_satellite_and_never_across(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path)
+    _add_raw_rows(
+        tmp_path,
+        2008,
+        [
+            # June 2008, estimated from Aqua: VIIRS did not exist yet (null), Terra saw nothing in cell B.
+            ("A", 6, "Aqua", 50.0, 10, 4, None, None),
+            ("B", 6, "Aqua", 15.0, 3, 0, None, None),
+            ("C", 6, "Aqua", 500.0, 100, 40, None, None),
+            # July 2008: only cell C has a row; the area had no detection by the satellites that existed.
+            ("C", 7, "Aqua", 500.0, 100, 40, None, None),
+        ],
+    )
+    _add_raw_rows(
+        tmp_path, 2013, [("A", 6, "SNPP", 70.0, 12, 5, 70, None), ("B", 6, "SNPP", 9.0, 1, 1, 9, None)]
+    )
+    with _client_for(tmp_path, monkeypatch) as client:
+        body = client.get("/api/calendar", params=FULL_BOX).json()
+
+    june_2008 = _month(body, 2008, 6)
+    assert [june_2008[k] for k in ("raw_aqua", "raw_terra", "raw_snpp", "raw_n20")] == [13, 4, None, None]
+    assert june_2008["raw_source"] == 13 and june_2008["count_harmonized"] == 65  # Aqua's own count
+    july_2008 = _month(body, 2008, 7)
+    # Zero for the satellites that existed, null for the one that did not.
+    assert [july_2008[k] for k in ("raw_aqua", "raw_terra", "raw_snpp")] == [0, 0, None]
+    june_2013 = _month(body, 2013, 6)
+    # S-NPP's own count, with Aqua's next to it and never added to it.
+    assert june_2013["raw_source"] == 79 and june_2013["raw_aqua"] == 13
+    assert june_2013["raw_n20"] is None
+
+
+def test_a_calendar_without_raw_columns_has_null_raw_counts(client: TestClient) -> None:
+    january = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2007, 1)
+
+    assert january["raw_source"] is None and january["raw_aqua"] is None
