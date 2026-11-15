@@ -38,3 +38,27 @@ Review and documentation prepared with AI assistance, disclosed in resources.md.
 ## Follow-up correction (09:02 UTC)
 
 PR 47 now explicitly focuses the title on opening via Base UI's existing initialFocus prop and a title ref. The body stays keyboard-focusable. This addresses the observed scroll trigger in code; it has not yet been validated in a running corrected build. CI, deployment and the deployed recheck remain required.
+
+## Release readiness recheck (2026-11-15, 09:17 UTC)
+
+PR 47 was merged at 09:04 UTC as `bc2a21af0e1c4694e7a593d011a07c703ecc0d2f`. All five jobs passed for its final head `0b7731394da5ca6f6df7b76b2812bad06b3f1e42` ([CI](https://github.com/1kaliel/astro-boys/actions/runs/43697357256)); main's merge commit also passed [CI](https://github.com/1kaliel/astro-boys/actions/runs/43697426550).
+
+The merged code already contains the four wording corrections in AboutDialog.tsx and explicit title initialFocus in InfoDialog.tsx. No additional code correction is needed merely to repeat those changes.
+
+Repeated the public browser checks at 1280 x 720 and 390 x 844 (desktop emulation, not a physical phone). The public panel still has all four old passages and opens with its title above the visible scroll area. Home reveals the title; End reaches Sources and Close. Close works on desktop; Escape works at the narrow viewport and restores focus to How to read. Narrow text wraps within the panel. These results describe the old deployed app, not a running corrected build.
+
+Local reproduction is blocked: git cannot resolve github.com, npm cannot resolve registry.npmjs.org, no cached React packages were found, and gcloud, Docker and make are unavailable. No local corrected-build visual pass is claimed.
+
+### Publication handoff
+
+Jean requested publication preparation. Cloud changes still require Kali under AGENTS.md; no approval from Kali for this release was found. No deployment or merge was performed in this recheck.
+
+On an authenticated deployment workstation, after Kali approves:
+
+1. Use a clean checkout containing `bc2a21a` or a later reviewed commit; record the exact SHA.
+2. Follow [the existing Cloud Run runbook](../deploy/cloudrun/README.md). Keep the existing git-ignored project and service configuration, including ASTRO_HOTSPOTS_ROOT. Do not create new IAM bindings or replace the data with fixtures.
+3. Pull calendar/v1 and month_to_date/v1 together. Run the deployment script in dry-run mode, then with BUILDER=cloudbuild and APPLY=1 after approval. Record the build, image and revision.
+4. Check /api/healthz and /api/version, then open a fresh public page at desktop and narrow widths. Verify the title is visible immediately; NRT untyped exception; normalized/filtered native CSV; Count-only sequential color wording; and the qualified possible 2012 sensor step. Check scrolling, Close and Escape.
+5. Only after that public recheck passes, mark D10 done through a PR and append a diary DONE entry with the deployed revision and results.
+
+D10 remains in progress. This documentation was prepared with AI assistance; no data, model, metric or cloud configuration was changed.
