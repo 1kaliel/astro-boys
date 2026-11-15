@@ -1,0 +1,2 @@
+# The diary is append-only: when two branches add entries, keep both instead of conflicting.
+docs/diary/*.md merge=union

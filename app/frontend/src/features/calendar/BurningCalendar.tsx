@@ -47,7 +47,9 @@ function CalendarTooltip({ cell }: TooltipProps<CalendarDatum>) {
           </p>
           {entry.isEstimated && (
             <p>
-              90% interval: {formatCount(entry.ciLow)} to {formatCount(entry.ciHigh)}
+              {entry.ciLow !== null && entry.ciHigh !== null
+                ? `90% interval: ${formatCount(entry.ciLow)} to ${formatCount(entry.ciHigh)}`
+                : "90% interval: pending"}
             </p>
           )}
           <p>{provenanceText(entry)}</p>
@@ -71,11 +73,16 @@ function latestWithData(series: ReadonlyArray<CalendarSerie>): { year: number; m
   return null;
 }
 
-function CalendarView({ dataset }: { dataset: CalendarDataset }) {
+function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refreshing: boolean }) {
   const [state, dispatch] = useDashboard();
+  // Only years the data covers are shown: the selector can go past the last published year.
+  const startYear = Math.max(state.startYear, dataset.firstYear);
+  const endYear = Math.min(state.endYear, dataset.lastYear);
+  // While a new period loads, the old dataset is still on screen: read it with its own period.
+  const period = dataset.period ?? state.period;
   const series = useMemo(
-    () => buildSeries(dataset.months, state.period, state.startYear, state.endYear),
-    [dataset, state.period, state.startYear, state.endYear],
+    () => buildSeries(dataset.months, period, startYear, endYear),
+    [dataset, period, startYear, endYear],
   );
   const range = useMemo(() => valueRange(series), [series]);
   const onSelect = useCallback((year: number, month: number) => dispatch({ type: "select", year, month }), [dispatch]);
@@ -143,6 +150,13 @@ function CalendarView({ dataset }: { dataset: CalendarDataset }) {
           <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
         </p>
       )}
+      {!dataset.synthetic && (
+        <p className="calendar-notice">
+          {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
+          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} cells`}
+          {refreshing && ". Updating…"}
+        </p>
+      )}
       {state.scale === "raw" && (
         <p className="calendar-notice">Raw counts by sensor are not available yet. Showing harmonized counts.</p>
       )}
@@ -158,7 +172,8 @@ function CalendarView({ dataset }: { dataset: CalendarDataset }) {
 
 /** Year x month heatmap of hotspot detections (task D4): loading, error, empty and ready states. */
 export function BurningCalendar() {
-  const [load, reload] = useCalendarDataset();
+  const [state] = useDashboard();
+  const [load, reload] = useCalendarDataset(state.area, state.period);
 
   if (load.status === "loading") {
     return (
@@ -175,5 +190,5 @@ export function BurningCalendar() {
       </div>
     );
   }
-  return <CalendarView dataset={load.dataset} />;
+  return <CalendarView dataset={load.dataset} refreshing={load.refreshing} />;
 }
