@@ -17,6 +17,7 @@ At least one NASA data source is required for global judging.
 | Tool | Purpose | License |
 |------|---------|---------|
 | [DuckDB](https://duckdb.org/) | Pipeline query engine (CSV → Parquet, out-of-core); dashboard backend (area sums over `calendar/v1`) | MIT |
+| [Matplotlib](https://matplotlib.org/) | Static figures for the write-up and the demo (`uv sync --extra figures`) | Matplotlib license (BSD-style) |
 | [uv](https://docs.astral.sh/uv/) | Python env and locked dependencies | Apache-2.0 / MIT |
 | [Python](https://www.python.org/) 3.12 | Pipeline language | PSF |
 | [gcsfs](https://github.com/fsspec/gcsfs) | Optional `gs://` access | BSD-3-Clause |
