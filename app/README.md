@@ -29,6 +29,9 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
   the historical median and anomalies of the sum (see [Calendar API](#calendar-api)).
 - D3 map and area selection: `GET /api/cells` (see [Map API](#map-api)), rectangle drawing, visible map area, lat/lon
   bounds. The map is a separate chunk, loaded on demand (collapsed on phones).
+- Area panel (filter bar): West / East / South / North in a 2 x 2 grid (decimal keypad on phones). Before "Apply" it
+  shows the L2 cells the box selects and its size in km, says when west ≥ east or south ≥ north, and when an edge is
+  outside the study area (`PILOT_BOUNDS`) and will be clamped to it. "Reset to the study area" restores the pilot box.
 - D11 L3 drill-down on the map: click a cell for the native detections of its 16 sub-cells (see [Map API](#map-api)).
 - D4 burning calendar: year × month heatmap that reads the API.
 - D8 (image): the calendar is baked into the image at build time, with its `model_version` (see [Container](#container-same-contract-as-cloud-run)).
@@ -157,6 +160,12 @@ plus the 8 neighboring 0.25° cells (outlined, with their native count) for cont
 meanwhile: estimates exist only at 0.25°. A cell with fewer than 5 detections is not subdivided (stop rule); L3 is the
 deepest level. "Back to L2 cells" or Escape returns. Geometry from the IDs alone (`l3Bounds`, `l3Children`,
 `neighborsOf` in `lib/grid.ts`).
+
+**Grid and globe.** The outline of every L2 cell of the area fades in with zoom (from 16 to 32 px per cell, `GRID_FADE`
+in `components/map/view.ts`); the area's own outline is drawn at every zoom. Cells with no detection that month are not
+drawn, so the basemap shows through: never a zero-colored cell. Globe opens on the whole globe turned to the study area,
+which is dashed and labeled "Study area: Northeast Brazil · data processed only here"; nothing is drawn outside it. A
+click on the box (while it is small) or on its label flies in; the drill-down works in both views.
 
 Frontend without a backend: `VITE_CALENDAR_SOURCE=fixture npm run dev` reads a small file of **synthetic** numbers
 (rebuilt by `scripts/build_calendar_fixture.py`) and labels it "Simulated data".

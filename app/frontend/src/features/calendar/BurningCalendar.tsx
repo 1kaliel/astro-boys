@@ -7,6 +7,7 @@ import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
 import { anomalyColor, anomalyStep } from "../../lib/charts";
 import { formatCount } from "../../lib/format";
+import { useMediaQuery } from "../../lib/hooks";
 import { useDashboard } from "../../state/dashboard";
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
@@ -34,6 +35,10 @@ const ANOMALY_UNIT = "Robust z-score of the month against the median of that mon
 const ROW_PX = 26;
 const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
 const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
+// On a phone the 12 months fit the card (no sideways scroll, so the year labels stay in view): compact cells, with
+// one-letter month labels (CalendarAxes). The design system's phone size for heatmap cells is 18 px.
+const MIN_CELL_PX_PHONE = 20;
+const PHONE = "(max-width: 30rem)";
 const MAX_CELL_PX = 72; // with few months the cells stop growing instead of turning into long bars
 
 const THEME = {
@@ -94,6 +99,7 @@ function latestWithData(series: ReadonlyArray<CalendarSerie>): { year: number; m
 
 function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refreshing: boolean }) {
   const [state, dispatch] = useDashboard();
+  const phone = useMediaQuery(PHONE);
   const [hovered, setHovered] = useState<{ year: number; month: number } | null>(null);
   // Only years the data covers are shown: the selector can go past the last published year.
   const startYear = Math.max(state.startYear, dataset.firstYear);
@@ -185,7 +191,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         className="calendar-chart"
         style={{
           height: series.length * ROW_PX + MARGIN.top + MARGIN.bottom,
-          minWidth: MARGIN.left + MARGIN.right + columns * MIN_CELL_PX,
+          minWidth: MARGIN.left + MARGIN.right + columns * (phone ? MIN_CELL_PX_PHONE : MIN_CELL_PX),
           maxWidth: MARGIN.left + MARGIN.right + columns * MAX_CELL_PX,
         }}
       >
