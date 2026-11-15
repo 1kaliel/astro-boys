@@ -1,0 +1,36 @@
+{
+  "task": "D11",
+  "captured_on": "2026-11-15",
+  "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+  "browser": "headless Google Chrome 156.0.8078.79 driven by playwright-core 1.49.1, software WebGL (SwiftShader: --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist)",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "device_scale_factor": 1,
+  "full_page": false,
+  "api_version": {
+    "model_version": "fb-l1-terra-rec-4",
+    "dataset": "calendar/v1",
+    "built_at": "2026-11-15T12:05:05Z"
+  },
+  "month": "November 2026 so far (partial, 14 days)",
+  "cell_clicked": "G085135.12",
+  "console_errors": 0,
+  "api_calls": "healthz, calendar, cells, drilldown: all 200",
+  "screenshots": [
+    {
+      "path": "artifacts/screenshots/d11/1-before-click.png",
+      "shows": "L2 cells of November 2026 so far, map in Flat, before the click"
+    },
+    {
+      "path": "artifacts/screenshots/d11/2-after-click.png",
+      "shows": "after clicking L2 cell G085135.12: its 16 L3 sub-cells, the 3 x 3 block with neighbor counts, the drill legend (NOAA-20 native detections, not harmonized) and the Back to L2 cells button"
+    },
+    {
+      "path": "artifacts/screenshots/d11/3-after-back.png",
+      "shows": "after Back to L2 cells: the L2 map and area tools again, no drill legend"
+    }
+  ],
+  "note": "Captured with an AI assistant (Claude Code); the capture script was kept outside the repo."
+}

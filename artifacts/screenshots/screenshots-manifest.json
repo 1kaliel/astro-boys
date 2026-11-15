@@ -110,5 +110,47 @@
     },
     "full_page": false,
     "sha256": "70ab9e974cb7c15b19e0d678565f28fec6dd88f178c70485d228f21985e7903d"
+  },
+  {
+    "path": "artifacts/screenshots/d11/1-before-click.png",
+    "bytes": 212494,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 900
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 900
+    },
+    "full_page": false,
+    "sha256": "8c2e9b71cef7fdfa863bbc8157b6e31fbaebbf6073c1e4583f81c53a817ccb95"
+  },
+  {
+    "path": "artifacts/screenshots/d11/2-after-click.png",
+    "bytes": 214199,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 900
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 900
+    },
+    "full_page": false,
+    "sha256": "689690844d759f3c550dacf717db29ce021032321a83505a523a47621e9c03a8"
+  },
+  {
+    "path": "artifacts/screenshots/d11/3-after-back.png",
+    "bytes": 255931,
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 900
+    },
+    "image_pixels": {
+      "width": 1280,
+      "height": 900
+    },
+    "full_page": false,
+    "sha256": "a379c6cee6824ca9bebe8002d1110cee0f08970094b9c0cae755d6345fc673b3"
   }
 ]
