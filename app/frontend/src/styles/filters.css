@@ -1,0 +1,388 @@
+/*
+ * Global filter bar (FilterBar.tsx, AreaPicker.tsx). Tokens only: no raw values except the 56rem breakpoint
+ * (media queries cannot read custom properties; it is the same breakpoint as layout.css).
+ *
+ * Phone first: one "Filters · N active" button folds the controls; the active-filter chips stay in view.
+ * From 56rem: every control in one wrapping row, groups split by hairlines, sticky under the app bar.
+ */
+
+.fbar {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--spacing-page-x);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-page);
+}
+
+/* Mobile toggle */
+.fbar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-weight: var(--font-weight-semibold);
+}
+
+.fbar-toggle-count {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+.fbar-toggle-icon {
+  color: var(--color-text-secondary);
+  transition: transform var(--duration-fast) ease;
+}
+
+.fbar-toggle[aria-expanded="true"] .fbar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* Panel: hidden on a phone until the toggle opens it */
+.fbar-panel {
+  display: none;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.fbar-panel[data-open] {
+  display: grid;
+}
+
+.fbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+/* On a phone every control spans the panel; Region and Country share a line. */
+.fbar-group > .control,
+.fbar-state {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.fbar-geo > .fbar-field {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+/* Phone order: the toggle, then what is applied, then the panel it opens. */
+.fbar-active {
+  order: 1;
+}
+
+.fbar-panel {
+  order: 2;
+}
+
+.fbar .segmented {
+  display: flex;
+  width: 100%;
+}
+
+.fbar .segmented-item {
+  flex: 1 1 0;
+}
+
+.fbar .chip,
+.fbar .select-trigger {
+  width: 100%;
+}
+
+
+/* Native selects (Region, Country, State), dressed like the Base UI select trigger */
+.fbar-select-wrap {
+  position: relative;
+  display: block;
+}
+
+.fbar-select-wrap::after {
+  content: "▾";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--space-3);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.fbar-select {
+  appearance: none;
+  width: 100%;
+  min-height: var(--control-size);
+  padding: var(--space-1) var(--space-8) var(--space-1) var(--space-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  background: var(--input-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.fbar-select option,
+.fbar-select optgroup {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.fbar-select option:disabled {
+  color: var(--color-text-muted);
+}
+
+.fbar-select:hover,
+.fbar .chip:hover,
+.fbar .select-trigger:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.fbar-select:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* State select and its "Edit box" popover trigger share one line. */
+.fbar-state {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.fbar-state > .fbar-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.fbar .fbar-state > .chip {
+  flex: none;
+  width: auto;
+}
+
+/* One-line hints under a control (state boxes, raw vs harmonized) */
+.fbar-note {
+  flex: 1 1 100%;
+  max-width: 34ch;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  color: var(--color-text-secondary);
+}
+
+.fbar-note[data-tone="warn"] {
+  padding-inline-start: var(--space-2);
+  border-inline-start: 2px solid var(--color-status-warning);
+  color: var(--color-text-primary);
+}
+
+/* Active-filter chips + Reset: always visible */
+.fbar-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.fbar-active-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.fbar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.fbar-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: var(--size-target-min);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.fbar-chip[data-changed] {
+  padding-inline-end: var(--space-1);
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.fbar-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fbar-chip-clear {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: var(--control-size);
+  min-height: var(--control-size);
+  margin-block: calc(-1 * var(--space-1));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fbar-chip-clear:hover {
+  color: var(--color-text-primary);
+  background: var(--color-page);
+}
+
+.fbar-reset {
+  min-height: var(--control-size);
+  margin-inline-start: auto;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--button-radius);
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.fbar-reset:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.fbar-reset:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+/* "Download [CSV ▾]" on one line, at the end of the chips row */
+.fbar-download > .control {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.fbar .fbar-download .chip {
+  width: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fbar-toggle-icon {
+    transition: none;
+  }
+}
+
+/* Wide screens: one wrapping row, each control at its natural width, sticky under the app bar. */
+@media (min-width: 56rem) {
+  .fbar {
+    position: sticky;
+    top: var(--size-app-bar);
+    z-index: var(--layer-sticky);
+    gap: var(--space-2);
+  }
+
+  .fbar-toggle {
+    display: none;
+  }
+
+  .fbar-active,
+  .fbar-panel {
+    order: 0;
+  }
+
+  .fbar-panel,
+  .fbar-panel[data-open] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-3) 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .fbar-group {
+    flex-wrap: nowrap;
+    padding-inline: var(--space-3);
+    border-inline-start: 1px solid var(--color-border);
+  }
+
+  .fbar-group:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .fbar-geo {
+    flex-wrap: wrap;
+  }
+
+  .fbar-data {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+  }
+
+  /* Hints take the width of their controls and wrap inside it, never widening the row. */
+  .fbar-geo > .fbar-note,
+  .fbar-data > .fbar-note {
+    max-width: none;
+    contain: inline-size;
+  }
+
+  .fbar-group > .control,
+  .fbar-geo .fbar-field,
+  .fbar-state {
+    flex: none;
+  }
+
+  /* Region and Country hold one live option each: narrow. State names fit in 14rem. */
+  .fbar-geo {
+    column-gap: var(--space-2);
+  }
+
+  .fbar-geo .fbar-field {
+    width: 9rem;
+  }
+
+  .fbar-geo .fbar-field:nth-child(2) {
+    width: 7.5rem;
+  }
+
+  .fbar-state > .fbar-field-wide {
+    width: 13.5rem;
+  }
+
+  .fbar .segmented {
+    display: inline-flex;
+    width: auto;
+  }
+
+  .fbar .chip,
+  .fbar .select-trigger {
+    width: auto;
+  }
+
+}
