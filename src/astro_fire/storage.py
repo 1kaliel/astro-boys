@@ -11,6 +11,7 @@ Layout (under the data root, see docs/cloud/storage-layout.md):
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import duckdb
@@ -59,3 +60,22 @@ def upload_dir(local_dir: str, remote_uri: str) -> None:
     """Copy a local directory tree to gs://. Writes are staged locally first, then uploaded."""
     fs = _gcs_filesystem()
     fs.put(local_dir.rstrip("/") + "/", remote_uri.rstrip("/") + "/", recursive=True)
+
+
+def publish_dir(settings: Settings, local_dir: str, target: str, *, replace: bool = False) -> None:
+    """Copy a locally staged directory to `target` under the data root (local disk or gs://).
+
+    `replace` removes a previous local copy first; in Cloud Storage same-named objects are overwritten.
+    """
+    if settings.is_remote:
+        upload_dir(local_dir, target)
+        return
+    if replace:
+        shutil.rmtree(target, ignore_errors=True)
+    Path(target).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(local_dir, target, dirs_exist_ok=True)
+
+
+def parquet_glob(location: str) -> str:
+    """Glob for every Parquet file of a dataset folder."""
+    return location.rstrip("/") + "/**/*.parquet"

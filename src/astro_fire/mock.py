@@ -167,23 +167,12 @@ def run(settings: Settings, bbox: tuple[float, float, float, float] = DEFAULT_BB
     try:
         out = staging / "calendar"
         con.execute(f"COPY mock_calendar TO '{out}' (FORMAT parquet, PARTITION_BY (year), COMPRESSION zstd)")
-        if settings.is_remote:
-            storage.upload_dir(str(out), target)
-        else:
-            shutil.rmtree(target, ignore_errors=True)
-            shutil.copytree(out, target)
+        storage.publish_dir(settings, str(out), target, replace=True)
         manifest.add_output(target, rows=rows)
         manifest.checks = {"synthetic": True, "rows": rows, "cells": cells, "bbox_w_s_e_n": list(bbox),
                            "model_version": MODEL_VERSION}
         manifest.finish("ok" if rows > 0 else "failed")
-        manifest_dir = storage.uri(settings, "manifests")
-        if settings.is_remote:
-            local_dir = tempfile.mkdtemp(prefix="astro_manifest_")
-            name = Path(manifest.write(local_dir)).name
-            storage.upload_dir(local_dir, manifest_dir)
-            manifest_path = f"{manifest_dir}/{name}"
-        else:
-            manifest_path = manifest.write(manifest_dir)
+        manifest_path = manifest.save(settings)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     return {"status": manifest.status, "output": target, "manifest": manifest_path, **manifest.checks}

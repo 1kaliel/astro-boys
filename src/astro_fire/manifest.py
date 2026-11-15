@@ -6,14 +6,15 @@ import datetime as dt
 import hashlib
 import json
 import subprocess
+import tempfile
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import duckdb
 
-from astro_fire import __version__
-from astro_fire.config import REPO_ROOT
+from astro_fire import __version__, storage
+from astro_fire.config import REPO_ROOT, Settings
 
 
 def new_run_id(name: str) -> str:
@@ -34,7 +35,7 @@ def git_commit() -> str:
 
 def sha256(path: str) -> str | None:
     p = Path(path)
-    if not p.exists():
+    if not p.is_file():  # missing, a directory or a gs:// URI
         return None
     h = hashlib.sha256()
     with p.open("rb") as f:
@@ -72,3 +73,13 @@ class Manifest:
         path = Path(directory) / f"{self.run_id}.json"
         path.write_text(json.dumps(self.__dict__, indent=2, default=str) + "\n")
         return str(path)
+
+    def save(self, settings: Settings) -> str:
+        """Write the manifest to the `manifests/` layer of the data root and return its path."""
+        directory = storage.uri(settings, "manifests")
+        if not settings.is_remote:
+            return self.write(directory)
+        local_dir = tempfile.mkdtemp(prefix="astro_manifest_")
+        name = Path(self.write(local_dir)).name
+        storage.upload_dir(local_dir, directory)
+        return f"{directory}/{name}"

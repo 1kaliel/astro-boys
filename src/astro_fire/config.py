@@ -65,5 +65,5 @@ def get_settings(**overrides: str) -> Settings:
         duckdb_memory_limit=env.get("DUCKDB_MEMORY_LIMIT") or "2GB",
         duckdb_threads=int(threads) if threads else None,
         duckdb_temp_dir=env.get("DUCKDB_TEMP_DIR") or str(REPO_ROOT / "data" / "interim" / ".duckdb_tmp"),
-        dataset_version=env.get("ASTRO_DATASET_VERSION") or "v0",
+        dataset_version=env.get("ASTRO_DATASET_VERSION") or "v1",
     )
