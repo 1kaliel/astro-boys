@@ -296,6 +296,15 @@
   font-size: var(--font-size-xl);
 }
 
+/* The body takes the focus when the dialog opens: keep the title above it in view. */
+.dialog-body {
+  scroll-margin-top: 8rem;
+}
+
+.dialog-body:focus-visible {
+  outline: none;
+}
+
 .dialog-body h3 {
   margin: var(--space-4) 0 var(--space-1);
   font-size: var(--font-size-base);
