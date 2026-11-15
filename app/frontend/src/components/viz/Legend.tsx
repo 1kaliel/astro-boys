@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { formatCompact } from "../../lib/format";
+import { formatLegendCount } from "../../lib/format";
 import { rampStep } from "../../lib/scale";
 
 type LegendProps = {
@@ -9,20 +9,33 @@ type LegendProps = {
   maxLabel?: string;
   /** Class limits (map): the legend shows each limit between its two colors instead of min and max. */
   breaks?: readonly number[];
+  /** Sequential only: the colors actually used, each with where it starts (e.g. "≥ 4,400"). */
+  stops?: ReadonlyArray<{ step: number; label: string }>;
   /** e.g. "VIIRS-equivalent hotspots per month" */
   unit: string;
   /** Show the calendar marks (sensor change line, partial month, no data). */
   showMarking?: boolean;
+  /** One line that says how the colors were split, so the scale is never a secret. */
+  note?: string;
 };
 
 const SEQ_STEPS = [1, 2, 3, 4, 5, 6, 7];
 const DIV_STEPS = ["neg-4", "neg-3", "neg-2", "neg-1", "mid", "pos-1", "pos-2", "pos-3", "pos-4"];
 
-export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = true }: LegendProps) {
+export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = true, stops, note }: LegendProps) {
   return (
     <div className="legend" aria-label="Legend">
       <div className="legend-row">
-        {mode === "sequential" && breaks && breaks.length > 0 ? (
+        {mode === "sequential" && stops ? (
+          <ol className="legend-stops" aria-label="Color scale: each color starts at">
+            {stops.map((stop) => (
+              <li key={stop.step} className="legend-stop">
+                <span className="legend-step" style={{ background: `var(--viz-seq-${stop.step})` }} />
+                <span className="legend-stop-label">{stop.label}</span>
+              </li>
+            ))}
+          </ol>
+        ) : mode === "sequential" && breaks && breaks.length > 0 ? (
           <span className="legend-classes">
             {[...breaks, null].map((edge, i) => (
               <Fragment key={i}>
@@ -31,7 +44,7 @@ export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = t
                   aria-hidden="true"
                   style={{ background: `var(--viz-seq-${rampStep(i + 1, breaks.length + 1)})` }}
                 />
-                {edge !== null && <span className="legend-break">{formatCompact(edge)}</span>}
+                {edge !== null && <span className="legend-break">{formatLegendCount(edge)}</span>}
               </Fragment>
             ))}
           </span>
@@ -76,6 +89,7 @@ export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = t
           </li>
         </ul>
       )}
+      {note && <p className="legend-note">{note}</p>}
       {mode === "diverging" && (
         <p className="legend-note">Robust z-score bands are a product choice, not a NASA threshold and not a probability.</p>
       )}

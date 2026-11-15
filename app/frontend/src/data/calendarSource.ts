@@ -8,8 +8,8 @@ export type CalendarMonth = {
   year: number;
   month: number; // 1..12
   period: Period;
-  /** VIIRS-equivalent hotspot detections (never "fires"). */
-  count: number;
+  /** VIIRS-equivalent hotspot detections (never "fires"). Null = the month has no estimate (never zero). */
+  count: number | null;
   /** 90% interval. Null = not delivered yet for an estimated month (never zero). Equal to `count` when observed. */
   ciLow: number | null;
   ciHigh: number | null;
@@ -42,6 +42,8 @@ export type CalendarDataset = {
   period: Period | null;
   /** Number of 0.25 degree cells in the area, when known. */
   cells: number | null;
+  /** True when the interval of a sum over several cells is the area approximation (errors of nearby cells are correlated). */
+  intervalApproximate: boolean;
   /** Years the median is computed over. Null when there is no complete month. */
   baselineYears: readonly [number, number] | null;
   firstYear: number;
@@ -57,7 +59,7 @@ export type CalendarRequest = { area: Bounds; period: Period };
 type ApiMonth = {
   year: number;
   month: number;
-  count_harmonized: number;
+  count_harmonized: number | null;
   ci_low: number | null;
   ci_high: number | null;
   is_estimated: boolean;
@@ -67,15 +69,16 @@ type ApiMonth = {
   anomaly_abs: number | null;
   anomaly_pct: number | null;
   anomaly_z: number | null;
-  comparison?: string | null;
-  comparison_days?: number | null;
-  comparison_years?: number | null;
+  /** Years the median is over, and the days it covers: null = whole months, N = days 1..N of the month. */
+  median_n_years?: number | null;
+  median_days?: number | null;
 };
 
 export type ApiCalendar = {
   area: { cells: number };
   period: Period;
   model_version: string;
+  interval_is_approximate: boolean;
   baseline_years: readonly [number, number] | null;
   first_year: number;
   last_year: number;
@@ -93,6 +96,7 @@ export function parseApiResponse(doc: ApiCalendar): CalendarDataset {
     note: "",
     period: doc.period,
     cells: doc.area?.cells ?? null,
+    intervalApproximate: doc.interval_is_approximate === true,
     baselineYears: doc.baseline_years ?? null,
     firstYear: doc.first_year,
     lastYear: doc.last_year,
@@ -111,9 +115,9 @@ export function parseApiResponse(doc: ApiCalendar): CalendarDataset {
         anomalyAbs: m.anomaly_abs,
         anomalyPct: m.anomaly_pct,
         anomalyZ: m.anomaly_z,
-        comparison: m.comparison === "same_days" || m.comparison === "month" ? m.comparison : null,
-        comparisonDays: m.comparison_days ?? null,
-        comparisonYears: m.comparison_years ?? null,
+        comparison: m.median_hist == null ? null : m.median_days != null ? "same_days" : "month",
+        comparisonDays: m.median_days ?? null,
+        comparisonYears: m.median_n_years ?? null,
       }),
     ),
   };
@@ -193,6 +197,7 @@ export function parseFixture(doc: FixtureDoc): CalendarDataset {
     note: doc.note,
     period: null,
     cells: doc.cells ?? null,
+    intervalApproximate: true, // the fixture is synthetic and its intervals add variances as if cells were independent
     baselineYears: null,
     firstYear: Math.min(...years),
     lastYear: Math.max(...years),

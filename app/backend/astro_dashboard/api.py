@@ -14,6 +14,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
 
 log = logging.getLogger("astro_dashboard")
@@ -21,15 +22,21 @@ log = logging.getLogger("astro_dashboard")
 router = APIRouter(prefix="/api", tags=["calendar"])
 
 
+def data_root_from_env() -> str:
+    """`$ASTRO_DATA_ROOT`, default `data`. In the image: /app/data, where the calendar is baked in (D8)."""
+    return (os.environ.get("ASTRO_DATA_ROOT") or "data").rstrip("/")
+
+
 def load_store_from_env() -> CalendarStore | None:
     """Load `calendar/v1` from `$ASTRO_DATA_ROOT` (default `data`).
 
     None if it is not there: the app still starts, so `/healthz` answers, and the calendar endpoint says the
     data is missing."""
-    root = (os.environ.get("ASTRO_DATA_ROOT") or "data").rstrip("/")
+    root = data_root_from_env()
     version = os.environ.get("ASTRO_DATASET_VERSION") or "v1"
     if root.startswith("gs://"):
-        log.warning("ASTRO_DATA_ROOT=%s: reading Cloud Storage directly is not wired yet (task D8).", root)
+        # D8: the calendar is baked into the image; only the native hotspots are read from the bucket (D6).
+        log.warning("ASTRO_DATA_ROOT=%s: the calendar is not read from Cloud Storage; it is baked in.", root)
         return None
     try:
         store = CalendarStore.from_data_root(root, version)
@@ -43,6 +50,11 @@ def load_store_from_env() -> CalendarStore | None:
         store.last_year,
         store.model_version,
     )
+    baked = os.environ.get("ASTRO_MODEL_VERSION")
+    if baked and baked != store.model_version:
+        log.warning(
+            "The image was built for model %s but the loaded calendar is %s.", baked, store.model_version
+        )
     return store
 
 
@@ -68,8 +80,9 @@ class AreaOut(BaseModel):
 class MonthOut(BaseModel):
     year: int
     month: int
-    # VIIRS-equivalent hotspot detections, summed over the cells of the area (never "fires").
-    count_harmonized: float
+    # VIIRS-equivalent hotspot detections, summed over the cells of the area (never "fires"). None = the month
+    # has no estimate (the estimated partial months of 2002); never zero.
+    count_harmonized: float | None
     # Approximate 90% interval (summed variance widened by n_cells ** 0.32). None = a contributing cell has no
     # variance yet; never zero.
     ci_low: float | None
@@ -79,21 +92,22 @@ class MonthOut(BaseModel):
     days_observed: int
     origin: str
     source_satellite: str
+    # Median of the same month over `median_n_years` years. For the unfinished month it is the median of the
+    # same days (1..`median_days`) of earlier years, from month_to_date/v1; other partial months have none.
     median_hist: float | None
+    median_n_years: int | None
+    median_days: int | None
     anomaly_abs: float | None
     anomaly_pct: float | None
     anomaly_z: float | None
-    # What median_hist is the median of: "month" (the same month in the baseline years, complete months) or
-    # "same_days" (days 1..comparison_days of an unfinished month in comparison_years earlier years).
-    comparison: str | None
-    comparison_days: int | None
-    comparison_years: int | None
 
 
 class CalendarResponse(BaseModel):
     area: AreaOut
     period: Literal["ALL", "D", "N"]
     model_version: str
+    # True when the interval of the sum is the area approximation (sum(var) x n^0.32, more than one cell).
+    interval_is_approximate: bool
     # Years the median is computed over (complete months only). None if there is no complete month.
     baseline_years: tuple[int, int] | None
     first_year: int
@@ -132,8 +146,21 @@ def calendar(
         area=AreaOut(west=west, south=south, east=east, north=north, cells=result.cells),
         period=period,
         model_version=result.model_version,
+        interval_is_approximate=result.cells > 1,
         baseline_years=result.baseline_years,
         first_year=result.first_year,
         last_year=result.last_year,
         months=[MonthOut(**asdict(m)) for m in result.months],
     )
+
+
+@router.get("/version", tags=["meta"])
+def version(request: Request) -> dict:
+    """What this server runs on: the model_version of the loaded calendar and, in an image with the calendar
+    baked in (D8), what the build recorded. The two agree unless other data was mounted over the baked one."""
+    store: CalendarStore | None = getattr(request.app.state, "calendar", None)
+    return {
+        "model_version": store.model_version if store else None,
+        "image_model_version": os.environ.get("ASTRO_MODEL_VERSION") or None,
+        "build": read_build_info(data_root_from_env()),
+    }

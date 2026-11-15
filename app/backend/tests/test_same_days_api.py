@@ -118,9 +118,8 @@ def test_the_unfinished_month_is_compared_with_the_same_days(client: TestClient)
     # Area history per year (A day + A night + B day), 2019 with no row in the area counting as 0:
     # [0, 16, 27, 38, 49, 60] -> median 32.5, MAD 16.5. The month so far: A 14 + B 5 = 19.
     assert november["is_partial"] is True and november["count_harmonized"] == 19
-    assert november["comparison"] == "same_days"
-    assert november["comparison_days"] == 14
-    assert november["comparison_years"] == HISTORY_YEARS
+    assert november["median_days"] == 14
+    assert november["median_n_years"] == HISTORY_YEARS
     assert november["median_hist"] == 32.5
     assert november["anomaly_abs"] == -13.5
     assert november["anomaly_pct"] == -41.5
@@ -147,7 +146,9 @@ def test_complete_months_keep_the_median_of_the_month(client: TestClient) -> Non
 
     november_2025 = _month(body, 2025, 11)
     assert november_2025["is_partial"] is False
-    assert november_2025["comparison"] == "month"  # a full month is compared with full months
+    # A full month is compared with full months: 100 + 100 in each of the 7 complete Novembers.
+    assert november_2025["median_hist"] == 200 and november_2025["median_days"] is None
+    assert november_2025["median_n_years"] == 7
 
 
 def test_a_partial_month_with_other_days_is_not_compared(
@@ -158,7 +159,7 @@ def test_a_partial_month_with_other_days_is_not_compared(
     with TestClient(app) as client:
         november = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2026, 11)
 
-    assert november["comparison"] != "same_days"
+    assert november["median_days"] is None and november["median_hist"] is None
     assert november["anomaly_abs"] is None and november["anomaly_z"] is None  # never against full months
 
 
@@ -168,7 +169,7 @@ def test_an_estimated_partial_month_is_not_compared(tmp_path: Path, monkeypatch:
     with TestClient(app) as client:
         november = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2026, 11)
 
-    assert november["comparison"] != "same_days"
+    assert november["median_days"] is None and november["median_hist"] is None
 
 
 def test_without_the_layer_a_partial_month_has_no_comparison(
@@ -181,5 +182,5 @@ def test_without_the_layer_a_partial_month_has_no_comparison(
         november = _month(response.json(), 2026, 11)
 
     assert response.status_code == 200  # the layer is optional: the app still works
-    assert november["comparison"] != "same_days"
+    assert november["median_days"] is None and november["median_hist"] is None
     assert november["anomaly_abs"] is None

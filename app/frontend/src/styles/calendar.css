@@ -1,8 +1,56 @@
 /*
- * Burning calendar (task D4). Tokens only: no raw values here (docs/design-system.md).
- * Provenance marks follow the same rules as the legend: estimated = dashed outline, partial = corner mark,
- * no data = the null color.
+ * Burning calendar (task D4). Tokens only: no raw values here (docs/design-system.md). The raw values of the
+ * calendar theme (ember, petrol, ash) are in primitives.css and checked by
+ * `uv run python scripts/check_viz_ramp.py --theme calendar`.
+ *
+ * The calendar theme is an island: light gray plane, petrol ink, ember ramp. It applies to the calendar card only
+ * (`.calendar-theme`), in light and in dark OS mode alike, and re-points the global tokens inside the card so the
+ * buttons, tabs and tooltip that live there follow it. Nothing outside the card changes.
  */
+.calendar-theme {
+  --cal-plane: var(--ash-100);
+  --cal-ink: var(--petrol-700);
+  --cal-ink-soft: var(--petrol-500);
+  --cal-line: var(--ash-200);
+  --cal-hatch: var(--ash-300);
+  --cal-active: var(--petrol-600);
+  --cal-on-active: var(--neutral-0);
+  --cal-zero: var(--ember-zero);
+  --cal-nodata-bg: var(--ash-100);
+
+  --card-bg: var(--cal-plane);
+  --card-border: var(--cal-line);
+  --color-surface: var(--cal-plane);
+  --color-surface-raised: var(--ash-50);
+  --color-text-primary: var(--cal-ink);
+  --color-text-secondary: var(--cal-ink-soft);
+  --color-border: var(--cal-line);
+  --color-border-strong: var(--ash-300);
+  --color-ring: var(--cal-ink);
+  --input-bg: var(--ash-50);
+  --input-border: var(--ash-300);
+  --button-bg: var(--ash-50);
+  --button-fg: var(--cal-ink);
+  --button-border: var(--ash-300);
+  --tooltip-bg: var(--neutral-0);
+  --tooltip-fg: var(--cal-ink);
+  --tooltip-border: var(--ash-300);
+
+  --viz-seq-1: var(--ember-100);
+  --viz-seq-2: var(--ember-200);
+  --viz-seq-3: var(--ember-300);
+  --viz-seq-4: var(--ember-400);
+  --viz-seq-5: var(--ember-500);
+  --viz-seq-6: var(--ember-600);
+  --viz-seq-7: var(--ember-700);
+  --viz-null: var(--cal-nodata-bg);
+  --viz-cell-outline: transparent;
+  --viz-selection: var(--cal-ink);
+  --viz-partial-mark: var(--cal-ink);
+
+  color: var(--cal-ink);
+}
+
 .calendar {
   display: flex;
   flex-direction: column;
@@ -27,12 +75,30 @@
   text-align: center;
 }
 
-.calendar-chart {
-  width: 100%;
-  min-width: var(--heatmap-cell-min);
+/* On a narrow screen the grid keeps a readable cell width and scrolls sideways instead of squeezing the labels. */
+.calendar-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  /* Soft edge shadows that only show where there is more to scroll to (the classic "scroll shadows"). */
+  background:
+    linear-gradient(to right, var(--cal-plane) 40%, transparent) left center / var(--space-12) 100% no-repeat local,
+    linear-gradient(to left, var(--cal-plane) 40%, transparent) right center / var(--space-12) 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--cal-ink) 22%, transparent), transparent) left center /
+      var(--space-3) 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--cal-ink) 22%, transparent), transparent) right center /
+      var(--space-3) 100% no-repeat scroll;
 }
 
-/* The cell is one SVG group: fill from the ramp, then optional marks drawn on top. */
+.calendar-chart {
+  width: 100%;
+}
+
+/* ---- Cells --------------------------------------------------------------------------------------------- */
+
+.calendar-cell {
+  transition: opacity 120ms ease;
+}
+
 .calendar-cell:focus {
   outline: none;
 }
@@ -41,38 +107,101 @@
   cursor: pointer;
 }
 
+.calendar-cell-dim {
+  opacity: var(--viz-dim-opacity);
+}
+
 .calendar-cell-rect {
-  stroke: var(--viz-cell-outline);
+  stroke: none;
+}
+
+/* A valid zero: the palest fill, a hairline and a printed "0". It is a measurement, not a gap. */
+.calendar-cell-zero .calendar-cell-rect {
+  stroke: var(--cal-line);
   stroke-width: 1px;
 }
 
-.calendar-cell-interactive:hover .calendar-cell-rect {
-  stroke: var(--viz-selection);
-}
-
-.calendar-cell-estimated {
-  fill: none;
-  stroke: var(--viz-estimated-outline);
-  stroke-width: var(--size-px-2);
-  stroke-dasharray: var(--space-1) var(--space-1);
+.calendar-cell-zero-label {
+  fill: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 
+/* No data or no estimate: neutral hatching and no number. The hatch itself is a pattern (CalendarDefs). */
+.calendar-hatch-bg {
+  fill: var(--cal-nodata-bg);
+}
+
+.calendar-hatch-line {
+  stroke: var(--cal-hatch);
+  stroke-width: var(--size-px-2);
+}
+
+/* Estimated from MODIS: a small dot in the corner, white with an ink ring so it shows on every fill. */
+.calendar-cell-estimated-dot {
+  fill: var(--neutral-0);
+  stroke: var(--cal-ink);
+  stroke-width: 1px;
+  pointer-events: none;
+}
+
+/* Partial month: a corner mark, white with an ink edge. */
 .calendar-cell-partial {
-  fill: var(--viz-partial-mark);
+  fill: var(--neutral-0);
+  stroke: var(--cal-ink);
+  stroke-width: 1px;
+  pointer-events: none;
+}
+
+.calendar-cell-selected-casing {
+  fill: none;
+  stroke: var(--neutral-0);
+  stroke-width: calc(2.5 * var(--size-px-2));
   pointer-events: none;
 }
 
 .calendar-cell-selected {
   fill: none;
-  stroke: var(--viz-selection);
-  stroke-width: calc(2 * var(--size-px-2));
+  stroke: var(--cal-ink);
+  stroke-width: calc(1.25 * var(--size-px-2));
   pointer-events: none;
 }
 
-.calendar-cell:focus-visible .calendar-cell-rect {
-  stroke: var(--color-ring);
-  stroke-width: calc(2 * var(--size-px-2));
+.calendar-cell-hover .calendar-cell-rect {
+  stroke: var(--cal-ink);
+  stroke-width: var(--size-px-2);
+}
+
+/* Keyboard focus: a ring outside the cell, always visible, never only a color change. */
+.calendar-cell-focus-ring {
+  fill: none;
+  stroke: var(--cal-ink);
+  stroke-width: var(--size-px-2);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.calendar-cell:focus-visible .calendar-cell-focus-ring {
+  opacity: 1;
+}
+
+.calendar-axis-label {
+  fill: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  transition: fill 120ms ease;
+}
+
+.calendar-axis-label.is-active {
+  fill: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ---- Cell detail (tooltip) ------------------------------------------------------------------------------ */
+
+.calendar-tooltip {
+  /* nivo positions the tooltip in a shrink-to-fit box next to the pointer; without this it wraps word by word */
+  width: max-content;
 }
 
 .calendar-tooltip p {
@@ -83,7 +212,8 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Table view */
+/* ---- Table view ---------------------------------------------------------------------------------------- */
+
 .calendar-table-wrap {
   overflow: auto;
   max-height: calc(2 * var(--panel-min-height));
@@ -125,4 +255,165 @@
   margin: var(--space-2) 0 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+}
+
+/* ---- Month filter: capsules ---------------------------------------------------------------------------- */
+
+.month-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.month-filter-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chip,
+.month-chip {
+  min-height: var(--size-target-min);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-full);
+  background: var(--input-bg);
+  color: var(--cal-ink);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"],
+.month-chip[data-pressed] {
+  background: var(--cal-active);
+  border-color: var(--cal-active);
+  color: var(--cal-on-active);
+}
+
+.month-chips {
+  display: grid;
+  /* 12 in a row on a wide card, 6 + 6 on a phone: never a lone month on a second row */
+  grid-template-columns: repeat(auto-fit, minmax(calc(1.4 * var(--size-target-min)), 1fr));
+  gap: var(--space-1);
+}
+
+.month-chip {
+  padding: var(--space-1);
+}
+
+/* ---- Legend: horizontal, under the grid ------------------------------------------------------------------ */
+
+.calendar-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.calendar-legend-title,
+.calendar-legend-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.calendar-legend-scale {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(1.5 * var(--size-target-min)), 1fr));
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-legend-bar {
+  display: block;
+  height: var(--space-3);
+  border-radius: var(--radius-full);
+}
+
+.calendar-legend-label {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.calendar-legend-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-sm);
+}
+
+.calendar-legend-states li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The state chips repeat the cell marks, so the legend and the grid cannot drift apart. */
+.calendar-chip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-swatch);
+  height: var(--size-swatch);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.calendar-chip-zero {
+  border: 1px solid var(--cal-line);
+  background: var(--cal-zero);
+  color: var(--color-text-secondary);
+}
+
+.calendar-chip-estimated,
+.calendar-chip-partial,
+.calendar-chip-selected {
+  background: var(--viz-seq-4);
+}
+
+.calendar-chip-estimated::after {
+  content: "";
+  position: absolute;
+  top: var(--size-px-2);
+  left: var(--size-px-2);
+  width: var(--space-2);
+  height: var(--space-2);
+  border: 1px solid var(--cal-ink);
+  border-radius: var(--radius-full);
+  background: var(--neutral-0);
+}
+
+.calendar-chip-partial::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 55%;
+  height: 55%;
+  background: var(--neutral-0);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.calendar-chip-nodata {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--cal-hatch) 0 var(--size-px-2),
+    var(--cal-nodata-bg) var(--size-px-2) calc(3 * var(--size-px-2))
+  );
+}
+
+.calendar-chip-selected {
+  outline: calc(1.25 * var(--size-px-2)) solid var(--cal-ink);
+  outline-offset: calc(-1.25 * var(--size-px-2));
+  box-shadow: inset 0 0 0 calc(2.5 * var(--size-px-2)) var(--neutral-0);
 }

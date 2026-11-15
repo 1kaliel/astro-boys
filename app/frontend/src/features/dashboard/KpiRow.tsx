@@ -44,17 +44,19 @@ export function KpiRow({ months, startYear, endYear, baselineYears }: KpiRowProp
         value={formatCompact(latest?.count)}
         detail={
           latest && comparison
-            ? comparison.kind === "same_days"
-              ? // Like for like: days 1..d of this month against days 1..d of earlier years.
-                `VIIRS-equivalent hotspots · ${delta(
-                  latest.count,
-                  comparison.base,
-                  `the median of the same ${comparison.days} days`,
-                )}, ${comparison.years} earlier years`
-              : comparison.kind === "none"
-                ? // A partial month is never compared with full months: it would read as "little activity".
-                  `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
-                : `VIIRS-equivalent hotspots · ${delta(latest.count, comparison.base, `the ${monthName} median`)}`
+            ? latest.count == null
+              ? "VIIRS-equivalent hotspots · no estimate for this month"
+              : comparison.kind === "same_days"
+                ? // Like for like: days 1..d of this month against days 1..d of earlier years.
+                  `VIIRS-equivalent hotspots · ${delta(
+                    latest.count,
+                    comparison.base,
+                    `the median of the same ${comparison.days} days`,
+                  )}, ${comparison.years} earlier years`
+                : comparison.kind === "none"
+                  ? // A partial month is never compared with full months: it would read as "little activity".
+                    `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
+                  : `VIIRS-equivalent hotspots · ${delta(latest.count, comparison.base, `the ${monthName} median`)}`
             : "No data"
         }
         badges={
