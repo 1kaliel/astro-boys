@@ -9,8 +9,10 @@ Rules:
   `passes_main_filter`, optional day or night.
 * Only the partition of that instrument and local solar year is read. If it is missing the answer is an error
   (HotspotsUnavailable), not zeros.
-* A day up to the satellite's last date in that partition is "observed": no row is a valid 0 (no detection,
-  not "no fire"). A day after it is "no_data" (count None), never 0.
+* A day on which the satellite has at least one row anywhere in that partition (any area, any confidence) is
+  "observed": no row in the area is a valid 0 (no detection, not "no fire"). Any other day (before the first
+  record, an archive gap, after the last date) is "no_data" (count None), never 0.
+* Rows without an acquisition time are counted, and reported as `untimed`, but belong to no pass.
 * Passes: detections of one day sorted by acquisition time; a new pass starts when the gap to the previous
   detection exceeds `PASS_GAP_MINUTES` or day/night changes. Local times are UTC + (area centre
   longitude)/15 h.
@@ -53,6 +55,7 @@ class Day:
     status: str  # "observed" | "no_data"
     count: int | None
     passes: list[Pass] = field(default_factory=list)
+    untimed: int = 0  # rows of `count` with no acquisition time (in no pass)
 
 
 @dataclass(frozen=True)
@@ -130,11 +133,20 @@ def daily(
 
     con = hotspots._connect(root)
     try:
-        last_row = con.execute(
-            f"SELECT max(date_local) FROM {source} WHERE satellite = ?", [satellite]
-        ).fetchone()
-        counts_sql = f"SELECT date_local, count(*) FROM {source} WHERE {where} GROUP BY 1"
-        per_day = dict(con.execute(counts_sql, params).fetchall())
+        present = {
+            r[0]
+            for r in con.execute(
+                f"SELECT DISTINCT date_local FROM {source} WHERE satellite = ? AND date_local IS NOT NULL",
+                [satellite],
+            ).fetchall()
+        }
+        counts_sql = (
+            f"SELECT date_local, count(*), count(*) FILTER (WHERE acq_ts_utc IS NULL) "
+            f"FROM {source} WHERE {where} GROUP BY 1"
+        )
+        counted = con.execute(counts_sql, params).fetchall()
+        per_day = {r[0]: int(r[1]) for r in counted}
+        untimed = {r[0]: int(r[2]) for r in counted}
         rows: list[tuple[date, str, float]] = []
         if sum(per_day.values()) <= MAX_PASS_ROWS:
             rows = con.execute(
@@ -147,10 +159,10 @@ def daily(
     finally:
         con.close()
 
-    last_date = last_row[0] if last_row else None
-    if last_date is None:
+    if not present:
         raise NoSatelliteData(f"hotspots/v1 has no {satellite} detection in {year}.")
 
+    last_date = max(present)
     per_day_rows: dict[date, list[tuple[str, float]]] = {}
     for day, daynight, seconds in rows:
         per_day_rows.setdefault(day, []).append((daynight, float(seconds)))
@@ -159,10 +171,18 @@ def daily(
     days: list[Day] = []
     day = first
     while day <= last:
-        if day > last_date:
+        if day not in present:
             days.append(Day(date=day, status="no_data", count=None, passes=[]))
         else:
             passes = group_passes(satellite, per_day_rows.get(day, []), offset)
-            days.append(Day(date=day, status="observed", count=int(per_day.get(day, 0)), passes=passes))
+            days.append(
+                Day(
+                    date=day,
+                    status="observed",
+                    count=per_day.get(day, 0),
+                    passes=passes,
+                    untimed=untimed.get(day, 0),
+                )
+            )
         day += timedelta(days=1)
     return Daily(satellite=satellite, instrument=instrument, last_date=last_date, days=days)

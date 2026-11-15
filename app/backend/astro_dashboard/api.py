@@ -353,11 +353,14 @@ class DailyPassOut(BaseModel):
 
 class DailyDayOut(BaseModel):
     date: date
-    # "observed": inside the data, count may be 0 (no detection, not "no fire"). "no_data": after last_date,
-    # count is None, never 0.
+    # "observed": the satellite has data that day, count may be 0 (no detection, not "no fire"). "no_data":
+    # the satellite has no row that day anywhere (before its first record, a gap, after last_date).
+    # count is then None, never 0.
     status: Literal["observed", "no_data"]
     count: int | None
     passes: list[DailyPassOut]
+    # Rows of `count` without an acquisition time: counted, but in no pass.
+    untimed: int
 
 
 class DailyOut(BaseModel):
@@ -416,6 +419,7 @@ def daily_days(
                 status=d.status,
                 count=d.count,
                 passes=[DailyPassOut(**asdict(p)) for p in d.passes],
+                untimed=d.untimed,
             )
             for d in result.days
         ],

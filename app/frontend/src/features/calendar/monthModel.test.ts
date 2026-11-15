@@ -23,7 +23,7 @@ import {
 import type { CalendarMonth } from "../../data/calendarSource";
 
 function observed(date: string, count: number): DailyDay {
-  return { date, status: "observed", count, passes: [] };
+  return { date, status: "observed", count, passes: [], untimed: 0 };
 }
 
 describe("month grid", () => {
