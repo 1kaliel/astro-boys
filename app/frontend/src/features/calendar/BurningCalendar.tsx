@@ -48,7 +48,8 @@ function CalendarTooltip({ cell }: TooltipProps<CalendarDatum>) {
           {entry.isEstimated && (
             <p>
               {entry.ciLow !== null && entry.ciHigh !== null
-                ? `90% interval: ${formatCount(entry.ciLow)} to ${formatCount(entry.ciHigh)}`
+                ? // Approximate: the backend widens the summed variance for correlated cells (n^0.32).
+                  `Approximate 90% interval: ${formatCount(entry.ciLow)} to ${formatCount(entry.ciHigh)}`
                 : "90% interval: pending"}
             </p>
           )}

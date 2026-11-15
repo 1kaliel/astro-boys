@@ -9,7 +9,9 @@ The data contract is docs/data-dictionary.md. The rules this module applies:
 * A month with no row anywhere in the extent has no data. A month with rows elsewhere in the extent counts as
   zero detections for cells of the area that have no row: an absent row means no detection by the source
   satellite (it does not prove there was no fire).
-* Nothing becomes zero by accident: an interval that the pipeline has not delivered yet stays `None`.
+* The 90% interval of an area is approximate: errors of neighboring cells move together, so the summed
+  variance is widened by `n_cells ** 0.32` (docs/methodology.md, "Sums of cells"). One cell is not widened.
+* Nothing becomes zero by accident: an interval without the variance of every contributing cell stays `None`.
 """
 
 from __future__ import annotations
@@ -23,8 +25,11 @@ import duckdb
 
 CELL_SIZE_DEG = 0.25
 PERIODS = ("ALL", "D", "N")
-# 90% interval from the variance of the sum (variances of independent cells add; docs/data-dictionary.md).
+# 90% interval of an area: Z_90 * sqrt(sum(var) * n_cells ** CORRELATION_EXPONENT). Adding the variances
+# alone assumes independent cells and understates the error of a sum (2.4x for 16 cells, 13.7x for the
+# whole extent); the exponent is the fit in docs/methodology.md and docs/data-dictionary.md.
 Z_90 = 1.645
+CORRELATION_EXPONENT = 0.32
 MAD_TO_SIGMA = 1.4826
 # A median over fewer years than this is not shown.
 MIN_BASELINE_YEARS = 3
@@ -165,7 +170,7 @@ class CalendarStore:
             [*bounds.overlap_params(), period, period],
         ).fetchall()
 
-        months = [_month_row(*r) for r in rows]
+        months = [_month_row(*r, cells=cells) for r in rows]
         used_baseline = baseline or _default_baseline(months)
         months = _with_anomalies(months, used_baseline)
         return AreaCalendar(
@@ -192,15 +197,18 @@ def _month_row(
     days_observed: int,
     origin: str,
     source_satellite: str,
+    *,
+    cells: int,
 ) -> MonthRow:
     ci_low: float | None = None
     ci_high: float | None = None
-    # An interval needs the variance of every cell that contributed. Until the pipeline delivers it for
-    # estimated months (H11) it stays None: "interval pending", never zero. Observed months have no variance.
+    # An interval needs the variance of every cell that contributed; without it the interval stays None
+    # ("interval pending"), never zero. Observed months have no variance.
     if n_rows == 0 and not is_estimated:
         ci_low, ci_high = total, total
     elif n_rows > 0 and n_var == n_rows and var_sum is not None:
-        spread = Z_90 * math.sqrt(max(var_sum, 0.0))
+        var_area = max(var_sum, 0.0) * cells**CORRELATION_EXPONENT
+        spread = Z_90 * math.sqrt(var_area)
         ci_low, ci_high = max(0.0, total - spread), total + spread
     return MonthRow(
         year=year,
