@@ -1,5 +1,5 @@
 import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/heatmap";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
@@ -8,13 +8,17 @@ import type { CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
 import { MONTHS_LONG, MONTHS_SHORT, formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
-import { CalendarCell, CalendarCellContext } from "./CalendarCell";
+import { CalendarAxes, CalendarCell, CalendarCellContext } from "./CalendarCell";
 import { CalendarTable } from "./CalendarTable";
+import { MonthFilter } from "./MonthFilter";
 import {
-  binIndex,
+  buildScale,
   buildSeries,
+  legendStops,
+  monthSpan,
+  peakSeason,
   provenanceText,
-  valueRange,
+  scaleStep,
   type CalendarDatum,
   type CalendarSerie,
 } from "./calendarModel";
@@ -25,10 +29,9 @@ export const CALENDAR_UNIT = "VIIRS-equivalent hotspot detections per month";
 const ROW_PX = 22;
 const MARGIN = { top: 28, right: 8, bottom: 8, left: 44 };
 const CELL_PADDING = 0.1;
-const AXIS_FONT_PX = 12;
+const MAX_CELL_PX = 72; // with few months the cells stop growing instead of turning into long bars
 
 const THEME = {
-  text: { fill: "var(--color-text-secondary)", fontFamily: "inherit", fontSize: AXIS_FONT_PX },
   // Our own tooltip draws its box; nivo's wrapper stays transparent.
   tooltip: { container: { background: "transparent", boxShadow: "none", padding: 0 } },
 };
@@ -76,50 +79,76 @@ function latestWithData(series: ReadonlyArray<CalendarSerie>): { year: number; m
 
 function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refreshing: boolean }) {
   const [state, dispatch] = useDashboard();
+  const [hovered, setHovered] = useState<{ year: number; month: number } | null>(null);
   // Only years the data covers are shown: the selector can go past the last published year.
   const startYear = Math.max(state.startYear, dataset.firstYear);
   const endYear = Math.min(state.endYear, dataset.lastYear);
   // While a new period loads, the old dataset is still on screen: read it with its own period.
   const period = dataset.period ?? state.period;
-  const series = useMemo(
+
+  // Every month of the years shown: the "Peak" shortcut is found here, so it does not move with the filter.
+  const fullSeries = useMemo(
     () => buildSeries(dataset.months, period, startYear, endYear),
     [dataset, period, startYear, endYear],
   );
-  const range = useMemo(() => valueRange(series), [series]);
+  const peak = useMemo(() => peakSeason(fullSeries), [fullSeries]);
+  const series = useMemo(
+    () => buildSeries(dataset.months, period, startYear, endYear, state.months),
+    [dataset, period, startYear, endYear, state.months],
+  );
+  // The colors are recomputed for what is on screen, so a season filter uses the whole ramp.
+  const scale = useMemo(
+    () => buildScale(series.flatMap((row) => row.data.flatMap((cell) => (cell.y === null ? [] : [cell.y])))),
+    [series],
+  );
   const onSelect = useCallback((year: number, month: number) => dispatch({ type: "select", year, month }), [dispatch]);
 
   const selectedHasData = state.selected
     ? series.some((row) => row.data.some((c) => c.entry && c.year === state.selected?.year && c.month === state.selected.month))
     : false;
   const tabStop = selectedHasData ? state.selected : latestWithData(series);
+  // A month the filter just hid cannot stay highlighted.
+  const hoverShown = hovered && series.some((row) => row.id === String(hovered.year) && row.data.some((c) => c.month === hovered.month));
   const contextValue = useMemo(
-    () => ({ selected: state.selected, tabStop, onSelect }),
-    [state.selected, tabStop, onSelect],
+    () => ({ selected: state.selected, tabStop, onSelect, hovered: hoverShown ? hovered : null, setHovered }),
+    [state.selected, tabStop, onSelect, hovered, hoverShown],
   );
 
   const colors = useCallback(
     (cell: Omit<ComputedCell<CalendarDatum>, "color" | "opacity" | "borderColor" | "labelTextColor">) =>
-      cell.value === null || !range
-        ? "var(--viz-null)"
-        : `var(--viz-seq-${binIndex(cell.value, range.min, range.max)})`,
-    [range],
+      cell.value === null || !scale ? "var(--viz-null)" : `var(--viz-seq-${scaleStep(cell.value, scale)})`,
+    [scale],
   );
 
-  if (!range) {
+  const filter = (
+    <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
+  );
+
+  if (!scale) {
     return (
-      <p className="calendar-status" role="status">
-        No hotspot data for this selection. Try another time of day or a wider range of years.
-      </p>
+      <div className="calendar">
+        {filter}
+        <p className="calendar-status" role="status">
+          No hotspot data for this selection. Try another time of day, other months or a wider range of years.
+        </p>
+      </div>
     );
   }
 
+  const columns = series[0]?.data.length ?? 12;
   const chart = (
-    <div className="calendar-chart" style={{ height: series.length * ROW_PX + MARGIN.top + MARGIN.bottom }}>
+    <div
+      className="calendar-chart"
+      style={{
+        height: series.length * ROW_PX + MARGIN.top + MARGIN.bottom,
+        maxWidth: MARGIN.left + MARGIN.right + columns * MAX_CELL_PX,
+      }}
+    >
       <CalendarCellContext.Provider value={contextValue}>
         <ResponsiveHeatMap
           data={series}
           margin={MARGIN}
-          layers={["axes", "cells"]}
+          layers={["cells", CalendarAxes]}
           cellComponent={CalendarCell}
           tooltip={CalendarTooltip}
           colors={colors}
@@ -129,8 +158,8 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           enableLabels={false}
           xInnerPadding={CELL_PADDING}
           yInnerPadding={CELL_PADDING}
-          axisTop={{ tickSize: 0, tickPadding: 8 }}
-          axisLeft={{ tickSize: 0, tickPadding: 8 }}
+          axisTop={null}
+          axisLeft={null}
           axisRight={null}
           axisBottom={null}
           hoverTarget="cell"
@@ -146,6 +175,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
 
   return (
     <div className="calendar">
+      {filter}
       {dataset.synthetic && (
         <p className="calendar-notice">
           <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
@@ -155,6 +185,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         <p className="calendar-notice">
           {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
           {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
+          {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
           {refreshing && ". Updating…"}
         </p>
       )}
@@ -166,7 +197,12 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         chart={chart}
         table={<CalendarTable series={series} unit={CALENDAR_UNIT} />}
       />
-      <Legend mode="sequential" unit={CALENDAR_UNIT} minLabel={formatCount(range.min)} maxLabel={formatCount(range.max)} />
+      <Legend
+        mode="sequential"
+        unit={CALENDAR_UNIT}
+        stops={legendStops(scale)}
+        note="Each color holds about the same number of months, so the limits are not evenly spaced. They are recomputed for the months on screen."
+      />
     </div>
   );
 }

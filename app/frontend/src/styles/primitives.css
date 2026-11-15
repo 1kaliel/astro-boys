@@ -33,6 +33,19 @@
   --blue-600: #184f95;
   --blue-700: #0d366b;
 
+  /*
+   * Magma: the sequential ramp of the heatmap and the map (hotspot counts). Sampled from the perceptually uniform
+   * magma colormap at even lightness steps (L* 94 to 18), palest first like the blue ramp.
+   * Checked by `uv run python scripts/check_viz_ramp.py` (lightness order, color vision deficiencies, no-data, surfaces).
+   */
+  --magma-100: #fcf0b2;
+  --magma-200: #febf84;
+  --magma-300: #fc8961;
+  --magma-400: #e85362;
+  --magma-500: #b2357b;
+  --magma-600: #752181;
+  --magma-700: #3b0f70;
+
   /* Orange: positive diverging arm, derived at the OKLCH lightness of blue 300-600 */
   --orange-300: #ff743d;
   --orange-400: #e15000;

@@ -16,6 +16,8 @@ export type DashboardState = {
   scale: Scale;
   startYear: number;
   endYear: number;
+  /** Months of the year shown (1..12). Empty means every month. */
+  months: readonly number[];
   /** Month picked in the calendar; drives the map. */
   selected: { year: number; month: number } | null;
 };
@@ -25,6 +27,7 @@ export type DashboardAction =
   | { type: "setPeriod"; period: Period }
   | { type: "setScale"; scale: Scale }
   | { type: "setYears"; startYear: number; endYear: number }
+  | { type: "setMonths"; months: readonly number[] }
   | { type: "select"; year: number; month: number };
 
 const initialState: DashboardState = {
@@ -33,6 +36,7 @@ const initialState: DashboardState = {
   scale: "harmonized",
   startYear: FIRST_YEAR,
   endYear: LAST_YEAR,
+  months: [],
   selected: null,
 };
 
@@ -49,6 +53,11 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       const startYear = Math.min(action.startYear, action.endYear);
       const endYear = Math.max(action.startYear, action.endYear);
       return { ...state, startYear, endYear };
+    }
+    case "setMonths": {
+      // Keep 1..12, sorted and unique. All twelve is the same as no filter.
+      const months = [...new Set(action.months)].filter((m) => m >= 1 && m <= 12).sort((a, b) => a - b);
+      return { ...state, months: months.length === 12 ? [] : months };
     }
     case "select":
       return { ...state, selected: { year: action.year, month: action.month } };

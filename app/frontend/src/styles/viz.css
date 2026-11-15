@@ -8,14 +8,14 @@
  *   - The selection outline uses ink, not blue, so it cannot be read as data.
  */
 :root {
-  /* Sequential (calendar heatmap and map), light: light -> dark */
-  --viz-seq-1: var(--blue-100);
-  --viz-seq-2: var(--blue-200);
-  --viz-seq-3: var(--blue-300);
-  --viz-seq-4: var(--blue-400);
-  --viz-seq-5: var(--blue-500);
-  --viz-seq-6: var(--blue-600);
-  --viz-seq-7: var(--blue-700);
+  /* Sequential (calendar heatmap and map), light: light -> dark. Magma: pale yellow to deep purple */
+  --viz-seq-1: var(--magma-100);
+  --viz-seq-2: var(--magma-200);
+  --viz-seq-3: var(--magma-300);
+  --viz-seq-4: var(--magma-400);
+  --viz-seq-5: var(--magma-500);
+  --viz-seq-6: var(--magma-600);
+  --viz-seq-7: var(--magma-700);
 
   /* Diverging (anomaly mode), light */
   --viz-div-mid: var(--neutral-100);
@@ -44,17 +44,18 @@
   --viz-grid: var(--neutral-200);
   --viz-axis: var(--neutral-300);
   --viz-band-opacity: 0.1; /* 90% interval band: a wash, never a block */
+  --viz-dim-opacity: 0.35; /* cells outside the hovered row and column */
 }
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
-    --viz-seq-1: var(--blue-700);
-    --viz-seq-2: var(--blue-600);
-    --viz-seq-3: var(--blue-500);
-    --viz-seq-4: var(--blue-400);
-    --viz-seq-5: var(--blue-300);
-    --viz-seq-6: var(--blue-200);
-    --viz-seq-7: var(--blue-100);
+    --viz-seq-1: var(--magma-700);
+    --viz-seq-2: var(--magma-600);
+    --viz-seq-3: var(--magma-500);
+    --viz-seq-4: var(--magma-400);
+    --viz-seq-5: var(--magma-300);
+    --viz-seq-6: var(--magma-200);
+    --viz-seq-7: var(--magma-100);
 
     --viz-div-mid: var(--neutral-800);
     --viz-div-neg-1: var(--blue-600);
@@ -81,13 +82,13 @@
 }
 
 :root[data-theme="dark"] {
-  --viz-seq-1: var(--blue-700);
-  --viz-seq-2: var(--blue-600);
-  --viz-seq-3: var(--blue-500);
-  --viz-seq-4: var(--blue-400);
-  --viz-seq-5: var(--blue-300);
-  --viz-seq-6: var(--blue-200);
-  --viz-seq-7: var(--blue-100);
+  --viz-seq-1: var(--magma-700);
+  --viz-seq-2: var(--magma-600);
+  --viz-seq-3: var(--magma-500);
+  --viz-seq-4: var(--magma-400);
+  --viz-seq-5: var(--magma-300);
+  --viz-seq-6: var(--magma-200);
+  --viz-seq-7: var(--magma-100);
 
   --viz-div-mid: var(--neutral-800);
   --viz-div-neg-1: var(--blue-600);
