@@ -594,3 +594,9 @@
     min-height: var(--size-target-touch);
   }
 }
+
+/* The logo leads back to the landing page. */
+.hh-home {
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+}

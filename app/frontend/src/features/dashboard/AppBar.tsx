@@ -122,7 +122,9 @@ export function AppBar({ apiStatus, simulated, modelVersion, tourSteps = TOUR_ST
   return (
     <header className="app-bar hh-bar">
       <div className="app-brand">
-        <span className="app-logo" aria-hidden="true" />
+        <a className="hh-home" href="#home" aria-label="FIREWATCHER home: the story behind the data">
+          <span className="app-logo" aria-hidden="true" />
+        </a>
         <div className="hh-brand-text">
           <div className="hh-title-row">
             <h1 className="app-title">FIREWATCHER</h1>
