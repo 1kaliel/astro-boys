@@ -67,7 +67,7 @@ Suggested task-board note: `D12 in progress: Jean prepared eight screenshots at 
 
 No repository diary entry was added, preserving Jean's earlier instruction. The task must not be marked done from these screenshots alone.
 
-## Correction: real image sizes (2026-11-15, 12:25 UTC)
+## Correction: real image sizes (2026-11-15, 11:50 UTC)
 
 Found by Guilherme in review, after this record was merged: the sizes in the capture settings above and in the first
 version of the manifest are the viewports the capture session recorded, not the sizes of the files. Measured from the
