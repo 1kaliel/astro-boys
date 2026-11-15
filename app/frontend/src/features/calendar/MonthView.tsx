@@ -141,7 +141,10 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
           monthName={monthName}
           onSelect={(day) => dispatch({ type: "selectDay", day })}
         />
-        <p className="calendar-notice">Data up to {dayLong(data.last_date)}.</p>
+        {/* last_date is the satellite's last day in that year: it only means "the data ends here" inside this month. */}
+        {data.last_date.startsWith(`${data.year}-${String(data.month).padStart(2, "0")}-`) && (
+          <p className="calendar-notice">Data up to {dayLong(data.last_date)}; later days are not in the archive yet.</p>
+        )}
         <MonthLegend scale={scale} />
       </div>
     );
