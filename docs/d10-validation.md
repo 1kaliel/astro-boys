@@ -62,3 +62,40 @@ On an authenticated deployment workstation, after Kali approves:
 5. Only after that public recheck passes, mark D10 done through a PR and append a diary DONE entry with the deployed revision and results.
 
 D10 remains in progress. This documentation was prepared with AI assistance; no data, model, metric or cloud configuration was changed.
+
+## Deployed recheck: passed (2026-11-15, 09:30 UTC)
+
+Kali approved the sixth deploy. It was built on Cloud Build from a clean checkout of `main` at `5ae8caa`
+(`bc2a21a` plus the documentation of PR 49; the app code is the same), with `calendar/v1` and `month_to_date/v1`
+pulled again just before (25 files, unchanged): build `65f7511b`, image `astro-dashboard:5ae8caa`, revision
+`astro-dashboard-00006-bll`, 100% of the traffic, same configuration as the earlier revisions.
+
+Service checks on the public URL: `/` 200, `/api/healthz` 200, `/api/version` gives `fb-l1-terra-rec-4` for the loaded
+and the image model (1,838,338 rows, `month_to_date` 36,079 rows), `/api/hotspots/count` for 16 cells in 2013 gives
+2,064 rows (read from the bucket). The only warnings in the revision log are two malformed test requests of this check
+(422) and a missing `favicon.ico` (404).
+
+Panel checks, in the browser on the public page:
+
+| Check | 1280 × 720 dark | 1280 × 720 light | 390 × 844 light (emulated phone) |
+|---|---|---|---|
+| Title in view on opening (scroll position 0, focus on the title) | Pass | Pass | Pass |
+| Four corrected passages shown, old passages absent | Pass | not repeated | Pass |
+| Five sections, four links, one Close button | Pass | not repeated | Pass (sections) |
+| Scrolling reaches the end and Close | Pass (End, Home, Page Down) | not repeated | Pass (wheel / touch scroll) |
+| Close button closes and returns focus to "How to read" | Pass | not repeated | Pass |
+| Escape closes and returns focus to "How to read" | Pass | Pass | Pass |
+| No horizontal overflow of the panel or the page | Pass | not repeated | Pass |
+| Console errors | not read | not read | None (read once, at the end of this run) |
+
+The four passages were matched as text in the open panel: the untyped 2026 near-real-time exception, the two
+"In Count mode" sentences, the possible artificial step around 2012, and the CSV as native detections normalized and
+filtered by the pipeline. Positions, focus and text were read from the page; screenshots of the three layouts were
+looked at but are not stored.
+
+Limits: a desktop browser with an emulated phone viewport and user agent, not a physical phone; no screen reader; no
+formal contrast audit; the link destinations were not opened. Seen in passing and not part of D10: at 390 px the model
+badge in the app bar is cut at the right edge, and the site has no favicon.
+
+D10 is done. Check and record made with an AI assistant for Kali; no data, model or metric was changed.
+
