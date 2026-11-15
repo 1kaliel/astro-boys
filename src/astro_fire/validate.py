@@ -22,11 +22,12 @@ from astro_fire import storage
 from astro_fire import validation as val
 from astro_fire.calibrate import (
     CALIBRATION_YEARS,
-    MODEL_VERSION,
     TEST_YEARS,
     CalibrationError,
+    choose_model,
     find_gaps,
     load_counts,
+    model_version,
 )
 from astro_fire.config import Settings
 from astro_fire.manifest import Manifest, new_run_id
@@ -39,8 +40,8 @@ def run(
     test_years: Sequence[int] = TEST_YEARS,
     k: float | None = None,
     m: float | None = None,
+    pool: str | None = None,
     counts_location: str | None = None,
-    model_version: str = MODEL_VERSION,
 ) -> dict:
     years, test_years = tuple(sorted(set(years))), tuple(sorted(set(test_years)))
     overlap = sorted(set(years) & set(test_years))
@@ -61,11 +62,10 @@ def run(
     excluded = sorted(set(cal.PARTIAL_REFERENCE_MONTHS) | {(y, mo) for y, mo, _ in gaps})
     excluded = [ym for ym in excluded if ym[0] in years]
     cal.build_panel(con, "counts", years, exclude_months=excluded)
-    loo = cal.leave_one_year_out(con, "panel")
-    if k is None or m is None:
-        best_k, best_m = cal.choose_weights(loo)
-        k, m = (best_k if k is None else k), (best_m if m is None else m)
-    cal.fit_factors(con, "panel", k=k, m=m, model_version=model_version)
+    choice = choose_model(con, "panel", k=k, m=m, pool=pool)
+    k, m, pool = choice["k"], choice["m"], choice["pool"]
+    version_name = model_version(pool)
+    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name)
     season = val.high_season_months(con, "panel")
 
     # Test years: touched only from here on, and only to score.
@@ -84,7 +84,7 @@ def run(
     span = f"{test_years[0]}–{test_years[-1]}" if len(test_years) > 1 else str(test_years[0])
     title = (
         f"Aqua → S-NPP monthly hotspot counts, test years {span} "
-        f"(calibrated on {years[0]}–{years[-1]}; K = {k:g}, M = {m:g})"
+        f"(calibrated on {years[0]}–{years[-1]}; pooling: {pool}, K = {k:g}, M = {m:g})"
     )
     table = val.markdown_table(scores, title=title)
     notes = (
@@ -95,12 +95,12 @@ def run(
     )
     report = {
         "run_id": run_id,
-        "model_version": model_version,
+        "model_version": version_name,
         "calibration_years": list(years),
         "test_years": list(test_years),
         "excluded_calibration_months": [list(ym) for ym in excluded],
         "excluded_test_months": [list(ym) for ym in test_excluded],
-        "weights": {"k": k, "m": m},
+        "weights": {"k": k, "m": m, "pool": pool, "chosen_by": choice["chosen_by"]},
         "high_season_months": season,
         "methods": [{"key": key, "label": label, "role": role} for key, label, role in val.METHODS],
         "verdict": decision,
@@ -124,7 +124,8 @@ def run(
     manifest.add_output(f"{target}/metrics/validation.json", fmt="json")
     manifest.add_output(f"{target}/reports/validation.md", fmt="markdown")
     manifest.checks = {
-        "calibration_years": list(years), "test_years": list(test_years), "k": k, "m": m,
+        "calibration_years": list(years), "test_years": list(test_years), "k": k, "m": m, "pool": pool,
+        "model_version": version_name,
         "eval_rows": eval_rows,
         **{f"verdict_{key}": value for key, value in decision.items() if key != "rule"},
     }
@@ -134,7 +135,7 @@ def run(
         "report": f"{target}/metrics/validation.json",
         "table": f"{target}/reports/validation.md",
         "manifest": manifest.save(settings),
-        "k": k, "m": m,
+        "k": k, "m": m, "pool": pool,
         "verdict": decision,
         "summary": table,
     }

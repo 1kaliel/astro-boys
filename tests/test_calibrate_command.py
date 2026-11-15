@@ -55,6 +55,8 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
     assert result["calibration_years"] == list(range(2012, 2020))
     assert result["excluded_months"] == [[2012, 1]] and result["data_gaps"] == 0
     assert result["k"] in calibrate.cal.WEIGHT_GRID and result["m"] in calibrate.cal.WEIGHT_GRID
+    assert result["pool"] in calibrate.cal.POOL_LEVELS
+    assert result["model_version"] == f"fb-{result['pool']}-{calibrate.MODEL_REVISION}"
     assert result["cells"] == 16 and result["panel_rows"] == 16 * (8 * 12 - 1) * 2
 
     con = duckdb.connect()
@@ -67,11 +69,13 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
         f"any_value(model_version) FROM {factors}"
     ).fetchone()
     assert (rows, nulls) == (16 * 12 * 2, 0)
-    assert years == "2012,2013,2014,2015,2016,2017,2018,2019" and version == calibrate.MODEL_VERSION
+    assert years == "2012,2013,2014,2015,2016,2017,2018,2019" and version == result["model_version"]
 
     report = json.loads(open(result["report"]).read())
     assert report["test_years_untouched"] == [2020, 2021]
-    assert len(report["leave_one_year_out"]) == 6 and len(report["region_by_month_period"]) == 24
+    tried = len(calibrate.cal.WEIGHT_GRID) * len(calibrate.cal.POOL_LEVELS)
+    assert len(report["leave_one_year_out"]) == tried and len(report["region_by_month_period"]) == 24
+    assert "Poisson deviance" in report["weights"]["chosen_by"]
     assert 3 < report["panel"]["overall_ratio"] < 6
     manifest = json.loads(open(result["manifest"]).read())
     assert manifest["pipeline"] == "calibrate" and manifest["status"] == "ok"
@@ -80,9 +84,10 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
 
 def test_fixed_weights_are_used_as_given(tmp_path):
     write_counts(tmp_path)
-    result = calibrate.run(settings_for(tmp_path), k=20, m=2)
-    assert (result["k"], result["m"]) == (20, 2)
-    assert result["weights_chosen_by"] == "fixed on the command line"
+    result = calibrate.run(settings_for(tmp_path), k=20, m=2, pool="region")
+    assert (result["k"], result["m"], result["pool"]) == (20, 2, "region")
+    assert result["weights_chosen_by"].endswith("fixed on the command line: k, m, pool")
+    assert result["model_version"] == "fb-region-2"
 
 
 def test_test_years_are_refused(tmp_path):

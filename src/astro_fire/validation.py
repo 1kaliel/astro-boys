@@ -174,24 +174,31 @@ def _pick(scores: Sequence[dict], level: str, metric: str = "mae") -> dict[str, 
 
 
 def verdict(scores: Sequence[dict]) -> dict:
-    """Does the final method beat every baseline out of sample? If not, which method should ship?"""
+    """Does the final method beat every baseline out of sample? If not, which baseline ships instead?
+
+    `F` without the background is an ablation, not a product candidate: it cannot ship, because it leaves
+    out every detection in months where Aqua saw nothing.
+    """
     cell, region = _pick(scores, "cell_month"), _pick(scores, "region_month")
     beats_cell = all(cell[FINAL] < cell[b] for b in BASELINES)
     beats_region = all(region[FINAL] < region[b] for b in BASELINES)
     accepted = beats_cell and beats_region
-    contenders = [key for key, _, role in METHODS if role != "reference" and key in cell]
-    best_cell = min(contenders, key=lambda k: cell[k])
-    best_region = min(contenders, key=lambda k: region[k])
+    best_cell = min(BASELINES, key=lambda b: cell[b])
+    best_region = min(BASELINES, key=lambda b: region[b])
+    if accepted:
+        ship = FINAL
+    else:  # the baseline that wins where the final method lost; the regional series is what the app shows
+        ship = best_region if not beats_region else best_cell
     return {
         "final_method": FINAL,
         "beats_baselines_cell_month_mae": beats_cell,
         "beats_baselines_region_month_mae": beats_region,
         "accepted": accepted,
-        "best_cell_month_mae": best_cell,
-        "best_region_month_mae": best_region,
-        "ship": FINAL if accepted else best_cell,
+        "best_baseline_cell_month_mae": best_cell,
+        "best_baseline_region_month_mae": best_region,
+        "ship": ship,
         "rule": "accepted when the final method has a lower MAE than every baseline at both levels; "
-                "otherwise the method with the lowest cell-month MAE ships and the result is stated",
+                "otherwise the baseline that beats it ships and the result is stated",
     }
 
 

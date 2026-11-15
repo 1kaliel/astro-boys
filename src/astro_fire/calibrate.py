@@ -25,12 +25,31 @@ from astro_fire.manifest import Manifest, new_run_id
 
 CALIBRATION_YEARS = tuple(range(2012, 2020))
 TEST_YEARS = (2020, 2021)  # held out for `validate`; calibration must never see them
-MODEL_VERSION = "fb-region-1"  # factor F + background B, pooled toward the whole extent
+MODEL_FAMILY = "fb"  # factor F + background B; the model version adds the pooling level, e.g. fb-l1-2
+MODEL_REVISION = 2
 REQUIRED_COLUMNS = ("cell_l2", "year", "month", "daynight", "satellite", "n_hotspots")
 FACTOR_COLUMNS = (  # processed/factors/v1 in docs/data-dictionary.md
     "cell_l2", "month", "period", "f", "b", "sum_aqua_pos", "sum_viirs_pos", "n_zero", "sum_viirs_zero",
     "r_region", "b_region", "k", "m", "weight_cell", "calibration_years", "model_version",
+    "r_parent", "b_parent", "pool_level",
 )
+
+
+def model_version(pool: str) -> str:
+    return f"{MODEL_FAMILY}-{pool}-{MODEL_REVISION}"
+
+
+def choose_model(con, panel: str, *, k: float | None, m: float | None, pool: str | None) -> dict:
+    """Pooling level and weights: fixed where given, otherwise by leave-one-year-out Poisson deviance."""
+    pools = (pool,) if pool else cal.POOL_LEVELS
+    choice = cal.choose_pooling(con, panel, pools=pools)
+    fixed = [name for name, value in (("k", k), ("m", m), ("pool", pool)) if value is not None]
+    choice["k"] = choice["k"] if k is None else float(k)
+    choice["m"] = choice["m"] if m is None else float(m)
+    choice["chosen_by"] = "leave-one-year-out Poisson deviance, calibration years only"
+    if fixed:
+        choice["chosen_by"] += f"; fixed on the command line: {', '.join(fixed)}"
+    return choice
 
 
 class CalibrationError(RuntimeError):
@@ -129,8 +148,8 @@ def run(
     years: Sequence[int] = CALIBRATION_YEARS,
     k: float | None = None,
     m: float | None = None,
+    pool: str | None = None,
     counts_location: str | None = None,
-    model_version: str = MODEL_VERSION,
 ) -> dict:
     """Fit the factors and write them, the calibration report and the manifest."""
     years = tuple(sorted(set(years)))
@@ -151,14 +170,10 @@ def run(
     excluded = [ym for ym in excluded if ym[0] in years]
 
     cal.build_panel(con, "counts", years, exclude_months=excluded)
-    scores = cal.leave_one_year_out(con, "panel")
-    if k is None or m is None:
-        best_k, best_m = cal.choose_weights(scores)
-        k, m = (best_k if k is None else k), (best_m if m is None else m)
-        chosen_by = "leave-one-year-out MAE at cell-month level"
-    else:
-        chosen_by = "fixed on the command line"
-    cal.fit_factors(con, "panel", k=k, m=m, model_version=model_version)
+    choice = choose_model(con, "panel", k=k, m=m, pool=pool)
+    k, m, pool, scores, chosen_by = (choice[key] for key in ("k", "m", "pool", "scores", "chosen_by"))
+    version_name = model_version(pool)
+    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name)
 
     panel = _records(con, """
         SELECT count(*) AS rows, count(DISTINCT cell_l2) AS cells, sum(a) AS sum_aqua, sum(v) AS sum_viirs,
@@ -180,14 +195,15 @@ def run(
         FROM factors GROUP BY ALL ORDER BY period, month""")
     report = {
         "run_id": run_id,
-        "model_version": model_version,
+        "model_version": version_name,
         "source_satellite": cal.SOURCE,
         "reference_satellite": cal.REFERENCE,
         "calibration_years": list(years),
         "test_years_untouched": list(TEST_YEARS),
         "excluded_months": [list(ym) for ym in excluded],
         "data_gaps": [{"year": y, "month": mo, "satellite": sat} for y, mo, sat in gaps],
-        "weights": {"k": k, "m": m, "chosen_by": chosen_by, "candidates": list(cal.WEIGHT_GRID)},
+        "weights": {"k": k, "m": m, "pool": pool, "chosen_by": chosen_by,
+                    "candidates": list(cal.WEIGHT_GRID), "pool_candidates": list(cal.POOL_LEVELS)},
         "leave_one_year_out": scores,
         "panel": panel,
         "factors": factors,
@@ -218,8 +234,8 @@ def run(
         "calibration_years": list(years),
         "excluded_months": [list(ym) for ym in excluded],
         "data_gaps": len(gaps),
-        "k": k, "m": m, "weights_chosen_by": chosen_by,
-        "model_version": model_version,
+        "k": k, "m": m, "pool": pool, "weights_chosen_by": chosen_by,
+        "model_version": version_name,
         "panel_rows": panel["rows"], "cells": panel["cells"],
         "overall_ratio": panel["overall_ratio"],
         "factor_rows": factors["rows"], "null_f": factors["null_f"], "null_b": factors["null_b"],

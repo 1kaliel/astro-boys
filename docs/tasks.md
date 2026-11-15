@@ -31,11 +31,11 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 | H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
 | H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ✅ | **Checkpoint A**: full 2003–2025 local Parquet + manifest; bucket publication pending |
 | H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ✅ | `src/astro_fire/calibration.py` + `tests/test_calibration.py` (synthetic sample; real data comes with H4) |
-| H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | 🔄 | Parquet + manifest. Command ready (`uv run astro-fire calibrate`), tested on synthetic counts; the real run waits for H4 |
+| H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ✅ | Run on the real counts: 74,592 factor rows, pooling to L1, K = 50, M = 5 ([results](methodology.md)). Factors are local; bucket publication pending |
 | H7 | `harmonize` → `calendar/v1` (no intervals yet) pushed to the bucket | Mateus | Sun 02:00 | ⬜ | **Checkpoint B** |
 | H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ⬜ | `artifacts/figures/` |
 | H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ⬜ | `raw/firms/api/…` |
-| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | 🔄 | `validation.json` + table. Command ready (`uv run astro-fire validate`), tested on synthetic counts; the real run waits for H4. Pooling to the L1 parent still to compare |
+| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | 🔄 | First real result in [methodology.md](methodology.md): F + B beats every baseline per cell, ties on regional totals and does not pass the pre-set rule there. Decision on what ships is open |
 | H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | ⬜ | **Checkpoint C** |
 | H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Kali | Sun 15:00 | ⬜ | Only if H10–H11 are done |
 | H13 | Methodology and limitations text ([methodology.md](methodology.md)); reproducibility run from a clean clone | Justino + Jean | Sun 18:00 | ⬜ | |

@@ -5,6 +5,8 @@ The example is didactic (four cells, September only): it checks the mechanism, n
 
 from __future__ import annotations
 
+import math
+
 import duckdb
 import pytest
 
@@ -141,33 +143,104 @@ def test_unknown_cell_uses_regional_factor_and_gets_no_background(con):
                        "AND period = 'D'").fetchone() == (0.0,)
 
 
-def test_leave_one_year_out_matches_refitting(con):
-    scores = {s["weight"]: s for s in cal.leave_one_year_out(con, "panel")}
-    assert sorted(scores) == [0, 2, 5, 10, 20, 50]
+def _poisson_deviance(v, mu):
+    if v == 0:
+        return 2 * mu
+    return math.inf if mu <= 0 else 2 * (v * math.log(v / mu) - (v - mu))
+
+
+def _add_second_parent(con):
+    """Cells of another 1° parent with a different sensor ratio, so the two pooling levels differ."""
+    rows = []
+    for cell, ratio in (("G001001.01", 9), ("G001001.02", 7)):
+        for i, year in enumerate(YEARS):
+            a = (3 + i) if cell.endswith("01") else (i % 2)
+            rows += [(cell, year, 9, "D", "Aqua", a), (cell, year, 9, "D", "SNPP", a * ratio + i + 1)]
+    con.executemany("INSERT INTO counts VALUES (?, ?, ?, ?, ?, ?)", [r for r in rows if r[5] > 0])
+    con.execute("UPDATE counts SET cell_l2 = 'G000000.0' || (ascii(cell_l2) - 64) WHERE length(cell_l2) = 1")
+    cal.build_panel(con, "counts", YEARS)
+
+
+@pytest.mark.parametrize("pool", cal.POOL_LEVELS)
+def test_leave_one_year_out_matches_refitting(con, pool):
+    _add_second_parent(con)
+    scores = {s["weight"]: s for s in cal.leave_one_year_out(con, "panel", pool=pool)}
+    assert sorted(scores) == list(cal.WEIGHT_GRID)
     for w in (0, 5, 50):
-        err_pos = err_zero = n_pos = n_zero = 0
+        pos, zero = [], []
         for held in YEARS:
             con.execute(f"CREATE OR REPLACE TEMP TABLE train AS SELECT * FROM panel WHERE year <> {held}")
-            cal.fit_factors(con, "train", k=w, m=w, name="fold")
+            cal.fit_factors(con, "train", k=w, m=w, pool=pool, name="fold")
             for a, v, f, b in con.execute(
                 f"SELECT p.a, p.v, f.f, f.b FROM panel p JOIN fold f USING (cell_l2, month, period) "
                 f"WHERE p.year = {held}"
             ).fetchall():
                 if a > 0 and f is not None:
-                    err_pos, n_pos = err_pos + abs(v - a * f), n_pos + 1
+                    pos.append((v, a * f))
                 elif a == 0:
-                    err_zero, n_zero = err_zero + abs(v - b), n_zero + 1
-        assert scores[w]["mae_pos"] == pytest.approx(err_pos / n_pos)
-        assert scores[w]["mae_zero"] == pytest.approx(err_zero / n_zero)
+                    zero.append((v, b))
+        for name, pairs in (("pos", pos), ("zero", zero)):
+            n = len(pairs)
+            assert scores[w][f"n_{name}"] >= n
+            assert scores[w][f"mae_{name}"] == pytest.approx(sum(abs(v - mu) for v, mu in pairs) / n)
+            assert scores[w][f"rmse_{name}"] == pytest.approx(
+                math.sqrt(sum((v - mu) ** 2 for v, mu in pairs) / n)
+            )
+            deviance = sum(_poisson_deviance(v, mu) for v, mu in pairs) / n
+            if math.isinf(deviance):
+                assert scores[w][f"deviance_{name}"] is None  # infinite is reported as None
+            else:
+                assert scores[w][f"deviance_{name}"] == pytest.approx(deviance)
 
 
-def test_choose_weights_prefers_lowest_error_then_more_pooling():
+def test_parent_pooling_differs_from_region_pooling(con):
+    _add_second_parent(con)
+    cal.fit_factors(con, "panel", k=20, m=2, pool="region", name="by_region")
+    cal.fit_factors(con, "panel", k=20, m=2, pool="l1", name="by_parent")
+    sql = ("SELECT f, r_parent, r_region, pool_level FROM {} "
+           "WHERE cell_l2 = 'G001001.02' AND month = 9 AND period = 'D'")
+    f_region, target_region, r_region, level_region = con.execute(sql.format("by_region")).fetchone()
+    f_parent, target_parent, r_region_2, level_parent = con.execute(sql.format("by_parent")).fetchone()
+    assert (level_region, level_parent) == ("region", "l1")
+    assert target_region == pytest.approx(r_region) and r_region == pytest.approx(r_region_2)
+    # The parent's ratio is higher than the region's, so the thin cell is pulled further up.
+    assert target_parent > target_region and f_parent > f_region
+
+
+def test_without_pooling_the_deviance_is_infinite(con):
+    # A cell seen by S-NPP in a single year: predicted from the other years with M = 0, its mean is exactly 0.
+    con.execute("INSERT INTO counts VALUES ('E', 2014, 9, 'D', 'SNPP', 3)")
+    cal.build_panel(con, "counts", YEARS)
+    by_weight = {s["weight"]: s for s in cal.leave_one_year_out(con, "panel")}
+    assert by_weight[0]["deviance_zero"] is None and by_weight[2]["deviance_zero"] is not None
+    assert by_weight[0]["mae_zero"] is not None
+
+
+def test_choose_weights_prefers_lowest_deviance_then_more_pooling():
     scores = [
-        {"weight": 0, "mae_pos": 3.0, "mae_zero": 1.0},
-        {"weight": 5, "mae_pos": 2.0, "mae_zero": 0.5},
-        {"weight": 20, "mae_pos": 2.0, "mae_zero": 0.7},
+        {"weight": 0, "deviance_pos": None, "deviance_zero": None, "mae_pos": 1.0, "mae_zero": 0.1},
+        {"weight": 5, "deviance_pos": 2.0, "deviance_zero": 0.5, "mae_pos": 3.0, "mae_zero": 0.9},
+        {"weight": 20, "deviance_pos": 2.0, "deviance_zero": 0.7, "mae_pos": 3.0, "mae_zero": 0.9},
     ]
     assert cal.choose_weights(scores) == (20, 5)
+    assert cal.choose_weights(scores, metric="mae") == (0, 0)
+
+
+def test_choose_pooling_returns_the_level_with_lower_deviance(con):
+    _add_second_parent(con)
+    choice = cal.choose_pooling(con, "panel")
+    assert choice["pool"] in cal.POOL_LEVELS and choice["k"] in cal.WEIGHT_GRID
+    assert len(choice["scores"]) == len(cal.POOL_LEVELS) * len(cal.WEIGHT_GRID)
+    totals = {}
+    for pool in cal.POOL_LEVELS:
+        rows = [s for s in choice["scores"] if s["pool"] == pool]
+        k, m = cal.choose_weights(rows)
+        by = {r["weight"]: r for r in rows}
+        totals[pool] = (by[k]["deviance_pos"] * by[k]["n_pos"] + by[m]["deviance_zero"] * by[m]["n_zero"]) / (
+            by[k]["n_pos"] + by[m]["n_zero"]
+        )
+    assert choice["deviance"] == pytest.approx(min(totals.values()))
+    assert totals[choice["pool"]] == pytest.approx(min(totals.values()))
 
 
 def test_negative_weights_are_rejected(con):

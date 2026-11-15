@@ -101,7 +101,11 @@ Per `cell_l2 × year × month × daynight × satellite`: `n_hotspots`, `n_active
 ## 4. `processed/factors/v1/`
 
 Per `cell_l2 × month × period`: `f`, `b`, `sum_aqua_pos`, `sum_viirs_pos`, `n_zero`, `sum_viirs_zero`, `r_region`,
-`b_region`, `k`, `m`, `weight_cell`, `calibration_years`, `model_version`. Lets anyone recompute an estimate by hand.
+`b_region`, `k`, `m`, `weight_cell`, `calibration_years`, `model_version`, `r_parent`, `b_parent`, `pool_level`.
+Lets anyone recompute an estimate by hand: `f = (sum_viirs_pos + k·r_parent) / (sum_aqua_pos + k)` and
+`b = (sum_viirs_zero + m·b_parent) / (n_zero + m)`. `r_parent`/`b_parent` are the values the cell was pooled
+toward (`pool_level`: `l1` = its 1° parent cell, `region` = the whole extent). To convert: `f × Aqua` when
+Aqua > 0, otherwise `b`; a cell with no row uses `r_region × Aqua` and gets no background.
 
 ## 5. Sample for app development
 
