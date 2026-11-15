@@ -24,7 +24,7 @@ Builds the web app. Spec: [spec/dashboard.md](spec/dashboard.md). The stack is t
 | Guilherme | [Guilherme-Martins-Dev](https://github.com/Guilherme-Martins-Dev) | Map and area selection; backend and deploy (with Cleber) | Cleber |
 | Cleber | [Clbrfrancaa](https://github.com/Clbrfrancaa) | Calendar and charts; backend and deploy (with Guilherme) | Guilherme |
 
-Stack: **FastAPI backend + single-page frontend** (option A in the spec); frontend framework to be named by the team.
+Stack: **FastAPI + DuckDB backend; React + TypeScript + Vite frontend** (implemented option A), with MapLibre GL JS and nivo. See [the synchronized dashboard spec](spec/dashboard.md). L2's formal acceptance record remains to be reconciled by the owners.
 
 ## Floater
 

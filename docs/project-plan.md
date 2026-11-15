@@ -1,6 +1,8 @@
 # Project plan (v2)
 
-**Status: LOCKED IN on Sat Nov 14 (roles, stack, pilot region).** Remaining specifics are decided by each
+**Status: plan locked on Sat Nov 14; delivery snapshot synchronized on 15 November 2026 at main `0b8dbdd5a21422ab30d3c53db0333d77367fd204`.**
+Dashboard D1–D12 and harmonization H1–H13 are accepted in the task board. Submission work remains open.
+The scope/deadlines below retain the original priorities; current evidence is in the specs and methodology. Remaining specifics are decided by each
 task's owner and logged; the defaults in [open decisions](#open-decisions) apply until then.
 
 Supersedes plan v1. Built from the team's six research documents ([ADR 0005](decisions/0005-plan-v2.md)).
@@ -14,8 +16,8 @@ Schedule: [timeline.md](timeline.md) · Who does what: [tasks.md](tasks.md) · T
 
 Satellites have recorded fire hotspots since 2000, but the record is split. From 2000 to 2011 there is only MODIS
 (1 km pixels); from 2012 there is also VIIRS (375 m), which sees several times more hotspots, especially small
-and night-time fires. Joining the raw counts creates a false jump in 2012, so managers can't tell real change in
-fire activity from a change of instrument. MODIS is near the end of its life and VIIRS S-NPP stopped observing
+and night-time fires. Joining raw counts can introduce an artificial step around the sensor transition, alongside real changes in
+activity. Harmonization addresses instrument differences; it does not prove that every change then is artificial. MODIS is near the end of its life and VIIRS S-NPP stopped observing
 on Nov 2, 2026, so a consistent baseline is needed now.
 
 Analogy for the pitch: counting traffic for 25 years with an old blurry camera that only saw trucks, then a
@@ -67,7 +69,7 @@ Where the team's proposals landed:
 | Proposal | In plan v2 as |
 |----------|---------------|
 | Poisson ratio with shrinkage + background term | The harmonization method |
-| OLS transfer function | Baseline in the validation table; the VIIRS → MODIS direction is a display option |
+| OLS transfer function | Baseline in the validation table; inverse VIIRS → MODIS display remains optional and unimplemented |
 | Belize 2020 audit (event-level matching, per-event models) | Its filters, guardrails, origin labels and "no fixed multiplier" finding are adopted; event matching itself is stretch |
 | Platform-wise active-cell metric, median anomalies, partial months | `n_active_days` as secondary metric; anomaly and partial-month rules adopted |
 | AGGS adaptive 4×4 grid | The grid of the whole system (L1/L2/L3 IDs); drill-down and priority index are stretch |
@@ -90,8 +92,8 @@ For everyone, including AI coding agents:
 ## Definition of done
 
 - [ ] Public URL opens in a private window and answers: which months burn most here, and how does this month compare?
-- [ ] The harmonized series shows no artificial step at 2012; the raw toggle shows the step.
-- [ ] Validation table: final method vs baselines on 2020–2021, in the app and the repo.
+- [ ] Raw and harmonized comparisons explain sensor differences without claiming every change around 2012 is artificial.
+- [ ] Validation table: development 2020–2021 distinguished from the frozen final test on 2022–2023; baselines and limits visible.
 - [ ] Estimated months are labeled, with intervals.
 - [ ] Pipeline reproducible from the repo: commands, manifests, checksums of raw inputs.
 - [ ] Limitations visible in the app and the project page.
@@ -107,7 +109,7 @@ For everyone, including AI coding agents:
 1. **Problem:** 25 years of fire records, two incompatible instruments, a false jump in 2012.
 2. **Method:** per place and month, learn the MODIS → VIIRS relation where both exist; pool with the region
    where data is thin; rebuild the past with error margins.
-3. **Proof:** predicted unseen years; beat the simple baselines; the 2012 step is gone.
+3. **Evidence:** frozen 2022–2023 final test; lower cell-month errors than the baselines and statistically level regional totals; qualified sensor-transition comparison.
 4. **Product:** pick any area, see its burning calendar and how this month compares with history; download the data.
 5. **Honesty:** estimates are labeled, uncertainty is shown, limits are stated.
 6. **Why now:** S-NPP just ended; MODIS is next. The baseline has to be in the VIIRS scale.
@@ -119,16 +121,16 @@ contract, and logs the choice as a `DECISION`. Defaults apply until the owner sa
 
 | # | Decision | Status | Owner |
 |---|----------|--------|-------|
-| Q1 | Dashboard stack | ✅ **FastAPI backend + single-page frontend.** Frontend framework (Angular or React) still to name | Guilherme, Cleber |
+| Q1 | Dashboard stack | ✅ **FastAPI + React/TypeScript/Vite SPA.** Implemented in D1; L2's acceptance record still needs reconciliation | Guilherme, Cleber |
 | Q2 | Grid | Default: hierarchical 4×4 degree grid (1° / 0.25° / 0.0625°), AGGS IDs. H3 res 5 is the alternative | Mateus (pipeline) with Guilherme (map) |
 | Q3 | Direction and reference | Default: MODIS → VIIRS-equivalent, S-NPP scale | Kali |
-| Q4 | Method and years | Default: F + B with pooling; calibrate 2012–2019, test 2020–2021; OLS as baseline | Kali |
+| Q4 | Method and years | Default: F + B with pooling; calibrate 2012–2019; development 2020–2021; final test 2022–2023; OLS as baseline | Kali |
 | Q5 | Primary metric | Default: hotspot count; active days as secondary | Kali |
 | Q6 | Extent and demo region | ✅ **Northeast Brazil only, as the pilot.** Brazil-wide is stretch | Team |
 | Q7 | Start of the series | ✅ July 2002 (Aqua's first months). Terra-only 2000-11 → 2002-06 was fitted and checked but is not published ([why](methodology.md#extending-the-record-before-2003)) | Kali |
 | Q8 | AGGS scope | Default: grid now; drill-down and priority index are stretch | Guilherme |
 | Q9 | Prediction / early warning | Default: out | Kali |
-| Q10 | Names on tasks | ✅ Confirmed ([team.md](team.md)). Demo lead and video-vs-slides still to confirm | Team |
+| Q10 | Names on tasks | ✅ Confirmed ([team.md](team.md)); Jean leads S2 with seven English slides, Justino reviews S5 and Kali submits S6 (L4) | Team |
 | Q11 | FIRMS MAP_KEY for 2026 data | ✅ Key obtained. Justino stores it in `.env` on the VM and locally; never in git or in docs | Justino |
 | Q12 | Local Event registration (all 6, same event) | ✅ Confirmed. Local judging time: check with the Local Lead | Kali |
 | Q13 | Outside material (other teams' code, text, numbers) | ✅ None used. Anything added later goes in [resources.md](resources.md) | Everyone |
@@ -137,3 +139,22 @@ contract, and logs the choice as a `DECISION`. Defaults apply until the owner sa
 
 This prototype is exploratory. Hotspot detections and derived estimates carry uncertainty and must not be used on
 their own for emergency, public-safety or resource-allocation decisions.
+
+
+## Delivery reconciliation and updates
+
+At the synchronized baseline, the published calendar spans July 2002–November 2026 (observations to 14 November).
+Calibration is 2012–2019; 2020–2021 is development, not a blind test; 2022–2023 is the once-opened frozen final test.
+Model `fb-l1-terra-rec-4` passed the pre-set cell-error/regional-noninferiority rule; the full rule and limits are
+in [methodology.md](methodology.md). Earlier planning formulas and timelines do not override those results.
+
+D11/D12 acceptance refers to release `astro-dashboard-00008-m2v`, image `3957039`.
+The offline evidence is the earlier local-container test, not a new revision-00008 offline run.
+Open PRs 82/83 and work in `teste-visual` remain separate from this main snapshot.
+S1/S2/S4/S5/S6 remain open; S2 is seven English slides. Repository visibility was private at this review,
+so public-repository acceptance must be rechecked in S5. No visibility change is made here.
+
+Keep the specs in English and cite merged commits, deployment revisions and validation evidence for updates.
+Unchecked original acceptance boxes above are not a count of missing implementations; use the task board and
+[dashboard evidence status](spec/dashboard.md#5-release-and-acceptance-evidence). No task-owner acceptance is
+created by this editorial synchronization.

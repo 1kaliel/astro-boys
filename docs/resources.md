@@ -167,3 +167,10 @@ AI assistance helped prepare the L4 role/format record and align the task board 
 AI assistance was used to revise docs/submission.md against the team's existing methodology: project name,
 sensor-transition wording, inferred coverage gaps, NRT type limitations and reproduction scope. No new method,
 data or scientific result was generated. Final team approval and the demo link remain pending.
+
+
+## English specification synchronization (15 November 2026)
+
+AI assistance helped Jean Gustavo reconcile the dashboard/harmonization specifications and linked planning notes
+with integrated code, methodology and recorded D11/D12 evidence. Task statuses, scientific results and cloud
+configuration were unchanged. See [the diary](diary/2026-11-15.md). Open proposals were not presented as delivered work.

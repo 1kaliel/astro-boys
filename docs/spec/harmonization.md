@@ -1,6 +1,10 @@
 # Spec: harmonization (Team Harmonization)
 
-**Status: plan v2, locked in for roles and extent.** Choices marked ❓ are defaults that their task owner may
+**Status: implemented baseline synchronized on 15 November 2026 at main `0b8dbdd5a21422ab30d3c53db0333d77367fd204`.**
+The [methodology](../methodology.md) records accepted results and overrides earlier planning assumptions.
+Published model: `fb-l1-terra-rec-4`; calendar July 2002–November 2026, observations through 14 November.
+
+Roles and extent remain fixed. Choices marked ❓ are defaults that their task owner may
 change with a diary `DECISION` ([open decisions](../project-plan.md#open-decisions)). Method owner: Kali. Pipeline owner: Mateus.
 
 Consolidates the team's research: the Belize 2020 sensor audit, the transfer-function proposals (OLS and
@@ -9,13 +13,12 @@ Poisson ratio with shrinkage), the platform-wise activity metric, and the AGGS g
 ## 1. What "harmonized" means here
 
 One monthly series per grid cell, from the early 2000s to today, expressed in a single scale:
-**VIIRS-equivalent hotspot counts** (one afternoon/night-orbit VIIRS 375 m satellite). A change in the curve should
-mean a change in fire activity, not a change of satellite.
+**VIIRS-equivalent hotspot counts** (one afternoon/night-orbit VIIRS 375 m satellite). The aim is to reduce instrument-related discontinuities while retaining real activity changes; harmonization does
+not establish that every change near a sensor transition is artificial.
 
 - **Direction: MODIS → VIIRS-equivalent.** The future record is VIIRS-only, new data arrives already in the
-  target scale, and small fires stay visible. (The reverse, VIIRS → MODIS scale, is kept as a display option.)
-- **We estimate counts per cell and month. We never create synthetic VIIRS points.** Native hotspots stay
-  available, untouched, for audit and CSV download.
+  target scale, and small fires stay visible. (The reverse, VIIRS → MODIS scale, remains an unimplemented optional display.)
+- **We estimate counts per cell and month. We never create synthetic VIIRS points.** Raw inputs remain immutable. Normalized, filtered native detections remain available for audit and CSV download.
 - Every value says where it came from: `MODIS_NATIVE`, `VIIRS_OBSERVED`, `VIIRS_EQUIVALENT_FROM_MODIS`.
 - Every estimate carries an uncertainty interval.
 
@@ -24,7 +27,7 @@ mean a change in fire activity, not a change of satellite.
 | Source | Satellite | Years | Role |
 |--------|-----------|-------|------|
 | `modis_{YYYY}_all_countries.zip` | Aqua | 2002-07 → 2025 | Calibration input; source of the 2002–2011 estimates |
-| | Terra | 2000-11 → 2025 | Only source for 2000-11 → 2002-06 (❓ Q7); diagnostic afterwards |
+| | Terra | 2000-11 → 2025 | Early coverage diagnostics and background witness; Terra-only pre-Aqua calendar not published |
 | `viirs-snpp_{YYYY}_all_countries.zip` | S-NPP | 2012 → 2025 | **Reference scale**; observed series 2012 → 2026-10 |
 | `viirs-jpss1_{YYYY}_all_countries.zip` | NOAA-20 | 2018 → 2025 | Continuity after S-NPP ended (2026-11-02); cross-check |
 | FIRMS area API (`_SP`, `_NRT`) | S-NPP, NOAA-20 | 2026 | Current year and current month (needs MAP_KEY) |
@@ -60,7 +63,7 @@ Raw files are never edited. The normalized table adds derived columns and keeps 
 | Local solar date | `acq_ts_utc + longitude/15 hours` → `date_local`, `year`, `month`. Night detections land on the right local day |
 | Satellite | `Terra`, `Aqua`, `SNPP` (FIRMS `N`), `N20`, `N21` |
 | Confidence class | `confidence_class`: MODIS 0–29 `l`, 30–79 `n`, 80–100 `h`; VIIRS as given. Used for filtering only |
-| Main filter | `passes_main_filter` = `type == 0` AND (MODIS `confidence >= 30` OR VIIRS `confidence in (n, h)`) |
+| Main filter | Historical typed records: `type == 0` and nominal/high confidence (MODIS >= 30; VIIRS n/h). Untyped 2026 NRT retains `type = null`; nominal/high untyped NRT enters provisional counts under the documented exception, never relabeled vegetation |
 | Clip | Keep rows inside the pilot extent; the same clip for every sensor |
 | Grid | `cell_l1`, `cell_l2`, `cell_l3` (section 4) |
 | Diagnostics | `delta_t_k` = hot band − reference band, per sensor. Diagnostic only, never a classifier |
@@ -111,7 +114,7 @@ Never add satellites together before harmonizing. Terra + Aqua, or S-NPP + NOAA-
 ## 6. Transfer function: Aqua → VIIRS-equivalent
 
 Same-overpass pair: **Aqua × S-NPP** (both ≈ 13:30 / 01:30 local). Keys: cell `c` (L2), month of year `m`,
-period `p` (day / night). Calibration years: **2012–2019**; held-out test: **2020–2021** ❓ Q4.
+period `p` (day / night). Calibration years: **2012–2019**; development: **2020–2021** (not blind); frozen final test: **2022–2023**. See section 7.
 
 ```text
                     F(c,m,p) × Aqua     if Aqua > 0
@@ -204,15 +207,16 @@ is fixed before the final test is opened: see [methodology.md](../methodology.md
 | OLS line `V = a·A + b`, global | Baseline (the team's first proposal) |
 | Ratio by month × day/night, no cell term | Baseline |
 | `F` with pooling | Candidate |
-| `F` with pooling + background `B` | Candidate (expected final) |
+| `F` with pooling + background `B` | Final: Terra-aware, L1-pooled and regionally reconciled |
 
 - Metrics: MAE, RMSE, relative bias, correlation, at cell-month level and for regional monthly totals; split by
   day/night, by season, and by low/high activity.
-- **Acceptance (as implemented):** `F + B` must have a lower MAE than every baseline both at cell-month
-  level and for regional monthly totals. In short: the final method must beat the baselines out of sample. If it doesn't, we ship the simplest
-  method that wins and say so.
-- **Step test:** the raw series jumps at 2012; the harmonized one must not. This before/after chart is the main
-  proof in the pitch.
+- **Frozen final-test rule:** lower MAE and RMSE than every baseline at cell-month level; on regional monthly
+  totals, not distinguishably worse than the best baseline (the 90% paired-bootstrap interval of the absolute-error
+  difference must not lie entirely above zero). This rule was fixed before opening 2022–2023, after development.
+  The method passes: final-test cell MAE 3.46 versus 4.22 for the best baseline; regional totals are statistically level.
+- **Transition diagnostic:** show raw and harmonized before/after-2012 series, qualifying sensor effects.
+  The chart alone is not proof that every discontinuity is artificial or removed.
 - Check that the error does not grow with distance in time from the calibration years.
 - Uncertainty: 90% intervals from measured out-of-year error on the calibration years, by regime, period
   and size of the estimate ([methodology.md](../methodology.md#uncertainty-of-the-estimates)). This replaced
@@ -244,7 +248,7 @@ Schemas are the data contract in [../data-dictionary.md](../data-dictionary.md).
 | `artifacts/{run_id}/` | QA report, validation table, before/after chart, factor maps |
 | `manifests/{run_id}.json` | Inputs with checksums, outputs, row counts, code version, parameters |
 
-## 10. Pipeline commands (to build)
+## 10. Implemented pipeline commands
 
 ```bash
 uv run astro-fire ingest     # zips → country CSVs → normalized hotspots Parquet + QA report
@@ -252,23 +256,26 @@ uv run astro-fire aggregate  # → cell_month_counts
 uv run astro-fire ingest-api # FIRMS area-API files of the current year → hotspots and counts partitions (exists)
 uv run astro-fire coverage   # → coverage_daily, coverage_monthly, month_to_date: outages, unfinished month (exists)
 uv run astro-fire calibrate  # → factors (K, M by cross-validation), continuity factor
-uv run astro-fire harmonize  # → calendar (+ bootstrap intervals, anomalies)
+uv run astro-fire harmonize  # → calendar (+ empirical error intervals, anomalies)
 uv run astro-fire validate   # → validation table and charts
 uv run astro-fire export     # → small bundle for the dashboard (and a sample for local dev)
 ```
 
 Each command runs locally on a sample and on the VM on the full extent, and writes a manifest.
 
-## 11. Acceptance criteria
+## 11. Acceptance evidence
 
-- [ ] Someone else can run the pipeline from the repo instructions, locally on a sample and on the VM.
-- [ ] Every processed row keeps sensor, satellite, product version and time reference.
-- [ ] The same filters and clip are applied to every sensor.
-- [ ] Factors come only from calibration years; test years are untouched until the final table.
-- [ ] Validation table with baselines, plus the before/after-2012 chart, exist in `artifacts/`.
-- [ ] Estimated months are labeled and carry an interval.
-- [ ] Docs state: detection ≠ fire ≠ burned area; no cross-sensor temperature or confidence equivalence.
-- [ ] `calendar/v1` feeds the dashboard with no hidden manual steps.
+The board accepts H1–H13. These statements refer to the recorded runs, not a new validation at every commit.
+
+| Criterion | Recorded evidence and qualification |
+|---|---|
+| Reproducible pipeline | H13 clean-clone report and VM audit; full run at `5286248`, not the latest code |
+| Provenance and filtering | H3 QA, manifests and methodology; sensor-specific confidence and explicit untyped-NRT exception |
+| Calibration/test separation | 2012–2019 calibration, 2020–2021 development, frozen 2022–2023 final test |
+| Baselines and transition figure | `artifacts/metrics/` and `artifacts/figures/`; qualified claims in methodology |
+| Labels and intervals | Calendar origin fields and estimate intervals; D10/D12 UI evidence |
+| Dashboard integration | Published `calendar/v1`, model `fb-l1-terra-rec-4`; release 00008 evidence |
+| Limits and credits | Methodology, resources and How to read; no cross-sensor temperature/confidence equivalence |
 
 ## 12. Not in the MVP (documented as future work)
 
@@ -283,7 +290,24 @@ Each command runs locally on a sample and on the VM on the full extent, and writ
 
 - Estimates for the MODIS-only years cannot recover fires MODIS never saw; `B` is an average background, not
   observed fire.
-- Terra and Aqua orbits have drifted in recent years (to verify in NASA notices); calibration stops in 2019 for
-  that reason.
+- Orbit drift and satellite gaps are qualified against the mission notices linked in the methodology.
+  Calibration ends in 2019; 2024–2025 conversion bias is reported separately and does not replace observed VIIRS.
 - CSV hotspots carry no "observed, no fire" information.
 - The 2012–2019 sensor relation is assumed to hold for 2002–2011.
+
+
+## 14. Accepted evidence and maintenance
+
+H1–H13 are marked complete in [tasks.md](../tasks.md). This status does not expand the reproduction scope:
+the complete clean-clone reproduction ran at commit `5286248`; early-years and 2026 ingestion were rerun on
+newer code with matching counts, but the entire pipeline was not rerun on the latest commit.
+See [H13 evidence](../methodology.md#reproducibility-and-evidence-status) and its audit links.
+
+The historical H3 QA package covers 2003–2025; do not confuse its counts with early-year or 2026 additions.
+2026 standard processing covers January–July; August onward is provisional NRT, with missing type retained as null.
+Coverage gaps are inferred from detection deficits, not a complete observation mask.
+Terra-only 2000–June 2002 reconstruction is not published because its backward relation was unstable.
+
+When integrated code changes the method, filters, reference period or metrics, regenerate the relevant artifacts
+and cite the exact run/commit before updating accepted claims. Open PRs and experimental branches are proposals,
+not replacement scientific results. Keep this specification in English.
