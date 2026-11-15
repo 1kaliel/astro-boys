@@ -1,114 +1,117 @@
-# Spec: web app and burning calendar (Team Dashboard)
+# Spec: FIREWATCHER web app and burning calendar
 
-**Status: plan v2, locked in.** Stack: **option A, FastAPI backend + single-page frontend** (team decision,
-Sat Nov 14); the frontend framework is the owners' call. Owners: Guilherme (map, backend) and Cleber (calendar,
-charts, backend); Jean floats. The default map view is the pilot extent, Northeast Brazil.
-Data comes from [`calendar/v1`](../data-dictionary.md#1-processedcalendarv1--the-dashboards-main-table).
+**Status:** implemented baseline synchronized with main `0b8dbdd5a21422ab30d3c53db0333d77367fd204`
+on 15 November 2026. This is an evidence snapshot, not a claim that later commits are deployed.
+After this snapshot, PRs 82, 85, 88 and 90 redesigned the app (landing page with a globe, map-first
+explorer with a sidebar and timeline, day view of native detections, FIREWATCHER logo); those screens are
+described in [submission.md](../submission.md), not in the sections below.
+Owners: Guilherme (map/backend), Cleber (calendar/charts/backend), Jean (UI wording, screenshots, S2 demo).
+Stack: FastAPI + DuckDB, React + TypeScript + Vite, MapLibre GL JS and nivo; one container serves API and frontend.
 
-## 1. Who it's for and what it answers
+## 1. Purpose and scope
 
-Emergency managers, land managers and scientists. For an area they choose:
+Explore historical hotspot activity in the Northeast Brazil bounding box. The calendar covers July 2002 through
+November 2026, with observations through 14 November. Users select an area and period to examine seasonal peaks,
+the current month against its historical median, anomalies, and instrument differences.
 
-1. Which months and years had the most fire activity?
-2. How does this month compare with the historical median?
-3. Is the long-term picture consistent across the MODIS and VIIRS eras?
+This is an exploratory prototype. A hotspot is a satellite detection, not a fire count or burned area.
+No forecast, risk probability, early-warning service or emergency-decision claim is made.
 
-## 2. Screen
+## 2. Current screen and data flow
 
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│ Area [draw / bbox / lat,lon]   Period [2003–2026]   Day|Night|All  │
-│ Scale [Harmonized | Raw by sensor]          Metric [Count|Anomaly] │
-├──────────────────────────┬─────────────────────────────────────────┤
-│ MAP (grid cells, month   │ CALENDAR  year × 12 months heatmap      │
-│ selected in the calendar)│ estimated years hatched / outlined      │
-│ click a cell → drill-down│ click a square → map shows that month   │
-├──────────────────────────┴─────────────────────────────────────────┤
-│ Seasonal profile (p10–p90 band + chosen year) │ Trend: raw vs harm.│
-├────────────────────────────────────────────────────────────────────┤
-│ This month vs median · How to read · Limitations · Sources · CSV   │
-└────────────────────────────────────────────────────────────────────┘
-```
+The app bar identifies FIREWATCHER and the Northeast Brazil pilot. Shared state links the area, year range,
+selected month, day/night period and calendar scale. The map, calendar, headline indicators, seasonal profile,
+trend and exports use that selection.
 
-One shared state `{area, cells, period, year, month, scale}` drives every view.
+| Component | Implemented behavior | Evidence |
+|---|---|---|
+| Area | Rectangle drawing, typed bounds, use visible area, reset to the pilot; resolves overlapping L2 cells | D3/D7; PRs 69/71 |
+| Period | Year range and selected month; all/day/night | D5/D9 |
+| Calendar | Year by month; harmonized, raw by sensor and anomaly views; estimated, partial and missing states distinguished | D4/D9 |
+| Map | L2 counts, Flat/Globe, study-area boundary, zoom focus and readable basemap labels | PRs 69/71; revision 00008 captures |
+| Current-month comparison | Partial month compared with the same elapsed days in historical years | D5 |
+| Charts | Raw versus harmonized trend; seasonal profile; intervals for estimates | D9; methodology |
+| Native export | Normalized, filtered detections with satellite/product provenance; large exports have an explicit limit | D6; PR 76 |
+| Calendar/chart export | Monthly CSV with interval/provenance columns; SVG and PNG chart images | PR 75 |
+| Help | English How to read, limitations, method, source and FIRMS disclaimer links | D10 validation |
+| Drill-down | Native detections only, L2 to 16 L3 positions, neighboring cells and stop rules | D11; D12 capture 11 |
 
-## 3. Requirements
+The map colors show counts in angular cells, not equal-area density. Harmonized estimates are never subdivided
+into L3 observations. Native sensor counts are not added across satellites.
 
-### Must (MVP, deployed by Sun 11:00 local)
+## 3. Implemented requirements and remaining scope
 
-- [ ] **Area selection:** draw a rectangle on the map, or type lat/lon bounds (or a point + radius). The area
-      resolves to the L2 cells it covers.
-- [ ] **Date range** selector.
-- [ ] **Burning calendar:** heatmap of year × month with `count_harmonized` summed over the area.
-      Color-blind-safe sequential ramp (e.g. viridis or cividis), with a legend and numbers on hover.
-- [ ] **Estimated months are visibly different** from observed ones (hatch or outline), with a legend:
-      "estimated from MODIS" vs "observed by VIIRS".
-- [ ] **This month vs historical median** for the area, marked "partial month" when it is.
-- [ ] **Map** of L2 cells for the selected month, with scale, legend, source and period.
-- [ ] **CSV download** of native hotspots in the area and date range, with provenance columns.
-- [ ] **How to read / limitations / sources** panel: detection ≠ fire ≠ burned area; estimates before 2012;
-      NASA FIRMS credit and disclaimer link.
-- [ ] Loading, empty and error states. All text in **English**.
-- [ ] Public URL on Cloud Run that opens with no login; `/healthz` returns 200.
+### Must: delivered baseline
 
-### Should (before the freeze, Sun 15:00)
+- [x] Area selection through rectangle, bounds or visible map area; date selection.
+- [x] Calendar with legend, values and distinct estimated/observed, missing and partial-month states.
+- [x] Current month versus historical median, with elapsed-day handling.
+- [x] L2 map linked to the calendar.
+- [x] Native-detection CSV with provenance and explicit errors/limits.
+- [x] English explanations, loading/empty/error states and source credits.
+- [x] Public Cloud Run application; production probes use `/api/healthz` and `/api/version`.
+      The container also exposes `/healthz`, but that root path is reserved on the run.app host.
 
-- [ ] Raw vs harmonized toggle and trend chart (shows the false 2012 step disappearing).
-- [ ] Uncertainty band or error bars for estimated months.
-- [ ] Day / night / all toggle.
-- [ ] Anomaly mode: calendar colored by robust z-score with a diverging color-blind-safe ramp.
-- [ ] Seasonal profile: p10–p90 band, median, selected year.
-- [ ] Download of the calendar table and chart images.
-- [ ] Free polygon drawing.
+Completion is the recorded D1–D10 acceptance, not a fresh usability or accessibility certification.
 
-### Stretch (only after Checkpoint B)
+### Should
 
-- [ ] **AGGS drill-down:** click an L2 cell to subdivide it 4×4 into L3 cells showing native detections, with
-      the neighboring cells for context, and stop rules (max depth L3, minimum detections).
-- [ ] AGGS priority index (0–100, L/M/H/H+) per cell ❓ Q8. Product score, not a probability and not a NASA threshold.
-- [ ] Filters by biome or municipality (needs IBGE boundaries).
-- [ ] VIIRS → MODIS scale as an alternative display.
+- [x] Raw-by-sensor comparison and trend; day/night/all; anomaly view.
+- [x] Estimated-month uncertainty and seasonal profile.
+- [x] Calendar CSV and chart SVG/PNG downloads (PR 75, included in revision 00008).
+- [ ] Free polygon drawing. Rectangle selection is delivered; arbitrary polygons and point-radius selection
+      are not claimed.
 
-### Not building
+The raw comparison illustrates sensor differences. Harmonization does not prove that every change around 2012
+is artificial. The seasonal profile's usual historical range and an estimate's 90% interval are different
+quantities; wording must follow [methodology.md](../methodology.md).
 
-Image upload / georeferencing, fire-spread inference, prediction or alerts.
+### Stretch
 
-## 4. Rules the UI must follow
+- [x] L3 native drill-down and neighbors (D11): maximum depth L3; subdivision requires at least five detections.
+- [ ] AGGS priority index, biome/municipality filters, inverse VIIRS-to-MODIS display.
+- [ ] National or global product. Showing the whole globe does not extend the processed study area.
 
-- Say "hotspots" or "fire activity", never "fires" or "burned area", for counts.
-- Sum cells first, then compute medians and anomalies (see the data contract).
-- The map must not suggest more precision than the data: estimates only at L2 or coarser.
-- Never show an index or z-score as a probability of fire.
-- Show sensor, period, unit and source on every chart. AI-generated images need a visible watermark.
+Image uploads, fire-spread inference and prediction remain outside scope.
 
-## 5. Architecture: option A chosen
+## 4. Export and scientific contracts
 
-Options B and C stay documented as fallbacks for Checkpoint A. All fit the Cloud Run container contract
-([deploy/cloudrun/README.md](../../deploy/cloudrun/README.md)).
+- Sum the selected cells before computing area medians/anomalies.
+- Preserve period, unit, source, satellite and model version. Missing is not zero; no detection is not no fire.
+- Historical filters use presumed vegetation type and nominal/high confidence. Untyped 2026 NRT records keep
+  `type = null` and enter provisional counts under the documented exception.
+- Native CSV and the harmonized calendar CSV are different products. Native counts carry no harmonized interval.
+- `/api/hotspots/count` returns an exact count only when `over_limit = false`; otherwise `rows` is a lower bound.
+- Export images carry titles, units, area, period, source and model information.
+- User-drawn-area intervals are approximate; preserve the visible qualification.
+- Never present a z-score or product threshold as a NASA probability or threshold.
 
-| Option | Shape | For | Against |
-|--------|-------|-----|---------|
-| A. API + SPA | FastAPI + DuckDB reading Parquet; frontend in the framework the team knows (Angular or React), MapLibre/Leaflet + a chart library | Area queries and CSV export are simple SQL on the server; scales to large extents | Two pieces to build and integrate overnight |
-| B. Static + in-browser | Pre-exported JSON/Parquet per L1 tile; Leaflet + Plotly; served by a tiny static container | Fewest moving parts; works offline | CSV of native hotspots needs pre-cut files; big extents get heavy |
-| C. Single Python app | Streamlit or Dash + DuckDB | Fastest to a working demo with one language | Less control over the UI; drawing tools are more limited |
+Dataset schemas: [data dictionary](../data-dictionary.md). Calendar/map/chart source:
+`processed/calendar/v1`; native export/drill-down: `processed/hotspots/v1`.
+Synthetic fixtures are development aids and must remain visibly identified.
 
-With option A, serve the built frontend from the same FastAPI container (one image, one Cloud Run service) so
-there is a single deploy. If no calendar is on screen at Checkpoint A (Sat 23:00), fall back to option C.
+## 5. Release and acceptance evidence
 
-## 6. Functional contract with the data
+The last release documented in the synchronized main is **astro-dashboard-00008-m2v**, image **3957039**,
+approved by Kali. The D12 validation record (team-internal, removed before submission) lists the final captures and API/browser checks.
+D11/D12 in the team task board (removed before submission) are complete.
 
-| Need | Source |
-|------|--------|
-| Calendar, trend, anomalies, map | `processed/calendar/v1` (columns in the data dictionary) |
-| CSV of hotspots, L3 drill-down | `processed/hotspots/v1` |
-| "About the method" numbers | `artifacts/{run_id}/validation.json` |
-| Build before real data exists | The mock `calendar` sample with identical columns |
+- Observed drill-down example: G083135.16, September 2013, S-NPP, 639 native detections, 16 L3 positions and neighbors.
+- Captures 01–08 are revision 00006; 09–19 are revision 00008; 20 is the earlier local offline run.
+- Offline fallback: [runbook](../../deploy/local/run-offline.sh) and a test record (team-internal, removed before submission).
+  No external basemap offline; native CSV serves only years present locally. Partly covered ranges remain a limitation.
+- Not verified: a physical phone, Safari/Firefox, screen-reader use or a formal contrast audit.
+- A timed test proving that a new user finds the peak month in under two minutes has not been recorded.
+- A complete private-window submission walkthrough remains S5; individual live tests do not close it.
+- This documentation update does not repeat browser, offline or scientific tests.
 
-## 7. Acceptance criteria
+## 6. Proposed changes and maintenance
 
-- [ ] Changing area or period updates every view.
-- [ ] A new user finds the peak fire month of the demo region in under two minutes.
-- [ ] Estimated vs observed is obvious without reading the docs.
-- [ ] Decade comparisons don't hide the sensor change; the raw toggle shows it.
-- [ ] The demo runs start to finish with no manual prep, from the public URL, in a private window.
-- [ ] Fallback exists: the same container runs locally from `data/`, plus screenshots in `artifacts/screenshots/`.
+At this snapshot, PR 82 is an unmerged UX/native-filter proposal. Its thermal ramp, FRP/confidence controls,
+KPI evidence panels, sensor-layer selector and ten-year initial range are not part of this accepted baseline.
+Work merged into `teste-visual` is also not automatically in main or production.
+
+When GitHub changes, update this spec using the exact merged commit, task acceptance, test report and deployment
+revision. Distinguish planned, integrated, deployed and verified. Keep everything in English; record scientific
+changes in the methodology/artifacts, preserve limitations, and append the decision in the diary.
+Future merges do not update this document automatically.
