@@ -1,6 +1,6 @@
 """The calendar baked into the image (task D8): check it at build time and record what it is.
 
-Only `processed/calendar/<version>` goes into the image (about 24 MB). It enters through a named build
+Only `processed/calendar/<version>` goes into the image (about 71 MB). It enters through a named build
 context (`docker build --build-context calendar=data/processed/calendar/v1`, see deploy/cloudrun/deploy.sh),
 so the data never goes into git or into the app/ build context. The native hotspots (hotspots/v1, 883 MB)
 stay in the bucket.

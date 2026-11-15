@@ -3,7 +3,7 @@
 # The calendar is baked into the image (D8). It comes in as a named build context, never from git or app/:
 #   docker build -t astro-dashboard \
 #     --build-context calendar=data/processed/calendar/v1 --build-arg MODEL_VERSION=<model_version> app/
-# deploy/cloudrun/deploy.sh does this. Only the calendar (~24 MB): hotspots/v1 (883 MB) stays in the bucket (D6).
+# deploy/cloudrun/deploy.sh does this. Only the calendar (~71 MB): hotspots/v1 (883 MB) stays in the bucket (D6).
 # An image without data (skeleton checks only): docker build --build-arg ALLOW_NO_CALENDAR=1 app/
 
 # Stage 0: the calendar files. Empty unless --build-context calendar=<folder> replaces this stage.

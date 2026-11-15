@@ -17,7 +17,7 @@ Whatever the stack (Python, Node, static site behind a tiny server…), the imag
      works offline too. Rebuild the image when the data version changes.
    Option B is recommended for the demo if the aggregates are small; A if users query raw hotspots over large areas.
 
-   **Chosen (D8):** the calendar (`processed/calendar/v1`, ~24 MB) is **baked in (B)**; the native hotspots for the
+   **Chosen (D8):** the calendar (`processed/calendar/v1`, ~71 MB) is **baked in (B)**; the native hotspots for the
    CSV download (`hotspots/v1`, 883 MB) are **read from the bucket (A)** in D6. Conditions agreed with Kali: the
    calendar enters only at build time (a named build context from the git-ignored `data/`, never git), the image
    records its `model_version` (label `astro.model_version`, env `ASTRO_MODEL_VERSION`, `/api/version`), and
@@ -31,7 +31,7 @@ Put the app in [`app/`](../../app/) with its `Dockerfile` there (or set `APP_DIR
 ## Run the container locally first
 
 ```bash
-APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1        # local copy in data/ (git-ignored), ~24 MB
+APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1        # local copy in data/ (git-ignored), ~71 MB
 MODEL=$(cd app/backend && uv run --project .. python -m astro_dashboard.bake --print-model-version \
   ../../data/processed/calendar/v1)
 docker build -t astro-dashboard --build-context calendar=data/processed/calendar/v1 \

@@ -111,7 +111,7 @@ are added to CI (open decision for the team).
 Full runbook: [deploy/cloudrun/README.md](../deploy/cloudrun/README.md).
 
 The calendar is **baked into the image** (D8). It comes in as a named build context from the git-ignored `data/`,
-so it never enters git or the `app/` build context. Only the calendar (~24 MB); `hotspots/v1` stays in the bucket.
+so it never enters git or the `app/` build context. Only the calendar (~71 MB); `hotspots/v1` stays in the bucket.
 
 ```bash
 APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1        # from the repo root
