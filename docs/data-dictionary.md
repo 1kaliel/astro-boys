@@ -333,6 +333,32 @@ First version for **Ceará** (`uf = ce`; any other state is a 404). Two sources,
 - **Colors.** Fixed classes of the feels-like temperature (22, 24, 26, 28, 30, 32 degrees C) on the cool weather ramp. They
   split the range and are not comfort or alert thresholds; no color means danger.
 
+### Daily native detections of one sensor (`GET /api/hotspots/daily`)
+
+The Skyline view of the calendar. Request: `sensor` (one of `SNPP`, `N20`, `Aqua`, `Terra`; never a sum of two), `start`,
+`end` (the local solar dates), the box (`west`, `south`, `east`, `north`) and `period` (`ALL`, `D` or `N`). The same cells,
+the same main filter and the same local-date rule as the count endpoint. Answer: `sensor`, `sensor_name`, `period`,
+`start`, `end`, `cells`, `days`, `missing_days` and `coverage_checked`:
+
+- `days` (`date`, `count`): the days the sensor was observing that have detections.
+- `missing_days` (`date`, `status`, `count`): every day of the range on which the sensor was **not observing**, from
+  [`coverage_daily`](#5-processedcoverage_dailyv1-and-processedcoverage_monthlyv1) (status per satellite and day, for the
+  whole extent): `missing` (an outage) or `not_operating` (before its first or after its last record, or outside the
+  period of the table). These days are **no data, never zero**: they are not in `days`, and `count` holds any detections
+  recorded on them anyway (a partial pass), which are not to be counted. The chart draws them hatched. For S-NPP in
+  2013–2025 there are 35 such days (15 in 2022, 20 in 2024).
+- `coverage_checked`: `false` when `coverage_daily` could not be read (then `missing_days` is empty). The answer is
+  still given, but no day without detections is then a verified zero: the chart draws those days as "no data, not
+  verified" and says so above the chart.
+
+A day of the range that is in neither list is a **measured zero** of that sensor, and only when `coverage_checked` is
+`true`. The coverage table is read from `$ASTRO_COVERAGE_ROOT`, by default the sibling of the hotspots root
+(`.../processed/hotspots/v1` → `.../processed/coverage_daily/v1`, the bucket on Cloud Run), and kept in memory for six
+hours per instance (a failed read is retried after a minute).
+
+These are **native** counts (not harmonized). The series must not be compared with the MODIS years, nor summed across
+sensors. Answers are cached for six hours per request.
+
 ## API shape (if the app has a backend)
 
 Suggested, not mandatory; the functional contract is what matters ([spec/dashboard.md](spec/dashboard.md)).

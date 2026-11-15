@@ -1,0 +1,149 @@
+/*
+ * Skyline (components/viz/ContributionSkyline.tsx): the daily hotspot view of the calendar. Tokens only, no raw values.
+ * Adapted from the MIT-licensed "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (notice in
+ * components/viz/ContributionSkyline.LICENSE.txt, credit in docs/resources.md); the Tailwind classes of the original
+ * are written here with the project's own tokens.
+ */
+.skyline {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.skyline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.skyline-title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.skyline-toggle {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.skyline-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.skyline-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  max-width: none;
+  outline: none;
+  touch-action: pan-y;
+}
+
+.skyline-canvas:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.skyline-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: var(--layer-raised);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-text-primary);
+  color: var(--color-page);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity var(--duration-fast);
+}
+
+.skyline-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--arrow, 50%);
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--color-text-primary);
+}
+
+.skyline-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.skyline-stats > div {
+  min-width: 0;
+}
+
+.skyline-stats dt {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.skyline-stats dd {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.skyline-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.skyline-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.skyline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Zero and no data reuse the calendar's chips (calendar.css), so the Skyline and the calendar share one key. */
+.skyline-chip {
+  font-style: normal;
+}
+
+.skyline-swatch {
+  display: inline-block;
+  width: var(--size-swatch);
+  height: var(--size-swatch);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 40rem) {
+  .skyline-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skyline-tip {
+    transition: none;
+  }
+}

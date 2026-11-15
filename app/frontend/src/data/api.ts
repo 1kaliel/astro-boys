@@ -263,3 +263,41 @@ export type MonthFieldPoint = {
 };
 
 export const weatherMonthUrl = (year: number, month: number) => `/api/weather/month?year=${year}&month=${month}`;
+
+/** Daily native detections of one sensor in an area (`/api/hotspots/daily`), for the Skyline view. */
+export type DailyHotspotsResponse = {
+  sensor: string;
+  sensor_name: string;
+  period: Period;
+  start: string;
+  end: string;
+  cells: number;
+  /**
+   * Native (not harmonized) counts of one sensor, on the days it was observing. A day of the range that is in neither
+   * list is a measured zero, but only when `coverage_checked` is true.
+   */
+  days: { date: string; count: number }[];
+  /** Days the sensor was not observing (coverage_daily): no data, never zero. `count`: detections recorded anyway. */
+  missing_days: { date: string; status: "missing" | "not_operating"; count: number }[];
+  /** False when the coverage could not be read: then no day without detections is a verified zero. */
+  coverage_checked: boolean;
+};
+
+export function hotspotsDailyUrl(
+  sensor: string,
+  area: { west: number; south: number; east: number; north: number },
+  year: number,
+  period: Period,
+): string {
+  const params = new URLSearchParams({
+    sensor,
+    start: `${year}-01-01`,
+    end: `${year}-12-31`,
+    period,
+    west: String(area.west),
+    south: String(area.south),
+    east: String(area.east),
+    north: String(area.north),
+  });
+  return `/api/hotspots/daily?${params}`;
+}
