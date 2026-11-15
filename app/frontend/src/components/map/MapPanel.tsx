@@ -49,8 +49,9 @@ export default function MapPanel() {
   const drillData = drillLoad?.status === "ready" && drillLoad.data.cell === drillCell ? drillLoad.data : null;
   const l3Breaks = useMemo(() => (drillData ? drillBreaks(drillData.l3.map((c) => c.count)) : []), [drillData]);
   const drill = useMemo(
-    (): DrillView | null => (drillCell ? { cell: drillCell, data: drillData, breaks: l3Breaks } : null),
-    [drillCell, drillData, l3Breaks],
+    (): DrillView | null =>
+      drillCell ? { cell: drillCell, data: drillData, breaks: l3Breaks, failed: drillLoad?.status === "error" } : null,
+    [drillCell, drillData, l3Breaks, drillLoad?.status],
   );
 
   const onDrill = useCallback(

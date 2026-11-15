@@ -74,7 +74,7 @@ function useBasemap(scheme: ColorScheme): { style: StyleSpecification | null; of
 
 /** The drill-down on screen: the L2 cell, the API answer once it is in (null while loading or on error), and the
  * class limits of its L3 counts. */
-export type DrillView = { cell: string; data: DrilldownResponse | null; breaks: readonly number[] };
+export type DrillView = { cell: string; data: DrilldownResponse | null; breaks: readonly number[]; failed: boolean };
 
 type CellMapProps = {
   mapRef: RefObject<MapRef | null>;
@@ -268,7 +268,13 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
           />
         </Source>
         <Source id="area" type="geojson" data={areaData}>
-          <Layer id="area-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }} />
+          {/* Hidden in the drill-down too: the same ink outline marks the drilled cell there. */}
+          <Layer
+            id="area-line"
+            type="line"
+            layout={{ visibility: drill ? "none" : "visible" }}
+            paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }}
+          />
         </Source>
         {/* Drill-down, native detections only. Always mounted (empty outside it), so the layers the pointer reads exist. */}
         <Source id="drill-block" type="geojson" data={blockData}>
@@ -289,6 +295,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDril
           <Layer id="drill-target-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }} />
         </Source>
         {drill &&
+          !drill.failed &&
           labels.map((p) => {
             const b = cellBounds(p.id);
             return (

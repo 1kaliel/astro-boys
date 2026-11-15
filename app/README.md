@@ -29,6 +29,7 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
   the historical median and anomalies of the sum (see [Calendar API](#calendar-api)).
 - D3 map and area selection: `GET /api/cells` (see [Map API](#map-api)), rectangle drawing, visible map area, lat/lon
   bounds. The map is a separate chunk, loaded on demand (collapsed on phones).
+- D11 L3 drill-down on the map: click a cell for the native detections of its 16 sub-cells (see [Map API](#map-api)).
 - D4 burning calendar: year × month heatmap that reads the API.
 - D8 (image): the calendar is baked into the image at build time, with its `model_version` (see [Container](#container-same-contract-as-cloud-run)).
 - Dashboard layout: app bar, filter bar, KPI row (reads the same calendar answer as the heatmap), calendar and map.
@@ -117,6 +118,13 @@ ID (`lib/grid.ts`). Which cells belong to an area uses the same overlap rule as 
 calendar always talk about the same cells. `simulated: true` means the simulated table (`model_version` starting with
 `MOCK`): the UI shows a banner, and those numbers must never appear in a figure, the demo or the submission. Responses
 are gzip-compressed.
+
+**L3 drill-down (D11).** A click on a cell of the map calls `GET /api/drilldown?cell=<L2 id>&year=&month=&period=`
+and shows the cell's 16 sub-cells (0.0625°, about 7 km) with the **native** detections of the month's source satellite,
+plus the 8 neighboring 0.25° cells (outlined, with their native count) for context. The harmonized layer is hidden
+meanwhile: estimates exist only at 0.25°. A cell with fewer than 5 detections is not subdivided (stop rule); L3 is the
+deepest level. "Back to L2 cells" or Escape returns. Geometry from the IDs alone (`l3Bounds`, `l3Children`,
+`neighborsOf` in `lib/grid.ts`).
 
 Frontend without a backend: `VITE_CALENDAR_SOURCE=fixture npm run dev` reads a small file of **synthetic** numbers
 (rebuilt by `scripts/build_calendar_fixture.py`) and labels it "Simulated data".
