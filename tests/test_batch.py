@@ -122,3 +122,29 @@ def test_ingest_api_rejects_missing_day_before_writing_partitions(tmp_path, monk
     with pytest.raises(ValueError, match="VIIRS_SNPP_SP is missing CSV coverage.*2026-01-04"):
         batch.ingest_api(settings, 2026)
     assert not (tmp_path / "processed").exists()
+
+
+def test_brazil_extent_keeps_detections_outside_the_northeast(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASTRO_EXTENT", "brazil")
+    settings = get_settings(astro_data_root=str(tmp_path), duckdb_temp_dir=str(tmp_path / "tmp"))
+    assert settings.extent == "brazil" and settings.redacted()["extent"] == "brazil"
+    assert batch.extent_bbox(settings) == batch.EXTENTS["brazil"]
+    archive_dir = tmp_path / "raw/firms/global/modis"
+    archive_dir.mkdir(parents=True)
+    northeast = "-9,-44,305,1,1,2012-06-10,1500,Aqua,MODIS,80,6.2,295,7,D,0\n"
+    amazon = northeast.replace("-9,-44", "-9,-62")  # Rondônia: outside the pilot box, inside Brazil
+    with ZipFile(archive_dir / "modis_2012_all_countries.zip", "w") as archive:
+        archive.writestr("modis/2012/modis_2012_Brazil.csv", MODIS_HEADER + northeast + amazon)
+    with ZipFile(archive_dir / "modis_2013_all_countries.zip", "w") as archive:  # read for local dates
+        archive.writestr("modis/2013/modis_2013_Brazil.csv", MODIS_HEADER)
+
+    ingest = batch.ingest(settings, (2012, 2012), ["Aqua"])
+    assert ingest["rows"] == 2
+    assert ingest["rows_outside_bbox_dropped"] == 0
+
+
+def test_unknown_extent_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASTRO_EXTENT", "mars")
+    settings = get_settings(astro_data_root=str(tmp_path))
+    with pytest.raises(ValueError, match="ASTRO_EXTENT"):
+        batch.extent_bbox(settings)

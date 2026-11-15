@@ -1,4 +1,9 @@
-"""Ingest historical FIRMS files and aggregate native Northeast hotspot counts."""
+"""Ingest historical FIRMS files and aggregate native hotspot counts of the configured extent.
+
+The extent is `ASTRO_EXTENT`: `northeast` (the pilot, default) or `brazil` (the whole country). The historical
+archives are already one CSV per country (Brazil), so the box only trims; the FIRMS area API answers by box,
+so for `brazil` its rows are also limited to cells where the historical Brazil files have detections.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +25,20 @@ ARCHIVES = {
 }
 SATELLITES = ("Aqua", "Terra", "SNPP", "N20")
 LAST_ARCHIVE_YEAR = 2025
-BBOX = (-48.8, -18.4, -34.7, -1.0)
+BBOX = (-48.8, -18.4, -34.7, -1.0)  # the Northeast pilot (docs/spec/harmonization.md)
+EXTENTS = {
+    "northeast": BBOX,
+    # Mainland Brazil and its islands (Fernando de Noronha, Trindade): west, south, east, north.
+    "brazil": (-74.0, -34.0, -28.0, 6.0),
+}
+
+
+def extent_bbox(settings: Settings) -> tuple[float, float, float, float]:
+    try:
+        return EXTENTS[settings.extent]
+    except KeyError:
+        names = ", ".join(EXTENTS)
+        raise ValueError(f"ASTRO_EXTENT must be one of {names}, not {settings.extent!r}") from None
 
 # Keep file row order for the stable source ID, even if DuckDB changes its scan parallelism.
 DEDUPLICATE_SQL = """
@@ -154,8 +172,9 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
     manifest = Manifest(new_run_id("ingest"), "ingest", settings.redacted())
     duplicates_by_file: dict[str, int] = {}
     outside_bbox_by_file: dict[str, int] = {}
+    bbox = extent_bbox(settings)
     manifest.checks = {
-        "local_years": years, "satellites": satellites, "bbox": BBOX,
+        "local_years": years, "satellites": satellites, "extent": settings.extent, "bbox": bbox,
         "exact_duplicate_rows_by_file": duplicates_by_file,
         "rows_outside_bbox_by_file": outside_bbox_by_file,
     }
@@ -170,7 +189,7 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
             start = max(start, min(availability[satellite] for satellite in selected))
             instrument = "MODIS" if sensor == "modis" else "VIIRS"
             mir, tir = ("brightness", "bright_t31") if sensor == "modis" else ("bright_ti4", "bright_ti5")
-            west, south, east, north = BBOX
+            west, south, east, north = bbox
             for year in range(max(first, start), min(last + 1, LAST_ARCHIVE_YEAR) + 1):
                 source, csv = _source(settings, sensor, year, staging)
                 print(f"Ingesting {csv.name}", flush=True)
@@ -230,7 +249,7 @@ def aggregate(settings: Settings) -> dict:
         con.sql(AGGREGATE_SQL.format(eligible_type="type = 0"), params=[scan]).create("monthly_counts")
         rows = con.execute("SELECT count(*) FROM monthly_counts").fetchone()[0]
         if rows == 0:
-            raise ValueError("no Northeast hotspots passed the main filter")
+            raise ValueError(f"no {settings.extent} hotspots passed the main filter")
         manifest.checks = {"coverage": con.execute("""
             SELECT satellite, min(year), max(year), count(DISTINCT year)
             FROM monthly_counts GROUP BY satellite ORDER BY satellite
@@ -264,8 +283,10 @@ def _api_files(settings: Settings, source: str) -> list[Path]:
     return sorted(root.glob("*/*.csv")) if root.is_dir() else []
 
 
-def _check_api_2026_coverage(files: dict[str, list[Path]]) -> None:
-    bbox_dir = "_".join(map(str, BBOX))
+def _check_api_2026_coverage(
+    files: dict[str, list[Path]], bbox: tuple[float, float, float, float] = BBOX
+) -> None:
+    bbox_dir = "_".join(map(str, bbox))
     for source, (first, last) in API_2026_WINDOWS.items():
         covered = set()
         for path in files[source]:
@@ -295,16 +316,22 @@ def ingest_api(settings: Settings, year: int) -> dict:
     """
     if settings.is_remote:
         raise ValueError("use a local data root, then publish the partitions")
-    files = {f"{prefix}_{kind}": _api_files(settings, f"{prefix}_{kind}")
-             for prefix in API_SOURCES for kind in ("SP", "NRT")}
+    bbox = extent_bbox(settings)
+    bbox_dir = "_".join(map(str, bbox))
+    # Only the chunks requested for this extent's box (the folder name is the box).
+    files = {
+        f"{prefix}_{kind}": [p for p in _api_files(settings, f"{prefix}_{kind}") if p.parent.name == bbox_dir]
+        for prefix in API_SOURCES
+        for kind in ("SP", "NRT")
+    }
     if year == 2026:
-        _check_api_2026_coverage(files)
+        _check_api_2026_coverage(files, bbox)
     version = settings.dataset_version
     hotspots_root = Path(storage.uri(settings, "processed", "hotspots", version))
     hotspots_dir = hotspots_root / "instrument=VIIRS" / f"year={year}"
     counts_dir = Path(storage.uri(settings, "processed", "cell_month_counts", version)) / f"year={year}"
     manifest = Manifest(new_run_id("ingest-api"), "ingest-api", settings.redacted())
-    west, south, east, north = BBOX
+    west, south, east, north = bbox
     summary: dict[str, dict] = {}
     with tempfile.TemporaryDirectory(prefix="astro_api_") as temp, storage.connect(settings) as con:
         staging = Path(temp)
@@ -345,6 +372,16 @@ def ingest_api(settings: Settings, year: int) -> dict:
                 INGEST_SQL.format(mir="bright_ti4", tir="bright_ti5", eligible_type=API_ELIGIBLE_TYPE),
                 params=[name, west, east, south, north, satellites, instrument, year, year, name],
             )
+            if settings.extent == "brazil":
+                # The area API answers by box, which takes in parts of the neighbours: keep the cells where
+                # the historical (per-country) Brazil files have detections. Border cells keep a few
+                # foreign pixels.
+                known = (hotspots_root / "**" / "*.parquet").as_posix().replace("'", "''")
+                rows.create_view("api_rows", replace=True)
+                rows = con.sql(
+                    "SELECT * FROM api_rows WHERE cell_l2 IN (SELECT DISTINCT cell_l2 FROM "
+                    f"read_parquet('{known}', hive_partitioning = true) WHERE year < {int(year)})"
+                )
             rows.write_parquet(str(shards / f"{sensor}.parquet"), compression="zstd")
             summary[prefix] = {"files_sp": len(sp), "files_nrt": len(nrt), "raw_rows": raw_rows,
                                "raw_rows_nrt": nrt_rows, "exact_duplicates_dropped": int(duplicates)}

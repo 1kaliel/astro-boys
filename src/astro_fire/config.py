@@ -35,6 +35,7 @@ class Settings:
     duckdb_threads: int | None
     duckdb_temp_dir: str
     dataset_version: str
+    extent: str = "northeast"  # the clip of the pipeline: "northeast" (the pilot) or "brazil"
 
     @property
     def is_remote(self) -> bool:
@@ -49,6 +50,7 @@ class Settings:
             "duckdb_threads": str(self.duckdb_threads or "auto"),
             "duckdb_temp_dir": self.duckdb_temp_dir,
             "dataset_version": self.dataset_version,
+            "extent": self.extent,
         }
 
 
@@ -66,4 +68,5 @@ def get_settings(**overrides: str) -> Settings:
         duckdb_threads=int(threads) if threads else None,
         duckdb_temp_dir=env.get("DUCKDB_TEMP_DIR") or str(REPO_ROOT / "data" / "interim" / ".duckdb_tmp"),
         dataset_version=env.get("ASTRO_DATASET_VERSION") or "v1",
+        extent=(env.get("ASTRO_EXTENT") or "northeast").strip().lower(),
     )
