@@ -7,7 +7,8 @@ export type Bounds = { west: number; south: number; east: number; north: number 
 
 /** Pilot extent: Northeast Brazil MVP clip (docs/spec/harmonization.md). */
 export const PILOT_BOUNDS: Bounds = { west: -48.8, south: -18.4, east: -34.7, north: -1.0 };
-export const FIRST_YEAR = 2003;
+// calendar/v1 starts in July 2002 (Aqua); the months before it show as "no data".
+export const FIRST_YEAR = 2002;
 export const LAST_YEAR = 2026;
 
 export type DashboardState = {

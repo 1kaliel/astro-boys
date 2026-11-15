@@ -4,7 +4,10 @@ export type ApiStatus = "checking" | "ok" | "unavailable";
 
 const POLL_MS = 5000;
 
-/** Checks /healthz, and keeps checking every 5 s while the API is down (e.g. the backend is still starting). */
+/**
+ * Checks /api/healthz, and keeps checking every 5 s while the API is down (e.g. the backend is still starting).
+ * Not /healthz: on a run.app URL Cloud Run keeps that path for itself and answers 404.
+ */
 export function useApiStatus(): ApiStatus {
   const [status, setStatus] = useState<ApiStatus>("checking");
 
@@ -12,7 +15,7 @@ export function useApiStatus(): ApiStatus {
     let cancelled = false;
     let timer: number | undefined;
     const check = () => {
-      fetch("/healthz")
+      fetch("/api/healthz")
         .then((response) => (response.ok ? "ok" : "unavailable"))
         .catch(() => "unavailable" as const)
         .then((next) => {
