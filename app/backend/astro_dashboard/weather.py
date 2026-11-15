@@ -79,6 +79,10 @@ class WeatherUnavailable(Exception):
     """The weather service could not be reached or answered with something we cannot read."""
 
 
+class RateLimited(WeatherUnavailable):
+    """The weather service answered 429: too many calls in a short time. Worth retrying after a pause."""
+
+
 class WeatherOutOfRange(ValueError):
     """The month is before the ERA5 archive or has not started yet."""
 
@@ -161,6 +165,8 @@ def fetch_open_meteo(points: Sequence[Point], start: date, end: date) -> list[di
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
             payload = json.load(response)
     except urllib.error.HTTPError as error:
+        if error.code == 429:
+            raise RateLimited("The weather service asked for a pause (too many calls).") from error
         raise WeatherUnavailable(f"The weather service answered {error.code}.") from error
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as error:
         raise WeatherUnavailable("The weather service could not be reached.") from error

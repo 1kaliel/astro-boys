@@ -6,6 +6,8 @@ export type RegionSample = {
   temperature_c: number | null;
   wind_speed_kmh: number | null;
   wind_from_deg: number | null;
+  /** The speed of the mean wind vector (a month: the mean flow). The direction is taken from it when it is there. */
+  flow_kmh?: number | null;
 };
 
 /** A state of the IBGE mesh: the name and the outline. */
@@ -68,17 +70,17 @@ function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): num
 
 function combine(samples: readonly RegionSample[]) {
   const temps = samples.flatMap((s) => (s.temperature_c === null ? [] : [s.temperature_c]));
-  const winds = samples.filter((s) => s.wind_speed_kmh !== null && s.wind_from_deg !== null);
+  const winds = samples.filter((s) => (s.flow_kmh ?? s.wind_speed_kmh) !== null && s.wind_from_deg !== null);
   let east = 0;
   let north = 0;
   for (const s of winds) {
-    const { u, v } = windVector(s.wind_speed_kmh as number, s.wind_from_deg as number);
+    const { u, v } = windVector((s.flow_kmh ?? s.wind_speed_kmh) as number, s.wind_from_deg as number);
     east += u;
     north += v;
   }
-  const meanSpeed = winds.length
-    ? winds.reduce((sum, s) => sum + (s.wind_speed_kmh as number), 0) / winds.length
-    : null;
+  // The speed is the mean of the speeds; the direction comes from the mean vector (a month: the mean flow).
+  const speeds = samples.flatMap((s) => (s.wind_speed_kmh === null ? [] : [s.wind_speed_kmh]));
+  const meanSpeed = speeds.length ? speeds.reduce((a, b) => a + b, 0) / speeds.length : null;
   const resultant = winds.length ? Math.hypot(east / winds.length, north / winds.length) : 0;
   return {
     temperature_c: temps.length ? temps.reduce((a, b) => a + b, 0) / temps.length : null,

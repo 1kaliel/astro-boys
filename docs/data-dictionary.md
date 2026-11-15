@@ -267,9 +267,37 @@ reported), `interval_seconds`, `ttl_seconds`, `stale`, `stale_reason` and `point
   hours of flow per second), not the path of an air parcel; a spot where any of the four corners has no value is not
   drawn. Streaks are born inside the view and the density adapts to the frame time. With reduced motion the same points
   are static arrows.
-- **Periods.** The overview shows the hotspots of the month picked in the calendar and the weather of **now**. When those
-  are different months the page says so ("a different period from the hotspots"). The ERA5 month for a picked month is a
-  later step.
+- **Periods.** The overview shows the hotspots of the month picked in the calendar, and the weather of **that same
+  month**: for the current month the live field above, for any other month the ERA5 month field below. One is never
+  shown in place of the other: while a past month loads, or if it cannot be loaded, no weather is drawn and the page says
+  so, and the answer of another month that the page still holds is never used under this month's label.
+
+### ERA5 month on the live lattice (`GET /api/weather/month?year=&month=`)
+
+The weather of a past month on the **same 3 degree lattice** as the live field (238 points), so the temperature surface,
+the wind streaks and the "Region weather" card read one lattice in both periods. It comes from the Open-Meteo
+**Historical Weather API** with `models=era5` explicitly (never `best_match`, which can mix models across decades).
+
+Answer: `source`, `model`, `year`, `month`, `start`, `end`, `available_through`, `days_requested`, `status` (`ok`,
+`partial` when the latest days are not published yet, `unavailable`), `step_deg` and `points`, each with:
+
+- `temperature_c`: the **mean of the daily mean** 2 m temperatures of the month;
+- `wind_speed_kmh`: the **mean of the daily mean** 10 m wind speeds;
+- `wind_from_deg`: where the wind blows **from**, taken from the **mean wind vector** of the month (`null` when the winds
+  cancel: no direction is invented);
+- `wind_flow_kmh`: the length of that mean vector, the **mean flow** of the month. It is never more than the mean speed
+  and it is what the streaks move at. It is **not** the circulation at any instant, and the legend says "Historical
+  wind: the mean wind vector of the month".
+- `days_available`; `null` is "no value", never zero. Days are UTC days; the last days of a recent month are missing and are
+  left out, never filled.
+
+Cost and storage: one new month is **238 calls** (a month of one location is one call at the service; a long range costs
+about days / 47 per location). A month that ended more than 60 days ago never changes and is **kept for good** on disk
+(`ASTRO_WEATHER_CACHE`, `era5-YYYY-MM.json`); a recent one is kept 6 hours. There is a **budget of 2,500 locations a day**
+(about ten new months, persisted with the day's spending): once spent, a month that is not stored answers `503` and the
+page says so, while stored months still open. Requests for the same month at the same time share one set of calls, and a
+`429` from the service is retried after 2, 5 and 12 seconds before it is reported. Like the live field, the folder is not
+shared by Cloud Run instances: a store every instance can read needs the cloud project's owner (Kali).
 
 ### States and "Region weather" (`GET /api/regions/states`)
 

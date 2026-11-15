@@ -1,17 +1,12 @@
-import type { LiveWindResponse } from "../../data/api";
 import { cardinal, type RegionAnswer } from "../../lib/regionWeather";
+import type { WeatherField } from "../../lib/weatherField";
 import { Button } from "../ui/Button";
 
 type RegionWeatherPanelProps = {
   answer: RegionAnswer;
-  live: LiveWindResponse;
+  field: WeatherField;
   onClose: () => void;
 };
-
-/** "2026-11-15 07:45 UTC" from the model time ("2026-11-15T07:45"). */
-function reference(iso: string | null): string {
-  return iso ? `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC` : "unknown";
-}
 
 /** How the numbers were obtained, in words: a single sample is never called a mean. */
 function methodText(answer: RegionAnswer, step: number): string {
@@ -29,7 +24,7 @@ function methodText(answer: RegionAnswer, step: number): string {
 }
 
 /** The weather of the clicked region: every field is a real value or says it has none. */
-export function RegionWeatherPanel({ answer, live, onClose }: RegionWeatherPanelProps) {
+export function RegionWeatherPanel({ answer, field, onClose }: RegionWeatherPanelProps) {
   const has = answer.method !== "none";
   return (
     <aside className="region-panel" aria-label="Region weather">
@@ -64,21 +59,21 @@ export function RegionWeatherPanel({ answer, live, onClose }: RegionWeatherPanel
         </div>
         <div>
           <dt>Source</dt>
-          <dd>Open-Meteo Forecast API</dd>
+          <dd>{field.source}</dd>
         </div>
         <div>
           <dt>Reference time</dt>
-          <dd>{reference(live.model_time)}</dd>
+          <dd>{field.reference}</dd>
         </div>
         <div>
           <dt>Model</dt>
-          <dd>Open-Meteo weather model, current conditions (best match)</dd>
+          <dd>{field.model}</dd>
         </div>
       </dl>
-      <p className="region-panel-note">{methodText(answer, live.step_deg)}</p>
-      {live.stale && (
+      <p className="region-panel-note">{methodText(answer, field.step_deg)}</p>
+      {field.stale && (
         <p className="region-panel-note" role="status">
-          Last good answer, not a fresh one: {live.stale_reason}
+          Last good answer, not a fresh one: {field.staleReason}
         </p>
       )}
     </aside>

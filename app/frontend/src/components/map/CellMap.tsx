@@ -11,12 +11,7 @@ import Map, {
   type MapLayerMouseEvent,
   type MapRef,
 } from "react-map-gl/maplibre";
-import type {
-  LiveWindResponse,
-  MunicipalitiesGeoJSON,
-  MunicipalitiesWeather,
-  WeatherGridResponse,
-} from "../../data/api";
+import type { MunicipalitiesGeoJSON, MunicipalitiesWeather, WeatherGridResponse } from "../../data/api";
 import { formatCount } from "../../lib/format";
 import {
   boundsToGeoJSON,
@@ -34,6 +29,7 @@ import { rampStep } from "../../lib/scale";
 import { LAYER_LABEL, breaksOf, unitOf, weatherGeoJSON, type MapLayer } from "../../lib/weatherLayers";
 import { renderThermalSurface } from "../../lib/thermalSurface";
 import type { RegionFeature } from "../../lib/regionWeather";
+import type { WeatherField } from "../../lib/weatherField";
 import { WindField } from "../../lib/windField";
 import { CompassRing } from "./CompassRing";
 import { WindParticles } from "./WindParticles";
@@ -161,8 +157,11 @@ type CellMapProps = {
   layer?: MapLayer;
   /** ERA5 monthly means at sampled points, for the weather layers. */
   weather?: WeatherGridResponse | null;
-  /** The live wind of a wide region: animated streaks (static arrows when the user prefers reduced motion). */
-  live?: LiveWindResponse | null;
+  /**
+   * The weather field of the overview: the weather now, or the ERA5 month of the month picked in the calendar. The wind
+   * is animated streaks (static arrows when the user prefers reduced motion) and the temperature a surface.
+   */
+  live?: WeatherField | null;
   /** A state's municipalities (IBGE) colored by the current feels-like temperature: a tilted view with a compass. */
   municipal?: { geo: MunicipalitiesGeoJSON; weather: MunicipalitiesWeather | null } | null;
   /**
@@ -238,18 +237,20 @@ export function CellMap({
   const liveStreaks = liveOn && !reduceMotion;
   const arrows = layer === "wind-direction" || (liveOn && reduceMotion);
   const wxSource = (showWeather || arrows) && !liveStreaks;
+  // The wind moves at the flow of the field: the wind speed now, or the length of the month's mean wind vector.
+  const flowPoints = useMemo(() => live?.points.map((p) => ({ ...p, wind_speed_kmh: p.flow_kmh })) ?? null, [live]);
   const wxData = useMemo(() => {
-    const points = (liveOn ? live?.points : weather?.points) ?? [];
+    const points = (liveOn ? flowPoints : weather?.points) ?? [];
     // Wind points outside Brazil are dropped (and no wind is shown until the outline is there).
     const shown = windOn ? (brazil ? points.filter((p) => contains(brazil, p.lon, p.lat)) : []) : points;
     return weatherGeoJSON(shown, liveOn ? "live-wind" : layer);
-  }, [weather, live, layer, liveOn, windOn, brazil]);
+  }, [weather, flowPoints, layer, liveOn, windOn, brazil]);
   const windField = useMemo(
     () =>
-      live && brazil
-        ? new WindField(live.points, { bounds: brazil.bounds, contains: (lon, lat) => contains(brazil, lon, lat) })
+      flowPoints && brazil
+        ? new WindField(flowPoints, { bounds: brazil.bounds, contains: (lon, lat) => contains(brazil, lon, lat) })
         : null,
-    [live, brazil],
+    [flowPoints, brazil],
   );
   // The temperature surface: drawn once per answer (not per frame, not per move), coldest class first.
   const thermalColors = useMemo(() => THERMAL_TOKENS.map((name) => colors[name as (typeof TOKENS)[number]]), [colors]);
@@ -420,16 +421,6 @@ export function CellMap({
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-right" showCompass={false} />
-        {surface && overview && (
-          <Source id="thermal" type="image" url={surface.url} coordinates={surface.coordinates}>
-            <Layer
-              id="thermal-surface"
-              type="raster"
-              beforeId={bordersBefore}
-              paint={{ "raster-opacity": overview.thermalOpacity, "raster-fade-duration": 0 }}
-            />
-          </Source>
-        )}
         <Source id="cells" type="geojson" data={cellData}>
           {/* No stroke around cells: an estimated month is flagged once (badge), not on thousands of cells. */}
           <Layer
@@ -448,6 +439,17 @@ export function CellMap({
             paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.6 }}
           />
         </Source>
+        {/* Always directly under the hotspot cells, even when the image is replaced (a new month adds it again). */}
+        {surface && overview && (
+          <Source id="thermal" type="image" url={surface.url} coordinates={surface.coordinates}>
+            <Layer
+              id="thermal-surface"
+              type="raster"
+              beforeId="cells-fill"
+              paint={{ "raster-opacity": overview.thermalOpacity, "raster-fade-duration": 0 }}
+            />
+          </Source>
+        )}
         {wxSource && (
           <Source id="weather" type="geojson" data={wxData}>
             {arrows ? (

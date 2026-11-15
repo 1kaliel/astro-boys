@@ -7,15 +7,18 @@ import {
   STATES_URL,
   useRemote,
   weatherGridUrl,
+  weatherMonthUrl,
   type CellsResponse,
   type LiveWindResponse,
   type MunicipalitiesGeoJSON,
+  type MonthFieldResponse,
   type MunicipalitiesWeather,
   type StatesGeoJSON,
   type WeatherGridResponse,
 } from "../../data/api";
 import { MONTHS_LONG } from "../../lib/format";
 import { regionWeather, stateAt, type RegionFeature } from "../../lib/regionWeather";
+import { fieldFor } from "../../lib/weatherField";
 import { sequentialEdges } from "../../lib/scale";
 import { LAYER_LABEL, type MapLayer } from "../../lib/weatherLayers";
 import { useDashboard } from "../../state/dashboard";
@@ -75,18 +78,31 @@ export default function MapPanel() {
   const weather = useRemote<WeatherGridResponse>(
     weatherOn && data ? weatherGridUrl(state.area, { year: data.year, month: data.month }) : null,
   );
-  // The live wind is a fixed, wide region that is not tied to the month or the area. It refreshes by itself: the
-  // server answers from a shared cache (a new request inside its 30 minutes costs nothing at the weather service).
-  // It starts with the map (the overview is the default view) and has no switch; the page only checks for a new
-  // answer from time to time.
+  // The overview starts with the map (it is the default view) and has no switch for the wind. Its weather is of the
+  // period of the hotspots on screen: for the current month the live field (the server answers from a shared cache, a
+  // new request inside its 90 minutes costs nothing at the weather service; this page only checks from time to time),
+  // for any other month the ERA5 of that month, on the same lattice. Never one in place of the other.
   const liveOn = layer === "overview" && projection !== "3d";
+  const today = new Date();
+  const current = { year: today.getUTCFullYear(), month: today.getUTCMonth() + 1 };
+  const sameMonth = !!data && data.year === current.year && data.month === current.month;
   const [liveTick, setLiveTick] = useState(0);
   useEffect(() => {
     if (!liveOn) return;
     const timer = window.setInterval(() => setLiveTick((tick) => tick + 1), 10 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, [liveOn]);
-  const live = useRemote<LiveWindResponse>(liveOn ? `/api/weather/live?r=${liveTick}` : null);
+  const live = useRemote<LiveWindResponse>(liveOn && (!data || sameMonth) ? `/api/weather/live?r=${liveTick}` : null);
+  const monthly = useRemote<MonthFieldResponse>(
+    liveOn && data && !sameMonth ? weatherMonthUrl(data.year, data.month) : null,
+  );
+  const field = useMemo(
+    () =>
+      liveOn ? fieldFor(data ? { year: data.year, month: data.month } : null, current, live.data, monthly.data) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liveOn, data, live.data, monthly.data, current.year, current.month],
+  );
+  const weatherSource = !data || sameMonth ? live : monthly;
   // The municipalities of Ceará (IBGE) and their current feels-like temperature: asked only while that layer is open.
   const muniOn = layer === "municipalities" && projection !== "3d";
   const muniGeo = useRemote<MunicipalitiesGeoJSON>(muniOn ? municipalitiesUrl("ce") : null);
@@ -104,14 +120,9 @@ export default function MapPanel() {
   );
   const regionAnswer = useMemo(
     () =>
-      clicked && live.data
-        ? regionWeather(clicked.lng, clicked.lat, live.data.points, clickedState, live.data.step_deg)
-        : null,
-    [clicked, clickedState, live.data],
+      clicked && field ? regionWeather(clicked.lng, clicked.lat, field.points, clickedState, field.step_deg) : null,
+    [clicked, clickedState, field],
   );
-  // The weather is from now; the hotspots are from the month picked in the calendar. Say so when they differ.
-  const today = new Date();
-  const sameMonth = !!data && data.year === today.getUTCFullYear() && data.month === today.getUTCMonth() + 1;
   const hotspotsMonth = data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : null;
   const estimated = cells.some((cell) => cell.estimated);
   const partial = cells.some((cell) => cell.partial);
@@ -135,8 +146,14 @@ export default function MapPanel() {
           {(layer === "hotspots" || liveOn) && estimated && <Badge kind="estimated" />}
           {(layer === "hotspots" || liveOn) && partial && <Badge kind="partial" />}
           {liveOn && (
-            <span className="badge" role={sameMonth ? undefined : "status"}>
-              {sameMonth ? "Weather: now" : "Weather: now · a different period from the hotspots"}
+            <span className="badge" role={field ? undefined : "status"}>
+              {field
+                ? field.kind === "live"
+                  ? "Weather: now"
+                  : `Weather: ERA5 monthly mean of ${hotspotsMonth}`
+                : weatherSource.loading
+                  ? "Weather: loading…"
+                  : "Weather: not available for this month"}
             </span>
           )}
         </div>
@@ -175,7 +192,7 @@ export default function MapPanel() {
             projection={projection}
             layer={layer}
             weather={weatherOn ? weather.data : null}
-            live={liveOn ? live.data : null}
+            live={liveOn ? field : null}
             municipal={muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data } : null}
             overview={
               liveOn
@@ -190,8 +207,8 @@ export default function MapPanel() {
             }
           />
         )}
-        {liveOn && regionAnswer && live.data && (
-          <RegionWeatherPanel answer={regionAnswer} live={live.data} onClose={() => setClicked(null)} />
+        {liveOn && regionAnswer && field && (
+          <RegionWeatherPanel answer={regionAnswer} field={field} onClose={() => setClicked(null)} />
         )}
         <MapTools
           mapRef={mapRef}
@@ -220,8 +237,25 @@ export default function MapPanel() {
         />
       )}
       {muniOn && <MunicipalLegend geo={muniGeo} weather={muniWeather} />}
-      {liveOn && showThermal && <OverviewLegend live={live.data} hotspotsMonth={hotspotsMonth} sameMonth={sameMonth} />}
-      {liveOn && <LiveWindLegend data={live.data} loading={live.loading} error={live.error} onRetry={live.retry} />}
+      {liveOn && showThermal && (
+        <OverviewLegend
+          field={field}
+          hotspotsMonth={hotspotsMonth}
+          current={!data || sameMonth}
+          loading={weatherSource.loading}
+          error={weatherSource.error}
+          onRetry={weatherSource.retry}
+        />
+      )}
+      {liveOn && (
+        <LiveWindLegend
+          field={field}
+          periodName={!data || sameMonth ? "the current weather" : (hotspotsMonth ?? "this month")}
+          loading={weatherSource.loading}
+          error={weatherSource.error}
+          onRetry={weatherSource.retry}
+        />
+      )}
       {data && !weatherLayer && !muniOn && (!liveOn || showHotspots) && (
         <Legend
           mode="sequential"

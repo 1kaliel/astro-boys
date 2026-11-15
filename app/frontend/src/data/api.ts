@@ -232,3 +232,34 @@ export type StatesGeoJSON = GeoJSON.FeatureCollection<
 >;
 
 export const STATES_URL = "/api/regions/states";
+
+/** ERA5 monthly means on the lattice of the live field: the weather of a past month (`/api/weather/month`). */
+export type MonthFieldResponse = {
+  source: string;
+  model: string;
+  year: number;
+  month: number;
+  start: string;
+  end: string;
+  available_through: string | null;
+  days_requested: number;
+  /** "partial": the latest days are not published yet. "unavailable": none of them. */
+  status: "ok" | "partial" | "unavailable";
+  step_deg: number;
+  points: MonthFieldPoint[];
+};
+
+export type MonthFieldPoint = {
+  lat: number;
+  lon: number;
+  /** null = no value, never zero. */
+  temperature_c: number | null;
+  wind_speed_kmh: number | null;
+  /** Where the wind blows FROM, of the month's mean wind vector (null when the winds cancel). */
+  wind_from_deg: number | null;
+  /** The length of that mean vector (km/h): the mean flow of the month. */
+  wind_flow_kmh: number | null;
+  days_available: number;
+};
+
+export const weatherMonthUrl = (year: number, month: number) => `/api/weather/month?year=${year}&month=${month}`;

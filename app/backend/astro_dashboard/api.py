@@ -48,6 +48,9 @@ from astro_dashboard.weather_live import (
     default_cache_dir,
 )
 from astro_dashboard.weather_live import SOURCE as LIVE_SOURCE
+from astro_dashboard.weather_month import MODEL as MONTH_MODEL
+from astro_dashboard.weather_month import SOURCE as MONTH_SOURCE
+from astro_dashboard.weather_month import MonthBudgetSpent, MonthFieldService
 
 log = logging.getLogger("astro_dashboard")
 
@@ -329,6 +332,75 @@ def weather_grid(
 
 
 _DEFAULT_LIVE = LiveWindService(cache_dir=default_cache_dir())
+_DEFAULT_MONTH = MonthFieldService(cache_dir=default_cache_dir())
+
+
+def get_month_field(request: Request) -> MonthFieldService:
+    service: MonthFieldService | None = getattr(request.app.state, "month_field", None)
+    return service or _DEFAULT_MONTH
+
+
+class MonthPointOut(BaseModel):
+    lat: float
+    lon: float
+    # Monthly means at one ERA5 grid point; None = no value (never zero).
+    temperature_c: float | None
+    wind_speed_kmh: float | None
+    # Where the wind blows FROM (the month's mean wind vector) and the length of that vector (the mean flow).
+    wind_from_deg: float | None
+    wind_flow_kmh: float | None
+    days_available: int
+
+
+class MonthFieldOut(BaseModel):
+    source: str
+    model: str
+    year: int
+    month: int
+    # UTC days asked for and the days that have values.
+    start: date
+    end: date
+    available_through: date | None
+    days_requested: int
+    status: Literal["ok", "partial", "unavailable"]
+    step_deg: float
+    points: list[MonthPointOut]
+
+
+@router.get("/weather/month", response_model=MonthFieldOut, tags=["weather"])
+def weather_month(
+    service: Annotated[MonthFieldService, Depends(get_month_field)],
+    year: int = Query(..., ge=1940, le=2200),
+    month: int = Query(..., ge=1, le=12),
+) -> MonthFieldOut:
+    """ERA5 monthly means on the lattice of the live field: the weather of a month picked in the calendar."""
+    try:
+        field = service.month_field(year, month)
+    except WeatherOutOfRange as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except MonthBudgetSpent as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    if not any(p.days_available for p in field.points):
+        status = "unavailable"
+    elif field.available_through is None or field.available_through < _month_end(year, month):
+        status = "partial"
+    else:
+        status = "ok"
+    return MonthFieldOut(
+        source=MONTH_SOURCE,
+        model=MONTH_MODEL,
+        status=status,
+        year=field.year,
+        month=field.month,
+        start=field.start,
+        end=field.end,
+        available_through=field.available_through,
+        days_requested=field.days_requested,
+        step_deg=field.step_deg,
+        points=[MonthPointOut(**asdict(p)) for p in field.points],
+    )
 
 
 def get_live(request: Request) -> LiveWindService:

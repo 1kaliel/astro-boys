@@ -108,4 +108,12 @@ describe("weather of a clicked region", () => {
     expect(answer.temperature_c).toBeCloseTo(30);
     expect(answer.points).toBe(2);
   });
+
+  it("takes the direction from the mean flow when the points have one, and the speed from the mean speed", () => {
+    // A month: the mean speed is 10 km/h but the flow is only 3 km/h, from the east.
+    const point = { ...sample(-5, -39, 25, 10, 90), flow_kmh: 3 };
+    const answer = regionWeather(-39, -6, [point], ceara, 3);
+    expect(answer.wind_speed_kmh).toBeCloseTo(10);
+    expect(answer.wind_from_deg).toBeCloseTo(90);
+  });
 });

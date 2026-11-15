@@ -299,7 +299,10 @@ adjusted (default 50%); the wind has no switch, it runs while the map is visible
   brightness following speed, clipped to the outline of Brazil. The loop runs on its own animation frame outside React, reuses one buffer, adapts the
   number of streaks to the frame time, pauses on a hidden tab and resumes on its own.
 - **Selection**: a clicked state is outlined in the accent (`--color-accent`) and the "Region weather" card opens bottom
-  left. Periods are always named: "Hotspots: November 2026" and "Weather: now", with a warning when they differ.
+  left. Periods are always named and always the same: "Hotspots: November 2026" with "Weather: now" for the current month, and
+  "Hotspots: July 2012" with "Weather: ERA5 monthly mean of July 2012" for any other month. While that month loads, or if it
+  cannot, no weather is drawn (the live field is never a stand-in) and the badge says "loading" or "not available for this
+  month". The wind is then called "Historical wind" and moves at the mean flow of the month.
 
 The other layers are in the selector: Hotspots only, ERA5 temperature, ERA5 wind speed, ERA5 wind direction, and Ceará
 feels like. The 3D globe has no weather yet.
