@@ -15,7 +15,7 @@ import { AppBar } from "./AppBar";
 import { DownloadCsv } from "./DownloadCsv";
 import { currentMonth, LookingAt, monthEntry, MonthStepper, ThisMonth } from "./ExplorerParts";
 import { FilterBar } from "./FilterBar";
-import { KpiRow } from "./KpiRow";
+import { KpiInline, KpiRow } from "./KpiRow";
 import "../../styles/redesign-layout.css";
 import "../../styles/explorer.css";
 
@@ -56,12 +56,22 @@ export function DashboardPage() {
   const simulated = dataset ? dataset.synthetic || /^mock/i.test(dataset.modelVersion) : false;
   const exportContext = dataset ? { area: state.area, modelVersion: dataset.modelVersion, period: state.period } : null;
 
-  // The one month of the explorer: picked, else the latest month of the data. It is written to the state once the
-  // data is there, so the map, the days and the timeline all read the same month.
+  // The one month of the explorer: picked, else the opening month (the peak of the latest complete fire season).
+  // It is written to the state once, when the data first arrives, so the map, the days and the timeline all read
+  // the same month; a month the user picked is never overridden.
   const month = currentMonth(state.selected, dataset);
+  const defaulted = useRef(false);
   useEffect(() => {
+    if (defaulted.current || !dataset) return;
+    defaulted.current = true;
     if (!state.selected && month) dispatch({ type: "select", year: month.year, month: month.month });
-  }, [state.selected, month, dispatch]);
+  }, [dataset, state.selected, month, dispatch]);
+  const [daysOpen, setDaysOpen] = useState(false);
+  // A day picked: its details go to the top of the sidebar, in view.
+  const sideRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (state.day) sideRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [state.day]);
   const entry = monthEntry(dataset, month, state.period);
   const profileYear = dataset ? Math.min(month?.year ?? dataset.lastYear, dataset.lastYear) : null;
   const pickMonth = (year: number, m: number) => dispatch({ type: "openMonth", year, month: m });
@@ -69,8 +79,8 @@ export function DashboardPage() {
   const years = `${state.startYear}–${state.endYear} · ${PERIOD_TEXT[state.period]}`;
 
   const kpis = dataset && (
-    <section className="xp-section" aria-label="The period in figures">
-      <h2 className="xp-section-title">
+    <section className="xp-section xp-kpi-strip" aria-label="The period in figures">
+      <h2 className="sr-only">
         The period, {state.startYear}–{state.endYear}
       </h2>
       <KpiRow
@@ -90,10 +100,23 @@ export function DashboardPage() {
   const days =
     dataset && month && state.selected ? (
       <section className="xp-section xp-days calendar-theme" aria-label={`Days of ${monthLong(month.month)} ${month.year}`}>
-        <h2 className="xp-section-title">
+        <h2 className="sr-only">
           Days of {monthLong(month.month)} {month.year}
         </h2>
-        <MonthView dataset={dataset} compact />
+        {!narrow && (
+          <button
+            type="button"
+            className="button xp-days-toggle"
+            aria-expanded={daysOpen}
+            onClick={() => setDaysOpen((open) => !open)}
+          >
+            {daysOpen ? "Hide the days" : `Show the days of ${monthLong(month.month)} ${month.year}`}
+            <span className="fbar-toggle-icon" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+        )}
+        {(narrow || daysOpen) && <MonthView dataset={dataset} compact />}
       </section>
     ) : null;
 
@@ -106,8 +129,11 @@ export function DashboardPage() {
 
   const timeline = (
     <div className="xp-panel-body calendar-theme" data-tour="calendar">
-      <BurningCalendar load={load} reload={reload} />
-      <p className="card-caption">Source: NASA FIRMS · {CALENDAR_UNIT}. Click a month to show it on the map.</p>
+      <BurningCalendar
+        load={load}
+        reload={reload}
+        caption={`Source: NASA FIRMS · ${CALENDAR_UNIT}. Click a month to show it on the map.`}
+      />
     </div>
   );
   const season =
@@ -201,7 +227,17 @@ export function DashboardPage() {
               </Tabs.Tab>
             ))}
           </Tabs.List>
-          <span className="card-meta">{years}</span>
+          {!narrow && panelOpen && dataset && (
+            <KpiInline
+              months={dataset.months}
+              startYear={state.startYear}
+              endYear={state.endYear}
+              area={state.area}
+              period={dataset.period ?? state.period}
+              modelVersion={dataset.modelVersion}
+            />
+          )}
+          {narrow && <span className="card-meta">{years}</span>}
           {!narrow && (
             <button
               type="button"
@@ -209,7 +245,7 @@ export function DashboardPage() {
               aria-expanded={panelOpen}
               onClick={() => setPanelOpen((open) => !open)}
             >
-              {panelOpen ? "Hide panel ▾" : "Show panel ▴"}
+              {panelOpen ? "Hide ▾" : "Show panel ▴"}
             </button>
           )}
         </div>
@@ -239,8 +275,19 @@ export function DashboardPage() {
     </footer>
   );
 
+  const sensorFamily =
+    state.sensor === "harmonized" ? "Harmonized" : state.sensor === "aqua" || state.sensor === "terra" ? "MODIS" : "VIIRS";
+  const summary = `${state.areaLabel ?? "Northeast"} · ${
+    month ? `${monthLong(month.month).slice(0, 3)} ${month.year}` : "…"
+  } · ${sensorFamily}`;
   const steps = (
-    <FilterBar collapsible={narrow} when={narrow ? undefined : <MonthStepper month={month} dataset={dataset} />} />
+    <FilterBar collapsible={narrow} summary={summary} when={<MonthStepper month={month} dataset={dataset} />} />
+  );
+  // A day picked: "Back to the month" sits right under "You're looking at", above the day details.
+  const dayBack = state.day && !narrow && daysOpen && (
+    <button type="button" className="button xp-day-back" onClick={() => dispatch({ type: "selectDay", day: null })}>
+      ← Back to the month
+    </button>
   );
 
   return (
@@ -250,10 +297,9 @@ export function DashboardPage() {
       {narrow ? (
         <main className={cx("xp-stack", refreshing && "is-refetching")} aria-busy={load.status === "loading" || refreshing}>
           {banner}
-          <LookingAt month={month} entry={entry} />
-          <MonthStepper month={month} dataset={dataset} />
-          {steps}
           {map}
+          <LookingAt month={month} entry={entry} />
+          {steps}
           <ThisMonth month={month} entry={entry} />
           {panel}
           {kpis}
@@ -261,13 +307,13 @@ export function DashboardPage() {
         </main>
       ) : (
         <main className={cx("xp", refreshing && "is-refetching", !panelOpen && "panel-collapsed")} aria-busy={load.status === "loading" || refreshing}>
-          <aside className="xp-side" aria-label="Explorer controls">
+          <aside className={cx("xp-side", dayBack && "has-day")} ref={sideRef} aria-label="Explorer controls">
             {banner}
             <LookingAt month={month} entry={entry} />
+            {dayBack}
             {steps}
             <ThisMonth month={month} entry={entry} />
             {days}
-            {kpis}
             {footer}
           </aside>
           {map}

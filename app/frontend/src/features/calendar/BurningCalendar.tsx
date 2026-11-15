@@ -1,5 +1,5 @@
 import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/heatmap";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
@@ -45,7 +45,9 @@ const RAW_UNIT = "Native hotspot detections per month, counted by the month's so
 const ANOMALY_UNIT = "Robust z-score of the month against the median of that month of the year";
 
 // Chart geometry in pixels (nivo needs numbers; colors and strokes come from tokens in calendar.css).
-const ROW_PX = 18; // compact rows: 6 to 8 years fit the explorer's bottom panel without scrolling
+const ROW_PX = 28; // default row height; in the explorer panel the rows fit the space, between 24 and 32 px
+const ROW_MIN = 24;
+const ROW_MAX = 32;
 const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
 const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
 // On a phone the 12 months fit the card (no sideways scroll, so the year labels stay in view): compact cells, with
@@ -112,11 +114,43 @@ function latestWithData(series: ReadonlyArray<CalendarSerie>): { year: number; m
   return null;
 }
 
-function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refreshing: boolean }) {
+function CalendarView({ dataset, refreshing, caption }: { dataset: CalendarDataset; refreshing: boolean; caption?: string }) {
   const [state, dispatch] = useDashboard();
   const phone = useMediaQuery(PHONE);
   const [hovered, setHovered] = useState<{ year: number; month: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // In the explorer's bottom panel the grid takes the height left under the toolbar: the rows fit it (24 to 32 px)
+  // and the rest of the years scroll inside the grid's own box, never the panel.
+  const [fit, setFit] = useState<{ row: number; max: number } | null>(null);
+  const rowCount = Math.max(1, Math.min(state.endYear, dataset.lastYear) - Math.max(state.startYear, dataset.firstYear) + 1);
+  useEffect(() => {
+    const box = scrollRef.current;
+    const host = box?.closest<HTMLElement>(".xp-panel-scroll");
+    if (!box || !host || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const space = Math.floor(host.getBoundingClientRect().bottom - box.getBoundingClientRect().top - host.scrollTop - 12);
+      const row = Math.min(ROW_MAX, Math.max(ROW_MIN, Math.floor((space - MARGIN.top - MARGIN.bottom) / rowCount)));
+      const max = Math.max(space, MARGIN.top + MARGIN.bottom + 3 * ROW_MIN);
+      setFit((old) => (old && old.row === row && old.max === max ? old : { row, max }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [rowCount]);
+  const rowPx = fit?.row ?? ROW_PX;
+  // The selected year's row stays in view in the scrolling grid (all years do not fit the panel).
+  const selectedYear = state.selected?.year ?? null;
+  const firstRow = Math.max(state.startYear, dataset.firstYear);
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (!box || selectedYear === null) return;
+    const top = MARGIN.top + (selectedYear - firstRow) * rowPx;
+    if (top < box.scrollTop + MARGIN.top || top + rowPx > box.scrollTop + box.clientHeight) {
+      box.scrollTop = Math.max(0, top - box.clientHeight / 2 + rowPx / 2);
+    }
+  }, [selectedYear, firstRow, rowPx]);
   // Only years the data covers are shown: the selector can go past the last published year.
   const startYear = Math.max(state.startYear, dataset.firstYear);
   const endYear = Math.min(state.endYear, dataset.lastYear);
@@ -273,11 +307,11 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   }));
   const chart = (
     <>
-    <div className="calendar-scroll">
+    <div className="calendar-scroll" ref={scrollRef} style={fit ? { maxHeight: fit.max, overflowY: "auto" } : undefined}>
       <div
         className="calendar-chart"
         style={{
-          height: series.length * ROW_PX + MARGIN.top + MARGIN.bottom,
+          height: series.length * rowPx + MARGIN.top + MARGIN.bottom,
           minWidth: MARGIN.left + MARGIN.right + columns * (phone ? MIN_CELL_PX_PHONE : MIN_CELL_PX),
           maxWidth: MARGIN.left + MARGIN.right + columns * MAX_CELL_PX,
         }}
@@ -415,6 +449,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           </p>
         )}
       </Fold>
+      {caption && <p className="card-caption">{caption}</p>}
     </div>
   );
 }
@@ -423,7 +458,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
  * Year x month heatmap of hotspot detections (task D4): loading, error, empty and ready states.
  * The page loads the calendar once (`useCalendarDataset`) and shares it with the KPI row.
  */
-export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: () => void }) {
+export function BurningCalendar({ load, reload, caption }: { load: CalendarLoad; reload: () => void; caption?: string }) {
   const [state] = useDashboard();
   if (load.status === "loading") {
     return (
@@ -441,5 +476,5 @@ export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: 
     );
   }
   // The days of the selected month live in the explorer sidebar (MonthView); the timeline always shows the years.
-  return <CalendarView dataset={load.dataset} refreshing={load.refreshing} />;
+  return <CalendarView dataset={load.dataset} refreshing={load.refreshing} caption={caption} />;
 }

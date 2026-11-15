@@ -114,16 +114,6 @@ export default function MapPanel() {
         </h2>
         <MapLayerControl sensor={state.sensor} onSensor={(sensor) => dispatch({ type: "setSensor", sensor })} />
       </header>
-      {(drillCell || (estimated && !drillCell) || partial) && (
-        <div className="map-sub">
-          {drillCell && <p className="map-month">Cell {drillCell}: native detections of its 0.0625° sub-cells</p>}
-          <div className="map-badges">
-            {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
-            {estimated && !drillCell && <Badge kind="estimated" />}
-            {partial && <Badge kind="partial" />}
-          </div>
-        </div>
-      )}
 
       {/* The frame holds the tools and the map: over the map on wide screens, in a row above it on a phone. */}
       <div className="map-frame">
@@ -166,6 +156,16 @@ export default function MapPanel() {
       </div>
 
       <div className="map-info">
+        {(drillCell || (estimated && !drillCell) || partial) && (
+          <div className="map-sub">
+            {drillCell && <p className="map-month">Cell {drillCell}: native detections of its 0.0625° sub-cells</p>}
+            <div className="map-badges">
+              {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
+              {estimated && !drillCell && <Badge kind="estimated" />}
+              {partial && <Badge kind="partial" />}
+            </div>
+          </div>
+        )}
       {remote.error && (
         <p className="map-note map-error" role="alert">
           Could not load the cells: {remote.error}
@@ -198,10 +198,7 @@ export default function MapPanel() {
       ) : (
         <>
           {projection === "globe" && (
-            <p className="map-note">
-              Globe: data were processed only inside the study area (dashed box, Northeast Brazil). Outside it nothing is
-              drawn, which is not zero activity. Click the box or its label to fly in.
-            </p>
+            <p className="map-note">Data only inside the dashed study area; outside is not zero activity.</p>
           )}
           {data && data.cells.length === 0 && (
             <p className="map-note">
@@ -212,10 +209,17 @@ export default function MapPanel() {
           )}
           {data && (
             <>
-            <Legend mode="sequential" breaks={breaks} unit={`${layerShortUnit(state.sensor)} per 0.25° cell`} showMarking={false} />
+            <Legend mode="sequential" breaks={breaks} unit={`${layerShortUnit(state.sensor)} per 0.25° cell per month`} showMarking={false} />
             <Fold summary="How to read the map">
               <p className="map-note">{`${layerUnit(state.sensor)} per 0.25° cell and month.`}</p>
               <p className="map-note">An empty cell has no detection (not zero). Click a cell for its sub-cells.</p>
+              <p className="map-note">Colors are reversed in the dark theme so that the busiest cells always stand out from the basemap; the legend's &ldquo;more&rdquo; end is the busiest.</p>
+              {projection === "globe" && (
+                <p className="map-note">
+                  Globe: data were processed only inside the study area (dashed box, Northeast Brazil). Outside it nothing
+                  is drawn, which is not zero activity. Click the box or its label to fly in.
+                </p>
+              )}
               <p className="map-note">
                 Classes are the same for every month, so a quiet month looks quiet. Cells with no detection that month are
                 left empty and the basemap shows through: that is missing, not zero. Cell outlines appear when you zoom in;
@@ -238,7 +242,7 @@ export default function MapPanel() {
 }
 /** Short unit for the legend over the map; the full description is in "How to read the map". */
 function layerShortUnit(sensor: string): string {
-  return sensor === "harmonized" ? "VIIRS-equivalent hotspots" : "native detections";
+  return sensor === "harmonized" ? "hotspots" : "native detections";
 }
 
 /** Room the floating parts take over the map, so the fitted area is not hidden under them. */

@@ -6,6 +6,7 @@ import type { ApiStatus } from "../../data/useApiStatus";
 import { useColorScheme } from "../../lib/hooks";
 import { applyTheme } from "../../lib/theme";
 import "../../styles/header-help.css";
+import "../../styles/app-bar-final.css";
 import { DataGuideDialog } from "./DataGuideDialog";
 import { TOUR_STEPS } from "./tourSteps";
 
@@ -24,8 +25,9 @@ export type AppBarProps = {
 };
 
 /* Small line icons, drawn in the text color. */
-function Icon({ name }: { name: "guide" | "data" | "sun" | "moon" | "menu" | "close" }) {
+function Icon({ name }: { name: "guide" | "data" | "story" | "sun" | "moon" | "menu" | "close" }) {
   const paths: Record<typeof name, string> = {
+    story: "M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4V5Zm16 0h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7V5Z",
     guide: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm3.5 5.5-2 5-5 2 2-5 5-2Z",
     data: "M5 4h9l5 5v11H5V4Zm9 0v5h5M8 13h8M8 17h5",
     sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4",
@@ -157,6 +159,10 @@ export function AppBar({ apiStatus, simulated, modelVersion, tourSteps = TOUR_ST
           <Icon name="guide" />
           Guide
         </button>
+        <a className="button hh-button hh-story" href="#home" title="The story behind the data">
+          <Icon name="story" />
+          Story
+        </a>
         <button
           type="button"
           className="button hh-button"
@@ -197,6 +203,13 @@ export function AppBar({ apiStatus, simulated, modelVersion, tourSteps = TOUR_ST
               <small>How to move around, filter and pick dates</small>
             </span>
           </button>
+          <a className="hh-menu-item" href="#home" onClick={() => setMenuOpen(false)}>
+            <Icon name="story" />
+            <span>
+              Story
+              <small>The story behind the data</small>
+            </span>
+          </a>
           <button type="button" className="hh-menu-item" onClick={() => openData(menuButtonRef.current)}>
             <Icon name="data" />
             <span>
@@ -223,19 +236,16 @@ export function AppBar({ apiStatus, simulated, modelVersion, tourSteps = TOUR_ST
         </div>
       </div>
 
+      {/* A small chip docked in the header row (never floating over the map): opens the guide, or is dismissed. */}
       {showPrompt && (
-        <aside className="hh-prompt" aria-label="Guide">
-          <p className="hh-prompt-text">
-            <strong>New here?</strong> Take the 1-minute guide.
-          </p>
-          <div className="hh-prompt-actions">
-            <button type="button" className="button tour-next" onClick={startTour}>
-              Start guide
-            </button>
-            <button type="button" className="button icon-button" onClick={dismissPrompt} aria-label="Dismiss">
-              <Icon name="close" />
-            </button>
-          </div>
+        <aside className="hh-prompt hh-prompt-chip" aria-label="Guide">
+          <button type="button" className="hh-prompt-open" onClick={startTour}>
+            <span className="hh-prompt-long">New here? Take the 1-minute guide</span>
+            <span className="hh-prompt-short">1-min guide</span>
+          </button>
+          <button type="button" className="button icon-button hh-prompt-close" onClick={dismissPrompt} aria-label="Dismiss the guide prompt">
+            <Icon name="close" />
+          </button>
         </aside>
       )}
 

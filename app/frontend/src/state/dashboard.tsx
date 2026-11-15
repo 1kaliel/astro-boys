@@ -83,7 +83,8 @@ const initialState: DashboardState = {
   relevance: "l",
   sensor: "harmonized",
   // Opens on the last 10 years: the calendar has one row per year, and 25 rows is a very tall card.
-  startYear: LAST_YEAR - 9,
+  // All years: the MODIS era and the 2012 change of sensor are on screen from the start.
+  startYear: FIRST_YEAR,
   endYear: LAST_YEAR,
   months: [],
   selected: null,

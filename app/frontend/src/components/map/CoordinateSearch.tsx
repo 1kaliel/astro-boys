@@ -172,6 +172,7 @@ export function CoordinateSearch({ mapRef, month, picking, onPicking, picked, dr
         type="button"
         ref={toggleRef}
         className={cx("button", "coord-toggle", point && "has-point")}
+        title="Search by coordinates"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
@@ -184,7 +185,7 @@ export function CoordinateSearch({ mapRef, month, picking, onPicking, picked, dr
           <circle cx="8" cy="8" r="1.5" fill="currentColor" />
           <path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3" stroke="currentColor" strokeWidth="1.5" />
         </svg>
-        Coordinates
+        <span className="map-tool-label">Coordinates</span>
         {point && <span className="coord-toggle-note">· {point.radiusKm} km</span>}
       </button>
 
