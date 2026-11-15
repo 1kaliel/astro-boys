@@ -89,19 +89,61 @@ def test_with_no_answer_at_all_a_failure_is_an_error_not_invented_data() -> None
 
 
 def test_the_daily_budget_stops_the_refreshes_and_resets_the_next_day() -> None:
-    # Start at 00:00 UTC so the 45 refreshes (22.5 hours of TTLs) stay inside one UTC day.
-    fetch, clock = Fetch(), Clock(1_800_000_000.0 - 1_800_000_000.0 % 86400)
+    fetch, clock = Fetch(), Clock(1_800_000_000.0 - 1_800_000_000.0 % 86400)  # 00:00 UTC
     service = LiveWindService(fetch=fetch, clock=clock)
-    refreshes = LIVE_DAILY_BUDGET // len(live_points())
-    for _ in range(refreshes):
-        service.snapshot()
-        clock.now += LIVE_TTL_SECONDS + 1
-    assert fetch.calls == refreshes
-    over = service.snapshot()  # the budget is spent: the last answer, flagged
-    assert fetch.calls == refreshes and over.stale and "budget" in (over.stale_reason or "")
+    service.snapshot()
+    # Spend what is left of today's budget: the next refresh must be refused (stale), not made.
+    service._spent = LIVE_DAILY_BUDGET
+    clock.now += LIVE_TTL_SECONDS + 1
+    over = service.snapshot()
+    assert fetch.calls == 1 and over.stale and "budget" in (over.stale_reason or "")
     clock.now += 24 * 3600  # a new UTC day
     fresh = service.snapshot()
-    assert fetch.calls == refreshes + 1 and not fresh.stale
+    assert fetch.calls == 2 and not fresh.stale
+
+
+def test_a_restart_reuses_a_fresh_answer_and_the_spending_instead_of_asking_again(tmp_path) -> None:  # noqa: ANN001
+    fetch, clock = Fetch(), Clock()
+    first = LiveWindService(fetch=fetch, clock=clock, cache_dir=tmp_path)
+    first.snapshot()
+    assert (
+        fetch.calls == 1
+        and (tmp_path / "live-field.json").exists()
+        and (tmp_path / "live-budget.json").exists()
+    )
+    clock.now += 60  # a new process (a restart, a new instance on the same disk) a minute later
+    second_fetch = Fetch()
+    second = LiveWindService(fetch=second_fetch, clock=clock, cache_dir=tmp_path)
+    snap = second.snapshot()
+    assert second_fetch.calls == 0 and not snap.stale and len(snap.points) == len(live_points())
+    assert second._spent == len(live_points())  # today's spending survived too
+
+
+def test_an_old_saved_answer_is_served_stale_when_the_service_is_down(tmp_path) -> None:  # noqa: ANN001
+    fetch, clock = Fetch(), Clock()
+    LiveWindService(fetch=fetch, clock=clock, cache_dir=tmp_path).snapshot()
+    clock.now += LIVE_TTL_SECONDS + 10
+    down = LiveWindService(fetch=Fetch(fail=True), clock=clock, cache_dir=tmp_path)
+    snap = down.snapshot()
+    assert snap.stale and snap.points  # the last real field, flagged, never an empty or invented one
+
+
+def test_an_unreadable_cache_is_ignored_not_fatal(tmp_path) -> None:  # noqa: ANN001
+    (tmp_path / "live-field.json").write_text("{not json")
+    (tmp_path / "live-budget.json").write_text("[]")
+    fetch = Fetch()
+    snap = LiveWindService(fetch=fetch, clock=Clock(), cache_dir=tmp_path).snapshot()
+    assert fetch.calls == 1 and not snap.stale
+
+
+def test_the_grid_is_three_degrees_in_one_request_and_inside_the_daily_budget() -> None:
+    from astro_dashboard.weather_live import LIVE_STEP_DEG
+
+    assert LIVE_STEP_DEG == 3.0
+    refreshes_a_day = 24 * 3600 // LIVE_TTL_SECONDS
+    assert (
+        refreshes_a_day * len(live_points()) <= LIVE_DAILY_BUDGET
+    )  # the budget covers every refresh of a day
 
 
 @pytest.fixture

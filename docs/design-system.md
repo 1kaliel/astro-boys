@@ -278,10 +278,30 @@ with the page ink). Only one layer is on at a time, each with its own legend, un
 cells and their 0.25 degree outlines are hidden while a weather layer is on. The ramp is raw in `primitives.css`
 (`--teal-100..700`), checked by `scripts/check_viz_ramp.py --theme weather`, and never used for hotspot counts.
 
-The fifth layer, **Live wind**, is the wind of the weather model *now* over a wide region (not ERA5, not tied to the
-month or the area). It is drawn as streaks on a canvas over the map, in the page ink with brightness following speed (so
-no color is spent on it), and as static arrows with reduced motion. It refreshes by itself and the legend says the model
-time, that the animation is time-lapsed and interpolated, and when the answer is stale.
+## The overview: the default map
+
+The map opens on the **Overview**, flat, on Northeast Brazil, with no switch to flip: a real map, the live temperature
+surface, the hotspot cells and the live wind, with the legends visible. Order, bottom to top: the basemap; the
+temperature surface; the hotspot cells (a fine light outline so they read over the temperature); the live wind; and
+above all of them the basemap's own borders and names, so those stay readable (the surface and the cells are inserted
+below the first border layer of the style). Controls: Temperature and Hotspots can be hidden and the temperature opacity
+adjusted (default 50%); the wind has no switch, it runs while the map is visible and waits for no click.
+
+- **Basemap, dark theme** (`lib/basemapStyle.ts`): the OpenFreeMap "liberty" style repainted with a cartographic palette,
+  never black: ocean `#0B3855`, land `#22393B`, relief and details `#355052`, state borders `#78949A`, country borders
+  `#A3B9BE`, names `#E1EBEE` with a dark halo. The light theme keeps liberty's own colors.
+- **Temperature**: the **thermal** ramp, deep blue to yellow (`--thermal-*`, `--viz-thermal-1..7`, checked by
+  `check_viz_ramp.py --theme thermal`). It stops at yellow on purpose: orange and red belong to the hotspot ramp (magma),
+  and a hot place of weather must never look like a hotspot of fire. Every temperature layer uses it (the live surface, the
+  ERA5 month, the municipalities); the teal ramp stays for wind speed.
+- **Wind**: streaks in `--viz-wind` (pale cyan `#B0E8F5` on the dark theme, a deeper blue on the light one), thin, with
+  brightness following speed. The loop runs on its own animation frame outside React, reuses one buffer, adapts the
+  number of streaks to the frame time, pauses on a hidden tab and resumes on its own.
+- **Selection**: a clicked state is outlined in the accent (`--color-accent`) and the "Region weather" card opens bottom
+  left. Periods are always named: "Hotspots: November 2026" and "Weather: now", with a warning when they differ.
+
+The other layers are in the selector: Hotspots only, ERA5 temperature, ERA5 wind speed, ERA5 wind direction, and Ceará
+feels like. The 3D globe has no weather yet.
 
 ## Typography
 

@@ -48,6 +48,13 @@ THEMES = {
         "null_de": MIN_NULL_DE,
         "text": [],
     },
+    "thermal": {
+        "prefix": "thermal",
+        # The ramp sits on the map, not on a chart surface: the checks that matter are order and steps.
+        "modes": {"light": ("neutral-25", "neutral-200")},
+        "null_de": MIN_NULL_DE,
+        "text": [],
+    },
     "calendar": {
         "prefix": "ember",
         "modes": {"light": ("ash-100", "ash-200")},

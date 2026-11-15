@@ -231,26 +231,57 @@ Answer: the same source and period fields, `status`, `step_deg` and `points`, on
   `scripts/check_viz_ramp.py --theme weather` checks it. The two legends are never combined.
 - **Arrows** point where the wind blows **toward** (the opposite of the meteorological "from"); the legend says so.
 
-### Live wind (`GET /api/weather/live`)
+### Live wind and temperature (`GET /api/weather/live`)
 
-The wind "now", for a **fixed, wide region** (longitude -75 to -25, latitude -35 to 8, far beyond the study area), as a
-regular lattice of 4 degrees (132 points). It comes from the **Open-Meteo Forecast API**, `current` block: the weather
-model's analysis of the present moment, refreshed by the service every 15 minutes. It is **not** ERA5 (ERA5 is published
-days late, so it cannot show "now") and **not** a station observation, and it has nothing to do with the hotspot data.
+The **temperature and the wind "now"**, for a **fixed, wide region** (longitude -75 to -25, latitude -33 to 6 on the
+lattice, far beyond the study area), as a regular lattice of **3 degrees (238 points)**. It comes from the **Open-Meteo
+Forecast API**, `current` block: the weather model's analysis of the present moment (the service's default "best match"
+model), refreshed by the service every 15 minutes. It is **not** ERA5 (ERA5 is published days late, so it cannot show
+"now") and **not** a station observation, and it has nothing to do with the hotspot data. The same answer feeds the
+temperature surface, the wind streaks and the "Region weather" panel, so the three never disagree.
 
 Answer: `source`, `region`, `step_deg`, `fetched_at` (when this server asked), `model_time` (the latest time the service
 reported), `interval_seconds`, `ttl_seconds`, `stale`, `stale_reason` and `points` (`lat`, `lon`, `temperature_c`,
 `wind_speed_kmh`, `wind_from_deg`, `gust_kmh`; `null` is "no value").
 
-- **Shared and cached.** One answer for the whole server, kept 30 minutes: a request inside that time costs nothing at
-  the weather service. Every location of a request counts as one call, the free limits are fewer than 10,000 calls a day
-  and 600 a minute, so the server also keeps a daily budget (6,000 locations, at most 45 refreshes of 132 points).
+- **Shared, cached and persisted.** One answer for the whole server, kept **90 minutes**: a request inside that time costs
+  nothing at the weather service. Every location of a request counts as one call (the free limits are fewer than 10,000
+  calls a day and 600 a minute), so the server keeps a daily budget of **4,000 locations** (16 refreshes of 238). The last
+  answer and the day's spending are also written to a small cache folder (`ASTRO_WEATHER_CACHE`, a temp folder by
+  default), so a restart reuses a fresh answer instead of asking again. **Limit:** Cloud Run instances do not share that
+  folder and it is memory on Cloud Run. A store every instance can read, and a scheduled refresh, need a bucket the
+  service may write to and a scheduler, which are changes to the cloud project and need its owner (Kali).
 - **Never a made-up answer.** If the service fails, or the budget is spent, the last good answer is served with
-  `stale: true` and the reason; with no answer at all the endpoint is a 502.
-- **The animation** (client side, `lib/windField.ts`) interpolates the east and north components bilinearly between the
-  points and moves streaks through that field. It shows the pattern of the current field, time-lapsed (6 hours of flow
-  per second), not the path of an air parcel; a spot where any of the four corners has no value is not drawn. With
-  reduced motion the same points are static arrows.
+  `stale: true` and the reason; with no answer at all the endpoint is a 502. The browser never calls Open-Meteo, and
+  nothing is requested per frame, zoom, hover or move: the animation only reads the field already in memory.
+- **The surface** (`lib/thermalSurface.ts`) is the bilinear interpolation of the temperature samples, drawn once per answer
+  as a classed image on the Web Mercator grid (fixed classes 12, 16, 20, 24, 28, 32 degrees C on the thermal ramp). It
+  shows the regional pattern; between the points it is an interpolation, not an observation, and where a corner has no
+  value the pixel stays transparent.
+- **The animation** (client side, `lib/windField.ts`, `components/map/WindParticles.tsx`) interpolates the east and north
+  components bilinearly between the points (`u = -s sin(from)`, `v = -s cos(from)`, where `from` is the direction the
+  wind comes from) and moves streaks through that field. It shows the pattern of the current field, time-lapsed (6
+  hours of flow per second), not the path of an air parcel; a spot where any of the four corners has no value is not
+  drawn. Streaks are born inside the view and the density adapts to the frame time. With reduced motion the same points
+  are static arrows.
+- **Periods.** The overview shows the hotspots of the month picked in the calendar and the weather of **now**. When those
+  are different months the page says so ("a different period from the hotspots"). The ERA5 month for a picked month is a
+  later step.
+
+### States and "Region weather" (`GET /api/regions/states`)
+
+The 27 Brazilian states as GeoJSON from **IBGE** (`malhas` with `intrarregiao=UF`, and `localidades`): `code`, `uf`,
+`name` and `region` on each feature, cached for a week with the last copy served if IBGE fails. A click on the map is
+resolved on the client (point in polygon) to the state it falls in, and the "Region weather" panel answers with:
+
+- **mean of the grid points inside the state**, equal weights, when there are two or more (the panel says how many);
+- **one grid point inside the state** when there is only one: it is labelled a point value, never a mean;
+- the **nearest grid point** (and how far it is) when none is inside, only if it is within 1.5 grid steps of the click;
+- **no value** otherwise. No temperature is invented to fill a region.
+
+The wind direction of an answer comes from the **mean wind vector** of the points (opposite winds cancel and no direction
+is shown). With a 3-degree lattice a state has very few points (Ceará has one), so the panel is coarse by construction
+and says so; for finer detail inside Ceará use the municipalities layer.
 
 ### Municipalities and feels-like temperature (`GET /api/municipalities/{uf}` and `.../weather`)
 
@@ -265,7 +296,7 @@ First version for **Ceará** (`uf = ce`; any other state is a 404). Two sources,
   `fetched_at`, `stale` and `stale_reason`. These are **model values, not station readings**, and the centroid is a point
   of the model grid, not the whole municipality.
 - **Cost.** One request asks 184 locations, each counting as one call (free limit: fewer than 10,000 a day and 600 a
-  minute, shared with the live wind at up to 6,000 a day and the historical layers). The answer is shared and cached two
+  minute, shared with the live field at up to 4,000 a day and the historical layers). The answer is shared and cached two
   hours, with its own budget of 2,200 locations a day (11 refreshes); at the budget, or on failure, the last good answer is
   served flagged `stale`, and with no answer at all the endpoint is a 502.
 - **Colors.** Fixed classes of the feels-like temperature (22, 24, 26, 28, 30, 32 degrees C) on the cool weather ramp. They

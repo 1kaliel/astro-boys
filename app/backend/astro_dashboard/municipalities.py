@@ -29,6 +29,11 @@ from astro_dashboard.weather import HTTP_TIMEOUT_SECONDS, WeatherUnavailable
 
 IBGE_MESH = "https://servicodados.ibge.gov.br/api/v3/malhas/estados/{code}"
 IBGE_NAMES = "https://servicodados.ibge.gov.br/api/v1/localidades/estados/{code}/municipios"
+IBGE_UF_MESH = (
+    "https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR"
+    "?intrarregiao=UF&formato=application/vnd.geo+json&qualidade=minima"
+)
+IBGE_STATES = "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 STATES = {"ce": (23, "Ceará")}  # IBGE state code and name; more states are one line each
 CURRENT = ("temperature_2m", "apparent_temperature", "relative_humidity_2m", "wind_speed_10m")
@@ -186,6 +191,43 @@ class MunicipalityService:
                 "features": features,
             }
             self._boundaries[uf.lower()] = (now, collection)
+            return collection
+
+    def states(self) -> dict:
+        """GeoJSON of the Brazilian states (IBGE): `code`, `uf`, `name` and `region` on each feature.
+
+        Cached for a week; the last copy is served if IBGE cannot be reached."""
+        now = self._clock()
+        with self._lock:
+            cached = self._boundaries.get("br-states")
+            if cached and now - cached[0] < BOUNDARY_TTL_SECONDS:
+                return cached[1]
+            try:
+                mesh = self._fetch(IBGE_UF_MESH)
+                names = self._fetch(IBGE_STATES)
+            except WeatherUnavailable:
+                if cached:
+                    return cached[1]
+                raise
+            by_code = {str(item["id"]): item for item in names}  # type: ignore[index, union-attr]
+            features = []
+            for feature in mesh["features"]:  # type: ignore[index]
+                code = str(feature["properties"]["codarea"])
+                info = by_code.get(code, {})
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": feature["geometry"],
+                        "properties": {
+                            "code": code,
+                            "uf": info.get("sigla", code),
+                            "name": info.get("nome", code),
+                            "region": info.get("regiao", {}).get("nome"),
+                        },
+                    }
+                )
+            collection = {"type": "FeatureCollection", "features": features}
+            self._boundaries["br-states"] = (now, collection)
             return collection
 
     def weather(self, uf: str) -> WeatherSnapshot:

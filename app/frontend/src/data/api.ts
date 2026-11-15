@@ -224,3 +224,11 @@ export type MunicipalWeatherItem = {
 
 export const municipalitiesUrl = (uf: string) => `/api/municipalities/${uf}`;
 export const municipalitiesWeatherUrl = (uf: string) => `/api/municipalities/${uf}/weather`;
+
+/** The Brazilian states (IBGE) as GeoJSON: the name of a clicked region and its outline (`/api/regions/states`). */
+export type StatesGeoJSON = GeoJSON.FeatureCollection<
+  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+  { code: string; uf: string; name: string; region: string | null }
+>;
+
+export const STATES_URL = "/api/regions/states";

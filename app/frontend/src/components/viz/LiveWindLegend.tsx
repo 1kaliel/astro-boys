@@ -36,7 +36,8 @@ export function LiveWindLegend({ data, loading, error, onRetry }: LiveWindLegend
       {data && (
         <>
           <p className="legend-note">
-            <strong>Live wind</strong> · model time {clock(data.model_time)}, refreshed on its own every few minutes.
+            <strong>Latest available wind</strong> · model time {clock(data.model_time)}. The server refreshes it every
+            {Math.round(data.ttl_seconds / 60)} minutes and this page checks for a new one on its own.
             {fastest !== null && ` Fastest sampled wind: ${Math.round(fastest)} km/h.`}
           </p>
           {data.stale && (

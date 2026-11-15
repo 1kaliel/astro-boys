@@ -27,9 +27,12 @@ import {
   type CellFeatureProps,
 } from "../../lib/grid";
 import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } from "../../lib/hooks";
+import { patchBasemapStyle } from "../../lib/basemapStyle";
 import { FEELS_LIKE_BREAKS, centroidPoints, joinWeather } from "../../lib/municipalities";
 import { rampStep } from "../../lib/scale";
 import { LAYER_LABEL, breaksOf, unitOf, weatherGeoJSON, type MapLayer } from "../../lib/weatherLayers";
+import { renderThermalSurface } from "../../lib/thermalSurface";
+import type { RegionFeature } from "../../lib/regionWeather";
 import { WindField } from "../../lib/windField";
 import { CompassRing } from "./CompassRing";
 import { WindParticles } from "./WindParticles";
@@ -39,21 +42,38 @@ setWorkerUrl(workerUrl);
 
 /** OpenFreeMap: free, no key, provided as-is. Attribution comes with the style and stays visible. */
 const STYLE_URLS: Record<ColorScheme, string> = {
-  light: "https://tiles.openfreemap.org/styles/positron",
-  dark: "https://tiles.openfreemap.org/styles/dark",
+  light: "https://tiles.openfreemap.org/styles/liberty",
+  dark: "https://tiles.openfreemap.org/styles/liberty", // repainted with the dark palette below (lib/basemapStyle.ts)
 };
 const STYLE_TIMEOUT_MS = 5000;
 
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
 const WX_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--wx-seq-${i}`);
+const THERMAL_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-thermal-${i}`);
 const TOKENS = [
   ...SEQ_TOKENS,
   ...WX_TOKENS,
+  ...THERMAL_TOKENS,
+  "--viz-wind",
+  "--color-accent",
   "--viz-selection",
   "--color-surface",
   "--color-text-primary",
   "--color-border-strong",
 ] as const;
+
+type ArrowMap = { hasImage(id: string): boolean; addImage(id: string, image: object, options?: object): void };
+
+/** Adds the tintable arrow icon of the static wind view if the map does not have it yet. */
+function ensureWindArrow(map: ArrowMap): void {
+  try {
+    if (map.hasImage("wind-arrow")) return;
+    const image = windArrow();
+    if (image) map.addImage("wind-arrow", image, { sdf: true });
+  } catch {
+    // The style is not ready yet: the next style event tries again.
+  }
+}
 
 /** A white arrow on a transparent 48 px canvas; the map tints it (sdf), so it follows the theme. */
 function windArrow(): {
@@ -117,7 +137,10 @@ function useBasemap(scheme: ColorScheme): {
         if (!response.ok) throw new Error(`Basemap style failed (${response.status})`);
         return response.json() as Promise<StyleSpecification>;
       })
-      .then((style) => !cancelled && setState({ style, offline: false }))
+      .then(
+        (style) =>
+          !cancelled && setState({ style: scheme === "dark" ? patchBasemapStyle(style) : style, offline: false }),
+      )
       .catch(() => {
         if (cancelled) return;
         setState({
@@ -150,6 +173,18 @@ type CellMapProps = {
   live?: LiveWindResponse | null;
   /** A state's municipalities (IBGE) colored by the current feels-like temperature: a tilted view with a compass. */
   municipal?: { geo: MunicipalitiesGeoJSON; weather: MunicipalitiesWeather | null } | null;
+  /**
+   * The default view: the live temperature surface, the hotspot cells and the live wind together. The wind has no
+   * switch (it is always on while the map is visible); the surface and the cells can be hidden, and the surface has an
+   * adjustable opacity.
+   */
+  overview?: {
+    showThermal: boolean;
+    thermalOpacity: number;
+    showHotspots: boolean;
+    selectedRegion: RegionFeature | null;
+    onRegionClick: (lng: number, lat: number) => void;
+  } | null;
 };
 
 type Hover = { lng: number; lat: number; cell: CellFeatureProps };
@@ -164,6 +199,7 @@ export function CellMap({
   weather = null,
   live = null,
   municipal = null,
+  overview = null,
 }: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap(scheme);
@@ -176,9 +212,13 @@ export function CellMap({
     props: Record<string, unknown>;
   } | null>(null);
   const muniOn = layer === "municipalities";
-  const hideCells = layer !== "hotspots";
-  const showWeather = layer !== "hotspots" && !muniOn;
-  const liveOn = layer === "live-wind";
+  const overviewOn = layer === "overview";
+  const hideCells = layer !== "hotspots" && !(overviewOn && overview?.showHotspots !== false);
+  // The streaks need the map instance, which exists only after the map has loaded: waiting here is what lets the wind
+  // start by itself when the overview is the first thing on screen.
+  const [mapReady, setMapReady] = useState(false);
+  const showWeather = layer !== "hotspots" && !muniOn && !overviewOn;
+  const liveOn = overviewOn;
   const [muniHover, setMuniHover] = useState<{ lng: number; lat: number; props: Record<string, unknown> } | null>(null);
   const muniShapes = useMemo(() => (municipal ? joinWeather(municipal.geo, municipal.weather) : null), [municipal]);
   const muniPoints = useMemo(
@@ -188,7 +228,7 @@ export function CellMap({
   // The teal ramp of the weather layers, one color per class of feels-like; no value gets the neutral "no data" color.
   const muniFill = useMemo((): ExpressionSpecification => {
     const color = (cls: number) =>
-      colors[`--wx-seq-${rampStep(cls, FEELS_LIKE_BREAKS.length + 1)}` as (typeof TOKENS)[number]];
+      colors[`--viz-thermal-${rampStep(cls, FEELS_LIKE_BREAKS.length + 1)}` as (typeof TOKENS)[number]];
     return [
       "case",
       ["has", "feels"],
@@ -200,14 +240,37 @@ export function CellMap({
   // Live wind is streaks that move; with reduced motion it is the same data as static arrows.
   const liveStreaks = liveOn && !reduceMotion;
   const arrows = layer === "wind-direction" || (liveOn && reduceMotion);
+  const wxSource = (showWeather || arrows) && !liveStreaks;
   const wxData = useMemo(
-    () => weatherGeoJSON((liveOn ? live?.points : weather?.points) ?? [], layer),
+    () => weatherGeoJSON((liveOn ? live?.points : weather?.points) ?? [], liveOn ? "live-wind" : layer),
     [weather, live, layer, liveOn],
   );
   const windField = useMemo(() => (live ? new WindField(live.points) : null), [live]);
+  // The temperature surface: drawn once per answer (not per frame, not per move), coldest class first.
+  const thermalColors = useMemo(() => THERMAL_TOKENS.map((name) => colors[name as (typeof TOKENS)[number]]), [colors]);
+  const surface = useMemo(
+    () =>
+      overviewOn && overview?.showThermal && live
+        ? renderThermalSurface(
+            live.points.map((p) => ({ lat: p.lat, lon: p.lon, value: p.temperature_c })),
+            thermalColors,
+          )
+        : null,
+    [overviewOn, overview?.showThermal, live, thermalColors],
+  );
+  // Surface and hotspot cells go under the borders and names of the basemap, so those stay readable on top.
+  const bordersBefore = useMemo(() => style?.layers.find((l) => l.id.startsWith("boundary_"))?.id, [style]);
+  const selectedGeoJSON = useMemo(
+    () =>
+      overview?.selectedRegion
+        ? { type: "Feature" as const, properties: {}, geometry: overview.selectedRegion.geometry }
+        : null,
+    [overview?.selectedRegion],
+  );
   const wxFill = useMemo((): ExpressionSpecification | string => {
     const limits = breaksOf(layer);
-    const color = (cls: number) => colors[`--wx-seq-${rampStep(cls, limits.length + 1)}` as (typeof TOKENS)[number]];
+    const ramp = layer === "temperature" ? "viz-thermal" : "wx-seq";
+    const color = (cls: number) => colors[`--${ramp}-${rampStep(cls, limits.length + 1)}` as (typeof TOKENS)[number]];
     if (limits.length === 0) return color(1);
     return [
       "step",
@@ -317,10 +380,21 @@ export function CellMap({
         fadeDuration={0}
         attributionControl={{ compact: true }}
         interactiveLayerIds={
-          muniOn ? ["muni-fill"] : liveStreaks ? [] : showWeather ? [arrows ? "wx-arrow" : "wx-circle"] : ["cells-fill"]
+          muniOn
+            ? ["muni-fill"]
+            : overviewOn
+              ? ["cells-fill"]
+              : showWeather
+                ? [arrows ? "wx-arrow" : "wx-circle"]
+                : ["cells-fill"]
         }
         onMouseMove={muniOn ? onMuniPointer : showWeather ? onWeatherPointer : onPointer}
-        onClick={muniOn ? onMuniPointer : showWeather ? onWeatherPointer : onPointer}
+        onClick={(event) => {
+          if (muniOn) onMuniPointer(event);
+          else if (showWeather) onWeatherPointer(event);
+          else onPointer(event);
+          if (overviewOn) overview?.onRegionClick(event.lngLat.lng, event.lngLat.lat);
+        }}
         onMouseLeave={() => {
           setMuniHover(null);
           setHover(null);
@@ -329,28 +403,46 @@ export function CellMap({
         onLoad={(event) => {
           event.target.touchZoomRotate.disableRotation();
           event.target.keyboard.disableRotation();
-          // The arrow image has to exist again after every basemap style change: add it when the map asks for it.
-          event.target.on("styleimagemissing", (missing) => {
-            if (missing.id !== "wind-arrow") return;
-            const image = windArrow();
-            if (image && !event.target.hasImage("wind-arrow"))
-              event.target.addImage("wind-arrow", image, { sdf: true });
-          });
+          ensureWindArrow(event.target);
+          setMapReady(true);
         }}
+        // The arrow image is put on the map whenever a style has loaded (and again after a basemap change, which wipes
+        // it): with the overview as the default view the arrow layer already exists when the style arrives, before
+        // `load`, so asking for the image later would be too late.
+        onStyleData={(event) => ensureWindArrow(event.target)}
         cursor={hover || wxHover ? "pointer" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-right" showCompass={false} />
+        {surface && overview && (
+          <Source id="thermal" type="image" url={surface.url} coordinates={surface.coordinates}>
+            <Layer
+              id="thermal-surface"
+              type="raster"
+              beforeId={bordersBefore}
+              paint={{ "raster-opacity": overview.thermalOpacity, "raster-fade-duration": 0 }}
+            />
+          </Source>
+        )}
         <Source id="cells" type="geojson" data={cellData}>
           {/* No stroke around cells: an estimated month is flagged once (badge), not on thousands of cells. */}
           <Layer
             id="cells-fill"
             type="fill"
+            beforeId={bordersBefore}
             layout={{ visibility: hideCells ? "none" : "visible" }}
             paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
           />
+          {/* A fine light outline, so the hotspot cells stay readable over the temperature colors. */}
+          <Layer
+            id="cells-outline"
+            type="line"
+            beforeId={bordersBefore}
+            layout={{ visibility: hideCells ? "none" : "visible" }}
+            paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.6 }}
+          />
         </Source>
-        {showWeather && !liveStreaks && (
+        {wxSource && (
           <Source id="weather" type="geojson" data={wxData}>
             {arrows ? (
               <Layer
@@ -384,6 +476,15 @@ export function CellMap({
                 }}
               />
             )}
+          </Source>
+        )}
+        {overviewOn && selectedGeoJSON && (
+          <Source id="selected-region" type="geojson" data={selectedGeoJSON}>
+            <Layer
+              id="selected-region-line"
+              type="line"
+              paint={{ "line-color": colors["--color-accent"], "line-width": 2.5 }}
+            />
           </Source>
         )}
         {muniOn && muniShapes && muniPoints && (
@@ -498,8 +599,8 @@ export function CellMap({
         )}
       </Map>
       {muniOn && <CompassRing mapRef={mapRef} />}
-      {liveStreaks && windField && (
-        <WindParticles mapRef={mapRef} field={windField} color={colors["--color-text-primary"]} />
+      {liveStreaks && windField && mapReady && (
+        <WindParticles mapRef={mapRef} field={windField} color={colors["--viz-wind"]} />
       )}
       {offline && <p className="map-note map-offline">Basemap unavailable: showing the cells only.</p>}
     </div>

@@ -41,7 +41,12 @@ from astro_dashboard.weather import (
     WeatherService,
     WeatherUnavailable,
 )
-from astro_dashboard.weather_live import INTERVAL_SECONDS, LIVE_TTL_SECONDS, LiveWindService
+from astro_dashboard.weather_live import (
+    INTERVAL_SECONDS,
+    LIVE_TTL_SECONDS,
+    LiveWindService,
+    default_cache_dir,
+)
 from astro_dashboard.weather_live import SOURCE as LIVE_SOURCE
 
 log = logging.getLogger("astro_dashboard")
@@ -323,7 +328,7 @@ def weather_grid(
     )
 
 
-_DEFAULT_LIVE = LiveWindService()
+_DEFAULT_LIVE = LiveWindService(cache_dir=default_cache_dir())
 
 
 def get_live(request: Request) -> LiveWindService:
@@ -401,6 +406,15 @@ def municipalities(
         return JSONResponse(service.boundaries(uf), headers={"Cache-Control": "public, max-age=86400"})
     except UnknownState as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+@router.get("/regions/states", tags=["municipalities"])
+def states(service: Annotated[MunicipalityService, Depends(get_municipalities)]) -> JSONResponse:
+    """The Brazilian states as GeoJSON (IBGE): the name of a region on a click and its outline on the map."""
+    try:
+        return JSONResponse(service.states(), headers={"Cache-Control": "public, max-age=86400"})
     except WeatherUnavailable as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
 

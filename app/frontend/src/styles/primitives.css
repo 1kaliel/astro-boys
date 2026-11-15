@@ -74,6 +74,24 @@
   --teal-600: #00587c;
   --teal-700: #003763;
 
+  /*
+   * Thermal: the ramp of every temperature layer (the live surface, the ERA5 month, the municipalities): deep blue for
+   * cold to yellow for warm (100 warmest and palest ... 700 coldest and darkest). It stops at yellow on purpose: orange
+   * and red belong to the hotspot ramp (magma), and a hot spot of weather must never look like a hotspot of fire.
+   * Checked by `uv run python scripts/check_viz_ramp.py --theme thermal`.
+   */
+  --thermal-100: #f4e86a;
+  --thermal-200: #b8dd7a;
+  --thermal-300: #6cc08e;
+  --thermal-400: #43a3a6;
+  --thermal-500: #3b80b8;
+  --thermal-600: #3a5aa8;
+  --thermal-700: #252f70;
+
+  /* Wind streaks: pale cyan on the dark map, a deeper blue on the light one (contrast on each land color) */
+  --wind-pale: #b0e8f5;
+  --wind-deep: #0f5f7a;
+
   /* Blue: sequential ramp and negative diverging arm (documented steps) */
   --blue-100: #cde2fb;
   --blue-200: #9ec5f4;

@@ -7,13 +7,15 @@ export type WeatherSample = Pick<
 >;
 
 /** What the map shows. "hotspots" is the science of the project; the others are ERA5 context. */
-export type MapLayer = "hotspots" | "temperature" | "wind-speed" | "wind-direction" | "live-wind" | "municipalities";
+export type MapLayer =
+  "hotspots" | "temperature" | "wind-speed" | "wind-direction" | "live-wind" | "municipalities" | "overview";
 
 export const LAYER_LABEL: Record<MapLayer, string> = {
   hotspots: "Hotspots",
-  temperature: "Temperature",
-  "wind-speed": "Wind speed",
-  "wind-direction": "Wind direction",
+  overview: "Overview",
+  temperature: "ERA5 temperature",
+  "wind-speed": "ERA5 wind speed",
+  "wind-direction": "ERA5 wind direction",
   "live-wind": "Live wind",
   municipalities: "Ceará feels like",
 };

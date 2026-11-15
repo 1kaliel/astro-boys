@@ -842,3 +842,94 @@
   flex: none;
   white-space: nowrap;
 }
+
+/* Overview controls (temperature, hotspots, opacity) */
+.overview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.overview-check,
+.overview-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.overview-check input,
+.overview-slider input {
+  accent-color: var(--color-accent);
+}
+
+.overview-slider input {
+  width: 8rem;
+}
+
+.overview-wind-note {
+  color: var(--color-text-secondary);
+}
+
+/* Region weather: a card over the map, bottom left, never wider than the map */
+.region-panel {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  z-index: var(--layer-sticky);
+  width: min(21rem, calc(100% - var(--space-4)));
+  max-height: calc(100% - var(--space-4));
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+}
+
+.region-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.region-panel-title {
+  margin: 0;
+  font-family: var(--font-display-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.region-panel-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.region-panel-list > div {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.region-panel-list dt {
+  color: var(--color-text-secondary);
+}
+
+.region-panel-list dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.region-panel-note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}

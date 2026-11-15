@@ -44,6 +44,16 @@
   --viz-grid: var(--neutral-200);
   --viz-axis: var(--neutral-300);
   --viz-band-opacity: 0.1; /* 90% interval band: a wash, never a block */
+  /* Temperature: one ramp for every temperature layer, 1 = coldest ... 7 = warmest (same in both themes) */
+  --viz-thermal-1: var(--thermal-700);
+  --viz-thermal-2: var(--thermal-600);
+  --viz-thermal-3: var(--thermal-500);
+  --viz-thermal-4: var(--thermal-400);
+  --viz-thermal-5: var(--thermal-300);
+  --viz-thermal-6: var(--thermal-200);
+  --viz-thermal-7: var(--thermal-100);
+  --viz-wind: var(--wind-deep); /* the streaks of the live wind */
+
   /* Weather layers: their own cool ramp, apart from the hotspot ramp above */
   --wx-seq-1: var(--teal-100);
   --wx-seq-2: var(--teal-200);
@@ -71,6 +81,7 @@
     --wx-seq-5: var(--teal-300);
     --wx-seq-6: var(--teal-200);
     --wx-seq-7: var(--teal-100);
+    --viz-wind: var(--wind-pale);
 
     --viz-div-mid: var(--neutral-800);
     --viz-div-neg-1: var(--blue-600);
@@ -111,6 +122,7 @@
   --wx-seq-5: var(--teal-300);
   --wx-seq-6: var(--teal-200);
   --wx-seq-7: var(--teal-100);
+  --viz-wind: var(--wind-pale);
 
   --viz-div-mid: var(--neutral-800);
   --viz-div-neg-1: var(--blue-600);

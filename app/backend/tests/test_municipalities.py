@@ -208,3 +208,54 @@ def test_fetch_json_unpacks_a_gzip_answer(monkeypatch: pytest.MonkeyPatch) -> No
     for body in (gzip.compress(json.dumps(payload).encode()), json.dumps(payload).encode()):
         monkeypatch.setattr(municipalities.urllib.request, "urlopen", lambda *a, _b=body, **k: Response(_b))
         assert municipalities.fetch_json("https://example.test/x") == payload
+
+
+class StatesFake:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.fail = False
+
+    def __call__(self, url: str) -> object:
+        self.calls += 1
+        if self.fail:
+            raise WeatherUnavailable("A data service could not be reached.")
+        if "localidades" in url:
+            return [{"id": 23, "sigla": "CE", "nome": "Ceará", "regiao": {"sigla": "NE", "nome": "Nordeste"}}]
+        return {
+            "type": "FeatureCollection",
+            "features": [
+                {"type": "Feature", "properties": {"codarea": "23"}, "geometry": square(-41.0, -7.0, 4.0)}
+            ],
+        }
+
+
+def test_states_join_the_name_the_letters_and_the_region_by_code() -> None:
+    geo = MunicipalityService(fetch=StatesFake(), clock=Clock()).states()
+    assert geo["features"][0]["properties"] == {
+        "code": "23",
+        "uf": "CE",
+        "name": "Ceará",
+        "region": "Nordeste",
+    }
+
+
+def test_states_are_cached_for_a_week_and_survive_a_failing_service() -> None:
+    fake, clock = StatesFake(), Clock()
+    service = MunicipalityService(fetch=fake, clock=clock)
+    service.states()
+    calls = fake.calls
+    service.states()
+    assert fake.calls == calls
+    clock.now += BOUNDARY_TTL_SECONDS + 1
+    fake.fail = True
+    assert service.states()["features"]  # the old copy, not an error
+
+
+def test_states_endpoint() -> None:
+    app.state.municipalities = MunicipalityService(fetch=StatesFake(), clock=Clock())
+    try:
+        with TestClient(app) as c:
+            body = c.get("/api/regions/states").json()
+            assert body["features"][0]["properties"]["uf"] == "CE"
+    finally:
+        del app.state.municipalities
