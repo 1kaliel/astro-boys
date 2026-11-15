@@ -3,7 +3,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import type { CalendarDataset } from "../../data/calendarSource";
-import { useDaily, type DailyRequest } from "../../data/daily";
+import { dailyUrl, useDaily, type DailyRequest } from "../../data/daily";
 import { cx } from "../../lib/cx";
 import { formatCompact, formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
@@ -16,6 +16,8 @@ import {
   buildMonthGrid,
   compareMonths,
   dailyErrorText,
+  dailySatellite,
+  estimatedEraText,
   dayAriaLabel,
   dayCountText,
   dayFill,
@@ -27,7 +29,6 @@ import {
   monthBounds,
   moveDay,
   nativeTotal,
-  satelliteForSensor,
   satelliteText,
   shiftMonth,
   sourceLabel,
@@ -42,18 +43,21 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
   const [state, dispatch] = useDashboard();
   // The caller renders this view only with a selected month.
   const { year, month } = state.selected ?? { year: dataset.lastYear, month: 12 };
-  const period = dataset.period ?? state.period;
-  const satellite = satelliteForSensor(state.sensor);
+  // The days follow the same series as the "Data" filter; "mixed" (scale and map layer disagree) shows no days.
+  const series = dailySatellite(state);
+  const satellite = series === "mixed" ? null : series.satellite;
 
-  const request = useMemo<DailyRequest>(
-    () => ({ area: state.area, year, month, period: state.period, satellite }),
+  const request = useMemo<DailyRequest | null>(
+    () => (satellite === null ? null : { area: state.area, year, month, period: state.period, satellite }),
     [state.area, year, month, state.period, satellite],
   );
   const remote = useDaily(request);
-  // The hook keeps the last answer while a new one loads: only use it when it is this month's.
-  const data = remote.data && remote.data.year === year && remote.data.month === month && Array.isArray(remote.data.days)
-    ? remote.data
-    : null;
+  // The hook keeps the last answer after a new request (and after a failed one): only use it when it was fetched
+  // for this very request (area, month, period, satellite).
+  const data =
+    request && remote.data && remote.dataUrl === dailyUrl(request) && Array.isArray(remote.data.days)
+      ? remote.data
+      : null;
   const refreshing = data !== null && remote.loading;
 
   const cells = useMemo(
@@ -62,8 +66,11 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
   );
   const scale = useMemo(() => dayScale(cells), [cells]);
 
-  const harmonized =
-    dataset.months.find((m) => m.year === year && m.month === month && m.period === period) ?? null;
+  // The harmonized total of the same period as the days. While the calendar reloads for a new period, it is "–".
+  const periodReady = dataset.period === null || dataset.period === state.period;
+  const harmonized = periodReady
+    ? (dataset.months.find((m) => m.year === year && m.month === month && m.period === state.period) ?? null)
+    : null;
   const bounds = useMemo(() => monthBounds(dataset.months), [dataset.months]);
   const prev = shiftMonth({ year, month }, -1);
   const next = shiftMonth({ year, month }, 1);
@@ -95,8 +102,21 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
     window.setTimeout(() => gridRef.current?.querySelector<HTMLElement>(`[data-date="${day}"]`)?.focus(), 0);
   }, [dispatch, state.day]);
 
+  // Escape closes the day details when pressed inside this view (not in the tour, a dialog or the map tools).
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Escape" || event.defaultPrevented || !state.day) return;
+    event.preventDefault();
+    closeDay();
+  };
+
   let body;
-  if (!data && remote.error && !remote.loading) {
+  if (series === "mixed") {
+    body = (
+      <div className="calendar-status" role="status">
+        <p>The calendar and the map show different data series. Pick one in Data to see the days.</p>
+      </div>
+    );
+  } else if (!data && remote.error && !remote.loading) {
     const { missing, text } = dailyErrorText(remote.error);
     body = (
       <div className="calendar-status" role="alert">
@@ -137,7 +157,7 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
   const total = data ? nativeTotal(cells) : null;
 
   return (
-    <div className="calendar month-view">
+    <div className="calendar month-view" onKeyDown={onKeyDown}>
       <div className="month-view-head">
         <Button className="month-view-back" onClick={showYears}>
           <span aria-hidden="true">←</span> All years
@@ -176,7 +196,7 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
         <div className="month-view-total">
           <dt>Harmonized month total (monthly only)</dt>
           <dd>
-            {harmonizedTotalText(harmonized)}
+            {periodReady ? harmonizedTotalText(harmonized) : "–"}
             {harmonized?.isEstimated && <Badge kind="estimated" />}
             {harmonized?.isPartial && <Badge kind="partial" />}
           </dd>
@@ -185,13 +205,18 @@ export function MonthView({ dataset }: { dataset: CalendarDataset }) {
       <p className="calendar-notice">
         Daily numbers are native detections of one satellite and are not harmonized: they do not add up to the
         harmonized month total.
-        {estimatedEra && " This month is before VIIRS (February 2012): its days are native Aqua MODIS detections."}
+        {estimatedEra && data && ` ${estimatedEraText(data.satellite, data.instrument)}`}
       </p>
 
       <div className={cx("month-view-body", selectedCell && "has-details")}>
         <div className="month-view-main">{body}</div>
         {selectedCell && (
-          <DayDetails cell={selectedCell} source={source} estimatedEra={estimatedEra} onClose={closeDay} />
+          <DayDetails
+            cell={selectedCell}
+            source={source}
+            eraNote={estimatedEra && data ? estimatedEraText(data.satellite, data.instrument) : null}
+            onClose={closeDay}
+          />
         )}
       </div>
     </div>
