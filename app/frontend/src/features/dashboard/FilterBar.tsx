@@ -4,7 +4,7 @@ import { CoordinateField } from "../../components/ui/CoordinateField";
 import { Popover } from "../../components/ui/Popover";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
 import { YearSelect } from "../../components/ui/YearSelect";
-import { checkArea, sameBounds } from "../../lib/area";
+import { formatDegrees, formatSizeKm, previewBounds, sameBounds } from "../../lib/area";
 import { cellsInBounds, type Bounds } from "../../lib/grid";
 import {
   FIRST_YEAR,
@@ -32,12 +32,17 @@ const METRIC_OPTIONS: ReadonlyArray<SegmentOption<Metric>> = [
 ];
 const YEARS = Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
 
+// 2 x 2: the two longitudes, then the two latitudes. The fields take any coordinate; the preview says when an edge
+// is outside the study area and will be clamped to it (a field that clamps on its own would do it silently).
 const FIELDS: ReadonlyArray<{ key: keyof Bounds; label: string; min: number; max: number }> = [
   { key: "west", label: "West (lon)", min: -180, max: 180 },
-  { key: "south", label: "South (lat)", min: -90, max: 90 },
   { key: "east", label: "East (lon)", min: -180, max: 180 },
+  { key: "south", label: "South (lat)", min: -90, max: 90 },
   { key: "north", label: "North (lat)", min: -90, max: 90 },
 ];
+
+const boundsText = (b: Bounds) =>
+  `W ${formatDegrees(b.west)}, S ${formatDegrees(b.south)}, E ${formatDegrees(b.east)}, N ${formatDegrees(b.north)}`;
 
 /** One row of filters, above the content; every view (KPIs, calendar, map) follows them. */
 export function FilterBar() {
@@ -84,22 +89,23 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
   const formId = useId();
   const [open, setOpen] = useState(false);
   const [fields, setFields] = useState<Bounds>(area);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setFields(area), [area]);
 
   const cells = cellsInBounds(area).length;
-  const summary = `${sameBounds(area, PILOT_BOUNDS) ? "Northeast Brazil (pilot)" : "Custom area"} · ${cells.toLocaleString(
+  const summary = `${sameBounds(area, PILOT_BOUNDS) ? "Northeast Brazil (study area)" : "Custom area"} · ${cells.toLocaleString(
     "en-US",
   )} L2 cells`;
+  // What the typed box would select, shown before it is applied.
+  const preview = previewBounds(fields, PILOT_BOUNDS);
+  const [tried, setTried] = useState(false);
 
   function apply(candidate: Bounds) {
-    const check = checkArea(candidate, PILOT_BOUNDS);
-    if (!check.ok) {
-      setError(check.message);
+    const check = previewBounds(candidate, PILOT_BOUNDS);
+    if (check.errors.length) {
+      setTried(true);
       return;
     }
-    setError(null);
     onArea(check.area);
     setOpen(false);
   }
@@ -113,7 +119,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
           setOpen(next);
           if (next) {
             setFields(area);
-            setError(null);
+            setTried(false);
           }
         }}
         triggerLabel={`Area: ${summary}. Edit the area`}
@@ -146,17 +152,30 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
             />
           ))}
         </form>
-        <p className="area-summary">On the map you can also draw a rectangle or use the visible area.</p>
-        {error && (
-          <p className="area-error" role="alert">
-            {error}
-          </p>
-        )}
+        <div className="area-preview" aria-live="polite">
+          {preview.errors.length === 0 ? (
+            <>
+              Selects <strong>{preview.cells.toLocaleString("en-US")} L2 cells</strong>,{" "}
+              {formatSizeKm(preview.widthKm, preview.heightKm)}.
+              {preview.clamped && ` Outside the study area: clamped to ${boundsText(preview.area)}.`}
+            </>
+          ) : (
+            <ul className={tried ? "area-errors area-error" : "area-errors"} role={tried ? "alert" : undefined}>
+              {preview.errors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <p className="area-summary">
+          Study area, the only place with data: {boundsText(PILOT_BOUNDS)}. On the map you can also draw a rectangle or
+          use the visible area.
+        </p>
         <div className="card-actions">
           <Button type="submit" form={formId}>
             Apply
           </Button>
-          <Button onClick={() => apply(PILOT_BOUNDS)}>Reset to pilot</Button>
+          <Button onClick={() => apply(PILOT_BOUNDS)}>Reset to the study area</Button>
         </div>
       </Popover>
     </div>

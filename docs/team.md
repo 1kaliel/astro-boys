@@ -30,17 +30,19 @@ Stack: **FastAPI backend + single-page frontend** (option A in the spec); fronte
 
 | Name | GitHub | Role |
 |------|--------|------|
-| Jean | [JeanGust4](https://github.com/JeanGust4) | Diary keeper (logs decisions, done, blockers for the whole team) and floater: helps wherever a task is behind. Proposed: demo lead, UI text, screenshots |
+| Jean | [JeanGust4](https://github.com/JeanGust4) | Diary keeper (logs decisions, done, blockers for the whole team) and floater: helps wherever a task is behind. Demo lead (S2), UI text, screenshots |
 
 ## Shared responsibilities
 
 | Responsibility | Owner |
 |----------------|----------------|
 | Final say on scope; submission page; AI-use statement | Kali |
+| Submission owner: final upload and confirmation (S6) | Kali |
 | Data contract (one per team) | Mateus + Guilherme |
-| Demo (30 s video or 7 slides) lead | Jean (proposed, to confirm) |
+| Demo lead (S2): seven slides in English, including title and intro | Jean |
 | Diary | Jean |
-| Official requirements check; second reviewer from the other team | Kali; reviewer to name |
+| Official requirements check | Kali |
+| Final cross-team review of public links and English materials (S5) | Justino |
 | References and credits ([resources.md](resources.md)) | Justino |
 
 ## The hand-off between teams
@@ -57,3 +59,8 @@ mock with the same columns until `calendar/v1` exists (Checkpoint B).
 - Rest is planned (Sun 02:00–07:00). Long jobs run in `tmux` on the VM.
 - Anything taken from outside the team (code, text, images, numbers) is listed in [resources.md](resources.md).
   We don't copy other teams' solutions.
+
+
+## Final-delivery assignment (L4)
+
+At Jean Gustavo's request, the remaining delivery assignments are named: Jean leads the seven-slide English demonstration, Kali remains the submission owner, and Jean selected Justino for the final cross-team review. See [delivery-roles.md](delivery-roles.md). These are task assignments, not evidence that a demo, final review or submission has been completed. Other task ownership and Kali's approval of cloud changes remain as recorded.

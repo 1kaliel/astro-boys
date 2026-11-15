@@ -92,22 +92,29 @@
   background: var(--color-page);
 }
 
+/* Bounds fields, 2 x 2: West | East (longitudes) over South | North (latitudes), on every width. */
 .area-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-3);
 }
 
 .area-summary,
-.area-error {
+.area-error,
+.area-preview {
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 
+.area-preview strong,
 .area-error {
   color: var(--color-text-primary);
+}
+
+.area-errors {
+  margin: 0;
+  padding-inline-start: var(--space-4);
 }
 
 /* CSV download (D6) */
@@ -424,6 +431,16 @@
   inset: 0;
 }
 
+/* Tools and map. The tools sit over the map on wide screens and in a row above it when the dashboard is one column. */
+.map-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
 .map-tools {
   position: absolute;
   top: var(--space-2);
@@ -509,6 +526,41 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Bottom left over the map: the focus chip (the cell you zoomed into, at the map center or under the mouse) and the
+   offline note, stacked. Leaves room for the attribution button on the right. */
+.map-overlay {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  z-index: var(--layer-sticky);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: calc(100% - var(--space-12) - var(--space-2));
+  pointer-events: none;
+}
+
+.map-overlay .map-offline {
+  position: static;
+}
+
+.map-focus-chip {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-sm);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
+}
+
+/* The live region stays mounted; it is hidden while no cell has the focus. */
+.map-focus-chip:empty {
+  display: none;
+}
+
 /* MapLibre popup, restyled with our tooltip tokens */
 .map-popup .maplibregl-popup-content {
   padding: var(--space-2) var(--space-3);
@@ -545,6 +597,29 @@
 
 .map-tools .map-back {
   font-weight: var(--font-weight-semibold);
+}
+
+/* Globe: the label of the study area, a button that flies into it */
+.map-study-label {
+  display: grid;
+  justify-items: center;
+  min-height: var(--control-size);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.map-study-label-note {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
 }
 
 .legend-title {
@@ -603,10 +678,37 @@
   }
 }
 
+/* Touch screens and narrow windows: 44 px controls, MapLibre's zoom buttons included. */
+@media (max-width: 56rem), (pointer: coarse) {
+  :root {
+    --control-size: var(--size-target-touch);
+  }
+
+  .map-stage .maplibregl-ctrl-group button {
+    width: var(--size-target-touch);
+    height: var(--size-target-touch);
+  }
+
+  .segmented-item,
+  .chip,
+  .month-chip {
+    min-width: var(--size-target-touch);
+  }
+}
+
 @media (max-width: 56rem) {
   .dash-calendar,
   .dash-map {
     grid-column: 1 / -1;
+  }
+
+  /* One column: the tools leave the map (they covered a third of it on a phone) and the map gets taller. */
+  .map-tools {
+    position: static;
+  }
+
+  .map-stage {
+    min-height: var(--size-map-phone);
   }
 
   .kpi-row {
@@ -637,5 +739,10 @@
 
   .heat-col-short {
     display: inline;
+  }
+
+  /* 6 + 6 month buttons, each at least 44 px wide on a 360 px phone. */
+  .month-chips {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }

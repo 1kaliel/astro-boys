@@ -117,6 +117,8 @@
   --size-px-2: 2px;
   --size-swatch: 12px;
   --size-target-min: 24px; /* minimum cell and hit-target size */
+  --size-target-touch: 44px; /* buttons and fields on a touch screen or a narrow window (WCAG 2.5.5, Apple HIG) */
+  --size-map-phone: 420px; /* map height when the dashboard is one column: room for the cells under the tools */
   --size-target-compact: 18px; /* heatmap cells on phones: 12 months must fit in about 300px */
   --size-panel-min: 320px;
   --size-container: 1200px;
