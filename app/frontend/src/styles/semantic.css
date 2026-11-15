@@ -31,6 +31,16 @@
   --color-status-serious: var(--status-serious);
   --color-status-critical: var(--status-critical);
 
+  /* The four KPI card accents and their tinted backgrounds */
+  --color-kpi-activity: var(--kpi-coral-700);
+  --color-kpi-activity-bg: color-mix(in srgb, var(--kpi-coral-700) 7%, var(--neutral-0));
+  --color-kpi-season: var(--kpi-amber-700);
+  --color-kpi-season-bg: color-mix(in srgb, var(--kpi-amber-700) 7%, var(--neutral-0));
+  --color-kpi-year: var(--kpi-cyan-700);
+  --color-kpi-year-bg: color-mix(in srgb, var(--kpi-cyan-700) 7%, var(--neutral-0));
+  --color-kpi-provenance: var(--kpi-violet-700);
+  --color-kpi-provenance-bg: color-mix(in srgb, var(--kpi-violet-700) 7%, var(--neutral-0));
+
   --spacing-component: var(--space-3);
   --spacing-section: var(--space-6);
   --spacing-page-x: var(--space-4);
@@ -54,6 +64,14 @@
     --color-accent-secondary: var(--coral-400);
     --color-on-accent: var(--navy-950);
     --color-ring: var(--crimson-500);
+    --color-kpi-activity: var(--kpi-coral-400);
+    --color-kpi-activity-bg: var(--kpi-coral-bg);
+    --color-kpi-season: var(--kpi-amber-400);
+    --color-kpi-season-bg: var(--kpi-amber-bg);
+    --color-kpi-year: var(--kpi-cyan-400);
+    --color-kpi-year-bg: var(--kpi-cyan-bg);
+    --color-kpi-provenance: var(--kpi-violet-400);
+    --color-kpi-provenance-bg: var(--kpi-violet-bg);
   }
 }
 
@@ -73,4 +91,12 @@
   --color-accent-secondary: var(--coral-400);
   --color-on-accent: var(--navy-950);
   --color-ring: var(--crimson-500);
+  --color-kpi-activity: var(--kpi-coral-400);
+  --color-kpi-activity-bg: var(--kpi-coral-bg);
+  --color-kpi-season: var(--kpi-amber-400);
+  --color-kpi-season-bg: var(--kpi-amber-bg);
+  --color-kpi-year: var(--kpi-cyan-400);
+  --color-kpi-year-bg: var(--kpi-cyan-bg);
+  --color-kpi-provenance: var(--kpi-violet-400);
+  --color-kpi-provenance-bg: var(--kpi-violet-bg);
 }

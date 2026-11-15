@@ -39,55 +39,64 @@ export function KpiRow({ months, startYear, endYear, baselineYears }: KpiRowProp
   return (
     <section className="kpi-row" aria-label="Key figures for the selected area">
       <KpiTile
-        hero
-        label={latest ? `${monthName} ${latest.year}${latest.isPartial ? " so far" : ""}` : "Latest month"}
+        variant="activity"
+        category="Current activity"
+        title={latest ? `${monthName} ${latest.year}${latest.isPartial ? " so far" : ""}` : "Latest month"}
         value={formatCompact(latest?.count)}
-        detail={
+        comparison={
           latest && comparison
             ? latest.count == null
-              ? "VIIRS-equivalent hotspots · no estimate for this month"
+              ? "No estimate for this month"
               : comparison.kind === "same_days"
                 ? // Like for like: days 1..d of this month against days 1..d of earlier years.
-                  `VIIRS-equivalent hotspots · ${delta(
-                    latest.count,
-                    comparison.base,
-                    `the median of the same ${comparison.days} days`,
-                  )}, ${comparison.years} earlier years`
+                  delta(latest.count, comparison.base, `the median of the same ${comparison.days} days`)
                 : comparison.kind === "none"
                   ? // A partial month is never compared with full months: it would read as "little activity".
-                    `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
-                  : `VIIRS-equivalent hotspots · ${delta(latest.count, comparison.base, `the ${monthName} median`)}`
+                    `Partial month, not compared with the ${monthName} median`
+                  : delta(latest.count, comparison.base, `the ${monthName} median`)
             : "No data"
         }
-        badges={
+        detail={
+          latest && comparison?.kind === "same_days"
+            ? `VIIRS-equivalent hotspots · ${comparison.years} earlier years`
+            : "VIIRS-equivalent hotspots"
+        }
+        footer={
           latest && (
             <>
               {latest.isEstimated && <Badge kind="estimated" />}
               {latest.isPartial && <Badge kind="partial">{`Partial: ${latest.daysObserved} days observed`}</Badge>}
+              {!latest.isEstimated && !latest.isPartial && <span>Complete month, observed by VIIRS</span>}
             </>
           )
         }
       />
       <KpiTile
-        label="Busiest month of the year"
+        variant="season"
+        category="Seasonality"
+        title="Busiest month of the year"
         value={busiest ? MONTHS_LONG[busiest.month - 1] : "No data"}
-        detail={busiest ? `Median ${formatCompact(busiest.median)} hotspots, ${baseline}` : undefined}
+        comparison={busiest ? `Median ${formatCompact(busiest.median)} hotspots` : undefined}
+        detail="Highest median of the twelve months"
+        footer={`Reference period ${baseline}`}
       />
       <KpiTile
-        label={ytd ? `${ytd.year} so far` : "Year so far"}
+        variant="year"
+        category="Year to date"
+        title={ytd ? `${ytd.year} so far` : "Year so far"}
         value={formatCompact(ytd?.value)}
-        detail={
-          ytd
-            ? `${delta(ytd.value, ytd.median, `the sum of ${ytd.months} monthly medians`)}${
-                ytd.partial ? " · partial month left out" : ""
-              }`
-            : undefined
-        }
+        comparison={ytd ? delta(ytd.value, ytd.median, `the sum of ${ytd.months} monthly medians`) : undefined}
+        detail="VIIRS-equivalent hotspots, complete months only"
+        footer={ytd ? (ytd.partial ? "Partial month left out" : `${ytd.months} complete months`) : undefined}
       />
       <KpiTile
-        label="Months estimated from MODIS"
+        variant="provenance"
+        category="Data provenance"
+        title="Months estimated from MODIS"
         value={`${share.estimated} of ${share.total}`}
-        detail={`In ${startYear}–${endYear}. Observed by VIIRS from February 2012.`}
+        comparison={share.total > 0 ? `${Math.round((100 * share.estimated) / share.total)}% of the months shown` : undefined}
+        detail={`In ${startYear}–${endYear}`}
+        footer="Observed by VIIRS from February 2012"
       />
     </section>
   );

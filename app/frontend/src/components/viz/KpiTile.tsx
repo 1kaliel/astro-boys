@@ -1,25 +1,50 @@
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
+import { KpiIcon, type KpiIconName } from "./kpiIcons";
+
+/** Which of the four indicator colors the card takes (an interface color, never a data scale). */
+export type KpiVariant = "activity" | "season" | "year" | "provenance";
 
 type KpiTileProps = {
-  /** Sentence case, no trailing colon. */
-  label: string;
-  /** Already formatted (compact) figure; "No data" when missing, never 0. */
+  variant: KpiVariant;
+  /** Short upper-case category, for example "Current activity". */
+  category: string;
+  /** Name of the indicator, sentence case, no trailing colon. */
+  title: string;
+  /** Already formatted figure; "No data" when missing, never 0. */
   value: string;
-  /** Delta vs a named baseline, in ink: more or fewer hotspots is not "good" or "bad". */
+  /** The comparison or reference, in ink: more or fewer hotspots is not "good" or "bad". */
+  comparison?: ReactNode;
+  /** One line of supporting detail. */
   detail?: ReactNode;
-  badges?: ReactNode;
-  /** The one figure the dashboard leads with (exactly one per view). */
-  hero?: boolean;
+  /** Period, origin, observation state or the methodological note. */
+  footer?: ReactNode;
 };
 
-export function KpiTile({ label, value, detail, badges, hero }: KpiTileProps) {
+const ICON_OF: Record<KpiVariant, KpiIconName> = {
+  activity: "activity",
+  season: "season",
+  year: "year",
+  provenance: "provenance",
+};
+
+/** Same four-part layout for every indicator: header (category + icon), content, footer. Not interactive. */
+export function KpiTile({ variant, category, title, value, comparison, detail, footer }: KpiTileProps) {
   return (
-    <div className={cx("kpi", hero && "kpi-hero")}>
-      <p className="kpi-label">{label}</p>
-      <p className="kpi-value">{value}</p>
-      {detail && <p className="kpi-detail">{detail}</p>}
-      {badges && <div className="kpi-badges">{badges}</div>}
-    </div>
+    <article className={cx("kpi", `kpi-${variant}`)} aria-label={`${category}: ${title}`}>
+      <header className="kpi-head">
+        <span className="kpi-category">{category}</span>
+        <span className="kpi-icon">
+          <KpiIcon name={ICON_OF[variant]} />
+        </span>
+      </header>
+      <div className="kpi-body">
+        <p className="kpi-title">{title}</p>
+        <p className="kpi-value">{value}</p>
+        {comparison && <p className="kpi-comparison">{comparison}</p>}
+        {detail && <p className="kpi-detail">{detail}</p>}
+      </div>
+      {footer && <footer className="kpi-footer">{footer}</footer>}
+    </article>
   );
 }

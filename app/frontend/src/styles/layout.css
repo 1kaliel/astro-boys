@@ -161,7 +161,7 @@
   transition: opacity var(--duration-normal);
 }
 
-/* KPI row */
+/* KPI row: four indicators with one layout (header, content, footer) and one type scale. */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -169,47 +169,112 @@
 }
 
 .kpi {
+  --kpi-accent: var(--color-text-primary);
+  --kpi-bg: var(--card-bg);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-3);
   min-width: 0;
-  padding: var(--card-padding);
+  padding: var(--space-5);
   border: 1px solid var(--card-border);
+  border-top: 3px solid var(--kpi-accent);
   border-radius: var(--card-radius);
-  background: var(--card-bg);
+  background: var(--kpi-bg);
   box-shadow: var(--card-shadow);
 }
 
-.kpi-label {
-  margin: 0;
-  font-size: var(--font-size-xs);
+.kpi-activity {
+  --kpi-accent: var(--color-kpi-activity);
+  --kpi-bg: var(--color-kpi-activity-bg);
+}
+
+.kpi-season {
+  --kpi-accent: var(--color-kpi-season);
+  --kpi-bg: var(--color-kpi-season-bg);
+}
+
+.kpi-year {
+  --kpi-accent: var(--color-kpi-year);
+  --kpi-bg: var(--color-kpi-year-bg);
+}
+
+.kpi-provenance {
+  --kpi-accent: var(--color-kpi-provenance);
+  --kpi-bg: var(--color-kpi-provenance-bg);
+}
+
+.kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.kpi-category {
+  font-size: var(--font-size-xs); /* 12px */
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kpi-accent);
+}
+
+.kpi-icon {
+  display: inline-flex;
+  color: var(--kpi-accent);
+}
+
+.kpi-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.kpi-body > p,
+.kpi-footer {
+  margin: 0;
+}
+
+.kpi-title {
+  font-size: clamp(0.875rem, 0.8rem + 0.3vw, 1rem); /* 14 to 16px */
+  font-weight: 500;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
 }
 
 .kpi-value {
-  margin: 0;
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
+  font-size: clamp(2.25rem, 1.4rem + 2.4vw, 3rem); /* 36 to 48px */
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--kpi-accent);
 }
 
-.kpi-hero .kpi-value {
-  font-size: var(--font-size-hero);
+.kpi-comparison {
+  font-size: clamp(0.875rem, 0.8rem + 0.3vw, 1rem);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
 }
 
 .kpi-detail {
-  margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-sm); /* 14px */
+  line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
 }
 
-.kpi-badges {
+.kpi-footer {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
   margin-top: auto;
-  padding-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--kpi-accent) 28%, transparent);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
 }
 
 /* Burning calendar heatmap */
@@ -537,11 +602,13 @@
   }
 }
 
-@media (max-width: 56rem) {
+@media (max-width: 75rem) {
   .kpi-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+@media (max-width: 56rem) {
   .api-status,
   .app-subtitle {
     display: none;
@@ -556,8 +623,12 @@
     --spacing-page-x: var(--space-3);
   }
 
-  .kpi-hero {
-    grid-column: 1 / -1;
+  .kpi-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kpi {
+    padding: var(--space-4);
   }
 
   .heat-col-full {

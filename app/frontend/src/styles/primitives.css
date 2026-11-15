@@ -44,6 +44,23 @@
   --crimson-700-alpha-10: rgb(179 32 47 / 0.1); /* selection wash, light theme */
   --coral-400: #ff9466; /* complementary highlight */
 
+  /*
+   * KPI card accents (interface colors that tell the four indicators apart; never a data scale). Dark: the accent and
+   * the tinted card background. Light: darker accents (contrast on a 7% tint of the accent over white: 5.2 to 6.8).
+   */
+  --kpi-coral-400: #ff5b68;
+  --kpi-coral-bg: #171d2a;
+  --kpi-coral-700: #c0283a;
+  --kpi-amber-400: #ffb454;
+  --kpi-amber-bg: #211d1d;
+  --kpi-amber-700: #8f5200;
+  --kpi-cyan-400: #65d8e5;
+  --kpi-cyan-bg: #14232b;
+  --kpi-cyan-700: #0a6672;
+  --kpi-violet-400: #b89bff;
+  --kpi-violet-bg: #1e1c2b;
+  --kpi-violet-700: #5b3db5;
+
   /* Blue: sequential ramp and negative diverging arm (documented steps) */
   --blue-100: #cde2fb;
   --blue-200: #9ec5f4;
