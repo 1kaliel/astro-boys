@@ -55,5 +55,5 @@ build/
 Thumbs.db
 
 # Licensed fonts: a webfont license is needed to ship them (see docs/design-system.md, Typography). Never commit them.
-fonts/
+/fonts/
 app/frontend/public/fonts/

@@ -285,11 +285,14 @@ time, that the animation is time-lapsed and interpolated, and when the answer is
 
 ## Typography
 
-Two faces. The **display face**, `--font-display`, is Neuropolitical (Typodermic Fonts, one weight, no arrows); it is used
+Two faces. The **body face**, `--font-sans`, is **Montserrat** (SIL OFL 1.1, self-hosted in
+`app/frontend/src/assets/fonts/` with its license; one variable file per subset, so every weight is covered and the
+latin-ext subset is only downloaded when a character needs it). The **display face**, `--font-display`, is Neuropolitical (Typodermic Fonts, one weight, no arrows); it is used
 for the app title, card and dialog titles, the upper-case labels and the big figures of the KPI and weather cards, and
-the month above the map. Everything else (body text, controls, tables, legends, chart text, tooltips) stays in
-`--font-sans`, the system font, because a wide display face at 12 to 14 px is hard to read and its glyph set has no
-arrows. The stack falls back to `--font-sans` for a missing file or glyph, and the display rules set the regular weight
+the month above the map. Everything else (body text, controls, tables, legends, chart text, tooltips) is in
+`--font-sans`, because a wide display face at 12 to 14 px is hard to read and its glyph set has no arrows. Montserrat
+has no arrows either (the triangles of the comparisons), which fall back to the system font. The stack falls back to
+`--font-sans` for a missing file or glyph, and the display rules set the regular weight
 and `font-synthesis: none` so the browser never fakes a bold.
 
 **Numbers.** The display face draws 1 like an I and 4 like an H, which is fine in a big figure and wrong in a legend or an

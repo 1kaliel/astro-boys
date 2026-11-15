@@ -152,7 +152,7 @@
   --space-12: 3rem;
 
   /* Typography: system sans everywhere, including the hero figure */
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   /*
    * Display face: titles, labels and big figures. Neuropolitical (Typodermic Fonts) has one weight and no arrows, so
    * the stack falls back to the system font where the file is missing or a glyph is not in it (for example the
