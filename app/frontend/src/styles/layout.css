@@ -149,12 +149,9 @@
   grid-column: 1 / -1;
 }
 
-.dash-calendar {
-  grid-column: span 8;
-}
-
-.dash-map {
-  grid-column: span 4;
+/* Map, calendar and charts each take the full width of the page. */
+.dash-map .map-stage {
+  min-height: min(72vh, 42rem);
 }
 
 /* While new data loads, keep the previous render, dimmed: no skeleton, no layout jump. */
@@ -540,22 +537,7 @@
   }
 }
 
-@media (max-width: 75rem) {
-  .dash-calendar {
-    grid-column: span 7;
-  }
-
-  .dash-map {
-    grid-column: span 5;
-  }
-}
-
 @media (max-width: 56rem) {
-  .dash-calendar,
-  .dash-map {
-    grid-column: 1 / -1;
-  }
-
   .kpi-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

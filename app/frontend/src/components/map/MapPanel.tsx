@@ -11,6 +11,15 @@ import { MapTools, type Projection } from "./MapTools";
 
 const EMPTY: CellsResponse["cells"] = [];
 
+/** The 3D view and MapLibre both need WebGL; without it the flat map is the only choice that can still try. */
+function supportsWebGL(): boolean {
+  try {
+    return !!document.createElement("canvas").getContext("webgl2");
+  } catch {
+    return false;
+  }
+}
+
 // The 3D view pulls in three.js: it only downloads when someone opens it.
 const GlobeView = lazy(() => import("./GlobeView"));
 
@@ -21,7 +30,7 @@ const GlobeView = lazy(() => import("./GlobeView"));
 export default function MapPanel() {
   const [state, dispatch] = useDashboard();
   const mapRef = useRef<MapRef | null>(null);
-  const [projection, setProjection] = useState<Projection>("mercator");
+  const [projection, setProjection] = useState<Projection>(() => (supportsWebGL() ? "3d" : "mercator"));
   const remote = useRemote<CellsResponse>(cellsUrl(state.period, state.selected));
 
   const data = remote.data;

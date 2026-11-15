@@ -63,9 +63,44 @@
 }
 
 .calendar {
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.calendar-side,
+.calendar-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.calendar-side {
+  gap: var(--space-4);
+}
+
+.calendar-years {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+/* Beside the chart the months make a compact 4 x 3 grid. */
+.calendar-side .month-chips {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 56rem) {
+  .calendar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .calendar-side .month-chips {
+    grid-template-columns: repeat(auto-fit, minmax(calc(1.4 * var(--size-target-min)), 1fr));
+  }
 }
 
 .calendar-notice,

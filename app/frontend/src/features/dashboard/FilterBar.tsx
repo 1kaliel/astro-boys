@@ -3,25 +3,11 @@ import { Button } from "../../components/ui/Button";
 import { CoordinateField } from "../../components/ui/CoordinateField";
 import { Popover } from "../../components/ui/Popover";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
-import { YearSelect } from "../../components/ui/YearSelect";
 import { checkArea, sameBounds } from "../../lib/area";
 import { cellsInBounds, type Bounds } from "../../lib/grid";
-import {
-  FIRST_YEAR,
-  LAST_YEAR,
-  PILOT_BOUNDS,
-  useDashboard,
-  type Metric,
-  type Period,
-  type Scale,
-} from "../../state/dashboard";
+import { PILOT_BOUNDS, useDashboard, type Metric, type Scale } from "../../state/dashboard";
 import { DownloadCsv } from "./DownloadCsv";
 
-const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
-  { value: "ALL", label: "All" },
-  { value: "D", label: "Day" },
-  { value: "N", label: "Night" },
-];
 const SCALE_OPTIONS: ReadonlyArray<SegmentOption<Scale>> = [
   { value: "harmonized", label: "Harmonized" },
   { value: "raw", label: "Raw by sensor" },
@@ -30,7 +16,6 @@ const METRIC_OPTIONS: ReadonlyArray<SegmentOption<Metric>> = [
   { value: "count", label: "Count" },
   { value: "anomaly", label: "Anomaly" },
 ];
-const YEARS = Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
 
 const FIELDS: ReadonlyArray<{ key: keyof Bounds; label: string; min: number; max: number }> = [
   { key: "west", label: "West (lon)", min: -180, max: 180 },
@@ -39,30 +24,15 @@ const FIELDS: ReadonlyArray<{ key: keyof Bounds; label: string; min: number; max
   { key: "north", label: "North (lat)", min: -90, max: 90 },
 ];
 
-/** One row of filters, above the content; every view (KPIs, calendar, map) follows them. */
+/**
+ * One row of filters above the content: area, scale and what the calendar shows. The years, months and time of day
+ * live beside the calendar; they feed the same shared state.
+ */
 export function FilterBar() {
   const [state, dispatch] = useDashboard();
   return (
     <div className="filter-bar" role="group" aria-label="Filters for every view">
       <AreaFilter area={state.area} onArea={(area) => dispatch({ type: "setArea", area })} />
-      <YearSelect
-        label="From"
-        value={state.startYear}
-        years={YEARS}
-        onChange={(startYear) => dispatch({ type: "setYears", startYear, endYear: state.endYear })}
-      />
-      <YearSelect
-        label="To"
-        value={state.endYear}
-        years={YEARS}
-        onChange={(endYear) => dispatch({ type: "setYears", startYear: state.startYear, endYear })}
-      />
-      <SegmentedControl
-        label="Time of day"
-        options={PERIOD_OPTIONS}
-        value={state.period}
-        onChange={(period) => dispatch({ type: "setPeriod", period })}
-      />
       <SegmentedControl
         label="Scale"
         options={SCALE_OPTIONS}

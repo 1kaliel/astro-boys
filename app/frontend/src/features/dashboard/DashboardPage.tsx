@@ -20,7 +20,7 @@ const MapPanel = lazy(() => import("../../components/map/MapPanel"));
 const NARROW = "(max-width: 56rem)";
 const PERIOD_TEXT: Record<Period, string> = { ALL: "day and night", D: "day", N: "night" };
 
-/** Dashboard layout: app bar, one filter row, KPI row, calendar + map. */
+/** Dashboard layout, top to bottom: app bar, filters, the 3D map, KPI row, calendar, then the charts. */
 export function DashboardPage() {
   const [state] = useDashboard();
   const narrow = useMediaQuery(NARROW);
@@ -60,28 +60,6 @@ export function DashboardPage() {
           </div>
         )}
 
-        {dataset && (
-          <KpiRow
-            months={dataset.months}
-            startYear={state.startYear}
-            endYear={state.endYear}
-            baselineYears={dataset.baselineYears}
-          />
-        )}
-
-        <Card
-          className="dash-calendar calendar-theme"
-          title="Burning calendar"
-          actions={
-            <span className="card-meta">
-              {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
-            </span>
-          }
-          caption={`Source: NASA FIRMS · ${CALENDAR_UNIT}, summed over the 0.25° cells of the selected area`}
-        >
-          <BurningCalendar load={load} reload={reload} />
-        </Card>
-
         <Card
           className="dash-map"
           title="Map"
@@ -103,6 +81,28 @@ export function DashboardPage() {
               <Button onClick={() => setMapOpen(true)}>Show map</Button>
             </div>
           )}
+        </Card>
+
+        {dataset && (
+          <KpiRow
+            months={dataset.months}
+            startYear={state.startYear}
+            endYear={state.endYear}
+            baselineYears={dataset.baselineYears}
+          />
+        )}
+
+        <Card
+          className="dash-calendar calendar-theme"
+          title="Burning calendar"
+          actions={
+            <span className="card-meta">
+              {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
+            </span>
+          }
+          caption={`Source: NASA FIRMS · ${CALENDAR_UNIT}, summed over the 0.25° cells of the selected area`}
+        >
+          <BurningCalendar load={load} reload={reload} />
         </Card>
 
         {dataset && profileYear !== null && (

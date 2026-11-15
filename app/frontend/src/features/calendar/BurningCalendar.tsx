@@ -2,12 +2,14 @@ import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/h
 import { useCallback, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
+import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
+import { YearSelect } from "../../components/ui/YearSelect";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
 import { anomalyColor, anomalyStep } from "../../lib/charts";
 import { formatCount } from "../../lib/format";
-import { useDashboard } from "../../state/dashboard";
+import { FIRST_YEAR, LAST_YEAR, useDashboard, type Period } from "../../state/dashboard";
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
@@ -34,7 +36,14 @@ const ANOMALY_UNIT = "Robust z-score of the month against the median of that mon
 const ROW_PX = 26;
 const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
 const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
-const MAX_CELL_PX = 72; // with few months the cells stop growing instead of turning into long bars
+const MAX_CELL_PX = 110; // wide page: cells fill the card, but with few months they stop growing instead of long bars
+
+const YEARS = Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
+const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
+  { value: "ALL", label: "All" },
+  { value: "D", label: "Day" },
+  { value: "N", label: "Night" },
+];
 
 const THEME = {
   // Our own tooltip draws its box; nivo's wrapper stays transparent.
@@ -163,17 +172,43 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const showsIntervals =
     !raw && dataset.intervalApproximate && dataset.months.some((m) => m.isEstimated && m.ciLow !== null);
 
-  const filter = (
-    <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
+  // The calendar's own filters sit beside it: year range, months of the year and time of day. They are the same
+  // shared state the KPI row, the map and the charts follow.
+  const side = (
+    <aside className="calendar-side" aria-label="Calendar filters">
+      <div className="calendar-years">
+        <YearSelect
+          label="From year"
+          value={state.startYear}
+          years={YEARS}
+          onChange={(startYear) => dispatch({ type: "setYears", startYear, endYear: state.endYear })}
+        />
+        <YearSelect
+          label="To year"
+          value={state.endYear}
+          years={YEARS}
+          onChange={(endYear) => dispatch({ type: "setYears", startYear: state.startYear, endYear })}
+        />
+      </div>
+      <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
+      <SegmentedControl
+        label="Time of day"
+        options={PERIOD_OPTIONS}
+        value={state.period}
+        onChange={(next) => dispatch({ type: "setPeriod", period: next })}
+      />
+    </aside>
   );
 
   if (!scale) {
     return (
       <div className="calendar">
-        {filter}
-        <p className="calendar-status" role="status">
-          No hotspot data for this selection. Try another time of day, other months or a wider range of years.
-        </p>
+        {side}
+        <div className="calendar-body">
+          <p className="calendar-status" role="status">
+            No hotspot data for this selection. Try another time of day, other months or a wider range of years.
+          </p>
+        </div>
       </div>
     );
   }
@@ -221,7 +256,8 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
 
   return (
     <div className="calendar">
-      {filter}
+      {side}
+      <div className="calendar-body">
       {dataset.synthetic && (
         <p className="calendar-notice">
           <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
@@ -265,6 +301,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
       ) : (
         <CalendarLegend ranges={legendRanges(scale)} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />
       )}
+      </div>
     </div>
   );
 }
