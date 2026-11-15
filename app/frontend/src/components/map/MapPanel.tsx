@@ -2,10 +2,14 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 import {
   cellsUrl,
+  municipalitiesUrl,
+  municipalitiesWeatherUrl,
   useRemote,
   weatherGridUrl,
   type CellsResponse,
   type LiveWindResponse,
+  type MunicipalitiesGeoJSON,
+  type MunicipalitiesWeather,
   type WeatherGridResponse,
 } from "../../data/api";
 import { MONTHS_LONG } from "../../lib/format";
@@ -16,6 +20,7 @@ import { Badge } from "../ui/Badge";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 import { Legend } from "../viz/Legend";
 import { LiveWindLegend } from "../viz/LiveWindLegend";
+import { MunicipalLegend } from "../viz/MunicipalLegend";
 import { WeatherLegend } from "../viz/WeatherLegend";
 import { CellMap } from "./CellMap";
 import { MapTools, type Projection } from "./MapTools";
@@ -23,7 +28,7 @@ import { MapTools, type Projection } from "./MapTools";
 const EMPTY: CellsResponse["cells"] = [];
 
 const LAYER_OPTIONS: ReadonlyArray<SegmentOption<MapLayer>> = (
-  ["hotspots", "temperature", "wind-speed", "wind-direction", "live-wind"] as const
+  ["hotspots", "temperature", "wind-speed", "wind-direction", "live-wind", "municipalities"] as const
 ).map((value) => ({ value, label: LAYER_LABEL[value] }));
 
 /** The 3D view and MapLibre both need WebGL; without it the flat map is the only choice that can still try. */
@@ -59,7 +64,9 @@ export default function MapPanel() {
   );
   // The weather layers are ERA5 context for the month on screen: asked only while one of them is open.
   const weatherLayer =
-    layer !== "hotspots" && layer !== "live-wind" && projection !== "3d" && data !== null ? layer : null;
+    layer !== "hotspots" && layer !== "live-wind" && layer !== "municipalities" && projection !== "3d" && data !== null
+      ? layer
+      : null;
   const weatherOn = weatherLayer !== null;
   const weather = useRemote<WeatherGridResponse>(
     weatherOn && data ? weatherGridUrl(state.area, { year: data.year, month: data.month }) : null,
@@ -74,6 +81,10 @@ export default function MapPanel() {
     return () => window.clearInterval(timer);
   }, [liveOn]);
   const live = useRemote<LiveWindResponse>(liveOn ? `/api/weather/live?r=${liveTick}` : null);
+  // The municipalities of Ceará (IBGE) and their current feels-like temperature: asked only while that layer is open.
+  const muniOn = layer === "municipalities" && projection !== "3d";
+  const muniGeo = useRemote<MunicipalitiesGeoJSON>(muniOn ? municipalitiesUrl("ce") : null);
+  const muniWeather = useRemote<MunicipalitiesWeather>(muniOn ? municipalitiesWeatherUrl("ce") : null);
   const estimated = cells.some((cell) => cell.estimated);
   const partial = cells.some((cell) => cell.partial);
 
@@ -81,7 +92,7 @@ export default function MapPanel() {
     <div className="map-panel">
       <div className="map-head">
         <p className="map-month">
-          {liveOn ? "Now" : data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : "Loading…"}
+          {liveOn ? "Now" : muniOn ? "Ceará · now" : data ? `${MONTHS_LONG[data.month - 1]} ${data.year}` : "Loading…"}
           {!liveOn && remote.loading && data ? " · updating…" : ""}
         </p>
         <div className="map-badges">
@@ -113,6 +124,7 @@ export default function MapPanel() {
             layer={layer}
             weather={weatherOn ? weather.data : null}
             live={liveOn ? live.data : null}
+            municipal={muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data } : null}
           />
         )}
         <MapTools
@@ -141,10 +153,9 @@ export default function MapPanel() {
           onRetry={weather.retry}
         />
       )}
-      {liveOn && (
-        <LiveWindLegend data={live.data} loading={live.loading} error={live.error} onRetry={live.retry} />
-      )}
-      {data && !weatherLayer && !liveOn && (
+      {muniOn && <MunicipalLegend geo={muniGeo} weather={muniWeather} />}
+      {liveOn && <LiveWindLegend data={live.data} loading={live.loading} error={live.error} onRetry={live.retry} />}
+      {data && !weatherLayer && !liveOn && !muniOn && (
         <Legend
           mode="sequential"
           breaks={breaks}

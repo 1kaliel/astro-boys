@@ -315,3 +315,10 @@ h1; the one-line scope text beside the signature shows from 1408 px, and on a ph
 above the buttons. Header proportions: signature 40 px high (30 px on a phone), bar 68 px, 12 px vertical padding. The browser icons are in `public/`: `favicon.svg`, the Safari
 `favicon-mono.svg`, `apple-touch-icon.png` (iOS does not take SVG), `icons/` (PWA, normal and maskable) and
 `site.webmanifest`. The signature's name is outlined, so it does not need the display font (see Typography).
+
+The sixth layer, **Ceará feels like**, shows the 184 municipalities (IBGE boundaries) filled by the current feels-like
+temperature on the same cool ramp, a circle at each municipality's centre, and a compass ring (N to NW, a drawing that is
+tilted with the map's pitch and turned with its bearing). The map is tilted (50 degrees) and can be rotated with the
+right mouse button or two fingers; every other layer is flat and north up. The pilot box outline is hidden here. The
+legend says the values are model values at one point per municipality, that the classes are not thresholds, and the
+sources. The layer selector has six options, so on a narrow screen it scrolls sideways instead of breaking its labels.

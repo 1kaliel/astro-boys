@@ -252,6 +252,25 @@ reported), `interval_seconds`, `ttl_seconds`, `stale`, `stale_reason` and `point
   per second), not the path of an air parcel; a spot where any of the four corners has no value is not drawn. With
   reduced motion the same points are static arrows.
 
+### Municipalities and feels-like temperature (`GET /api/municipalities/{uf}` and `.../weather`)
+
+First version for **Ceará** (`uf = ce`; any other state is a 404). Two sources, kept apart:
+
+- **Boundaries and names: IBGE** (`malhas` and `localidades` APIs, no key). GeoJSON of the 184 municipalities with `code`
+  (IBGE code), `name` and the centroid (`lon`, `lat`) on each feature, plus the state's `bounds`. The minimum quality of
+  the mesh is used. Cached for a week; if IBGE fails the last copy is served. IBGE answers in gzip whether or not it is
+  asked to, and the client unpacks it.
+- **Weather: Open-Meteo Forecast API, `current` block**, at the **centroid** of each municipality: `apparent_temperature_c`
+  ("feels like"), `temperature_c`, `humidity_pct`, `wind_speed_kmh` (`null` is "no value", never zero), with `model_time`,
+  `fetched_at`, `stale` and `stale_reason`. These are **model values, not station readings**, and the centroid is a point
+  of the model grid, not the whole municipality.
+- **Cost.** One request asks 184 locations, each counting as one call (free limit: fewer than 10,000 a day and 600 a
+  minute, shared with the live wind at up to 6,000 a day and the historical layers). The answer is shared and cached two
+  hours, with its own budget of 2,200 locations a day (11 refreshes); at the budget, or on failure, the last good answer is
+  served flagged `stale`, and with no answer at all the endpoint is a 502.
+- **Colors.** Fixed classes of the feels-like temperature (22, 24, 26, 28, 30, 32 degrees C) on the cool weather ramp. They
+  split the range and are not comfort or alert thresholds; no color means danger.
+
 ## API shape (if the app has a backend)
 
 Suggested, not mandatory; the functional contract is what matters ([spec/dashboard.md](spec/dashboard.md)).

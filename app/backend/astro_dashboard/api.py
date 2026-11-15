@@ -17,12 +17,19 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from astro_dashboard import hotspots
 from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
+from astro_dashboard.municipalities import (
+    INTERVAL_SECONDS as MUNI_INTERVAL_SECONDS,
+)
+from astro_dashboard.municipalities import (
+    WEATHER_TTL_SECONDS as MUNI_TTL_SECONDS,
+)
+from astro_dashboard.municipalities import MunicipalityService, UnknownState
 from astro_dashboard.weather import (
     MODEL as WEATHER_MODEL,
 )
@@ -374,6 +381,73 @@ def weather_live(service: Annotated[LiveWindService, Depends(get_live)]) -> Live
         stale=snap.stale,
         stale_reason=snap.stale_reason,
         points=[LivePointOut(**asdict(p)) for p in snap.points],
+    )
+
+
+_DEFAULT_MUNICIPALITIES = MunicipalityService()
+
+
+def get_municipalities(request: Request) -> MunicipalityService:
+    service: MunicipalityService | None = getattr(request.app.state, "municipalities", None)
+    return service or _DEFAULT_MUNICIPALITIES
+
+
+@router.get("/municipalities/{uf}", tags=["municipalities"])
+def municipalities(
+    uf: str, service: Annotated[MunicipalityService, Depends(get_municipalities)]
+) -> JSONResponse:
+    """The municipalities of a state as GeoJSON (IBGE): `code`, `name` and the centroid on each feature."""
+    try:
+        return JSONResponse(service.boundaries(uf), headers={"Cache-Control": "public, max-age=86400"})
+    except UnknownState as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+class MunicipalWeatherOut(BaseModel):
+    code: str
+    # Model values at the centroid of the municipality; None = no value (never zero).
+    apparent_temperature_c: float | None
+    temperature_c: float | None
+    humidity_pct: float | None
+    wind_speed_kmh: float | None
+
+
+class MunicipalitiesWeatherOut(BaseModel):
+    source: str
+    uf: str
+    fetched_at: datetime
+    model_time: str | None
+    interval_seconds: int
+    ttl_seconds: int
+    stale: bool
+    stale_reason: str | None
+    items: list[MunicipalWeatherOut]
+
+
+@router.get("/municipalities/{uf}/weather", response_model=MunicipalitiesWeatherOut, tags=["municipalities"])
+def municipalities_weather(
+    uf: str, service: Annotated[MunicipalityService, Depends(get_municipalities)]
+) -> MunicipalitiesWeatherOut:
+    """Current "feels like" temperature (and more) at each municipality centroid: model values, shared."""
+    try:
+        snap = service.weather(uf)
+    except UnknownState as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except WeatherUnavailable as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    return MunicipalitiesWeatherOut(
+        source="Open-Meteo Forecast API, current conditions of the weather model at the centroid of each "
+        "municipality (not station readings); boundaries and names: IBGE",
+        uf=uf.lower(),
+        fetched_at=datetime.fromtimestamp(snap.fetched_at, tz=UTC),
+        model_time=snap.model_time,
+        interval_seconds=MUNI_INTERVAL_SECONDS,
+        ttl_seconds=MUNI_TTL_SECONDS,
+        stale=snap.stale,
+        stale_reason=snap.stale_reason,
+        items=[MunicipalWeatherOut(**asdict(item)) for item in snap.items],
     )
 
 

@@ -11,7 +11,12 @@ import Map, {
   type MapLayerMouseEvent,
   type MapRef,
 } from "react-map-gl/maplibre";
-import type { LiveWindResponse, WeatherGridResponse } from "../../data/api";
+import type {
+  LiveWindResponse,
+  MunicipalitiesGeoJSON,
+  MunicipalitiesWeather,
+  WeatherGridResponse,
+} from "../../data/api";
 import { formatCount } from "../../lib/format";
 import {
   boundsToGeoJSON,
@@ -22,9 +27,11 @@ import {
   type CellFeatureProps,
 } from "../../lib/grid";
 import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } from "../../lib/hooks";
+import { FEELS_LIKE_BREAKS, centroidPoints, joinWeather } from "../../lib/municipalities";
 import { rampStep } from "../../lib/scale";
 import { LAYER_LABEL, breaksOf, unitOf, weatherGeoJSON, type MapLayer } from "../../lib/weatherLayers";
 import { WindField } from "../../lib/windField";
+import { CompassRing } from "./CompassRing";
 import { WindParticles } from "./WindParticles";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 
@@ -39,7 +46,14 @@ const STYLE_TIMEOUT_MS = 5000;
 
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
 const WX_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--wx-seq-${i}`);
-const TOKENS = [...SEQ_TOKENS, ...WX_TOKENS, "--viz-selection", "--color-surface", "--color-text-primary"] as const;
+const TOKENS = [
+  ...SEQ_TOKENS,
+  ...WX_TOKENS,
+  "--viz-selection",
+  "--color-surface",
+  "--color-text-primary",
+  "--color-border-strong",
+] as const;
 
 /** A white arrow on a transparent 48 px canvas; the map tints it (sdf), so it follows the theme. */
 function windArrow(): {
@@ -67,6 +81,8 @@ function windArrow(): {
 /** Pan limits in the flat view, [west, south, east, north]: the pilot extent with a margin. */
 const MERCATOR_LIMITS: [number, number, number, number] = [-80, -40, -20, 14];
 /** The region of the live wind layer, until the API says it (it is wider than the study area). */
+/** How far the map is tilted while the municipalities are shown (degrees; MapLibre allows up to 60). */
+const MUNI_PITCH = 50;
 const LIVE_REGION: Bounds = { west: -75, south: -35, east: -25, north: 8 };
 
 function minimalStyle(background: string): StyleSpecification {
@@ -132,11 +148,23 @@ type CellMapProps = {
   weather?: WeatherGridResponse | null;
   /** The live wind of a wide region: animated streaks (static arrows when the user prefers reduced motion). */
   live?: LiveWindResponse | null;
+  /** A state's municipalities (IBGE) colored by the current feels-like temperature: a tilted view with a compass. */
+  municipal?: { geo: MunicipalitiesGeoJSON; weather: MunicipalitiesWeather | null } | null;
 };
 
 type Hover = { lng: number; lat: number; cell: CellFeatureProps };
 
-export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hotspots", weather = null, live = null }: CellMapProps) {
+export function CellMap({
+  mapRef,
+  cells,
+  breaks,
+  area,
+  projection,
+  layer = "hotspots",
+  weather = null,
+  live = null,
+  municipal = null,
+}: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap(scheme);
   // Re-read the tokens whenever the theme changes.
@@ -147,8 +175,27 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
     lat: number;
     props: Record<string, unknown>;
   } | null>(null);
-  const showWeather = layer !== "hotspots";
+  const muniOn = layer === "municipalities";
+  const hideCells = layer !== "hotspots";
+  const showWeather = layer !== "hotspots" && !muniOn;
   const liveOn = layer === "live-wind";
+  const [muniHover, setMuniHover] = useState<{ lng: number; lat: number; props: Record<string, unknown> } | null>(null);
+  const muniShapes = useMemo(() => (municipal ? joinWeather(municipal.geo, municipal.weather) : null), [municipal]);
+  const muniPoints = useMemo(
+    () => (municipal && muniShapes ? centroidPoints(municipal.geo, muniShapes) : null),
+    [municipal, muniShapes],
+  );
+  // The teal ramp of the weather layers, one color per class of feels-like; no value gets the neutral "no data" color.
+  const muniFill = useMemo((): ExpressionSpecification => {
+    const color = (cls: number) =>
+      colors[`--wx-seq-${rampStep(cls, FEELS_LIKE_BREAKS.length + 1)}` as (typeof TOKENS)[number]];
+    return [
+      "case",
+      ["has", "feels"],
+      ["step", ["get", "feels"], color(1), ...FEELS_LIKE_BREAKS.flatMap((edge, i) => [edge, color(i + 2)])],
+      colors["--color-border-strong"],
+    ] as unknown as ExpressionSpecification;
+  }, [colors]);
   const reduceMotion = useMemo(() => prefersReducedMotion(), []);
   // Live wind is streaks that move; with reduced motion it is the same data as static arrows.
   const liveStreaks = liveOn && !reduceMotion;
@@ -190,16 +237,17 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
 
   // Follow the selected area, or show the whole wide region while the live wind is on (no animation when the user
   // asked for reduced motion).
-  const target = liveOn ? (live?.region ?? LIVE_REGION) : area;
+  const target = muniOn && municipal ? municipal.geo.bounds : liveOn ? (live?.region ?? LIVE_REGION) : area;
   useEffect(() => {
     mapRef.current?.fitBounds(
       [
         [target.west, target.south],
         [target.east, target.north],
       ],
-      { padding: 24, duration: prefersReducedMotion() ? 0 : 400 },
+      // The municipalities are seen from an angle (a tilted map); every other layer is flat and north up.
+      { padding: 24, duration: prefersReducedMotion() ? 0 : 400, pitch: muniOn ? MUNI_PITCH : 0, bearing: 0 },
     );
-  }, [target.west, target.south, target.east, target.north, mapRef]);
+  }, [target.west, target.south, target.east, target.north, muniOn, mapRef]);
 
   const onPointer = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
@@ -218,6 +266,15 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
         partial: p.partial === true || p.partial === "true",
       },
     });
+  };
+
+  const onMuniPointer = (event: MapLayerMouseEvent) => {
+    const feature = event.features?.[0];
+    setMuniHover(
+      feature
+        ? { lng: event.lngLat.lng, lat: event.lngLat.lat, props: feature.properties as Record<string, unknown> }
+        : null,
+    );
   };
 
   const onWeatherPointer = (event: MapLayerMouseEvent) => {
@@ -253,16 +310,19 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
         maxBounds={projection === "mercator" ? MERCATOR_LIMITS : undefined}
         minZoom={projection === "globe" ? 1 : 3}
         maxZoom={10}
-        dragRotate={false}
-        pitchWithRotate={false}
-        touchPitch={false}
+        dragRotate={muniOn}
+        pitchWithRotate={muniOn}
+        touchPitch={muniOn}
         pixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
         fadeDuration={0}
         attributionControl={{ compact: true }}
-        interactiveLayerIds={liveStreaks ? [] : showWeather ? [arrows ? "wx-arrow" : "wx-circle"] : ["cells-fill"]}
-        onMouseMove={showWeather ? onWeatherPointer : onPointer}
-        onClick={showWeather ? onWeatherPointer : onPointer}
+        interactiveLayerIds={
+          muniOn ? ["muni-fill"] : liveStreaks ? [] : showWeather ? [arrows ? "wx-arrow" : "wx-circle"] : ["cells-fill"]
+        }
+        onMouseMove={muniOn ? onMuniPointer : showWeather ? onWeatherPointer : onPointer}
+        onClick={muniOn ? onMuniPointer : showWeather ? onWeatherPointer : onPointer}
         onMouseLeave={() => {
+          setMuniHover(null);
           setHover(null);
           setWxHover(null);
         }}
@@ -286,7 +346,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
           <Layer
             id="cells-fill"
             type="fill"
-            layout={{ visibility: showWeather ? "none" : "visible" }}
+            layout={{ visibility: hideCells ? "none" : "visible" }}
             paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
           />
         </Source>
@@ -326,12 +386,37 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
             )}
           </Source>
         )}
+        {muniOn && muniShapes && muniPoints && (
+          <>
+            <Source id="municipalities" type="geojson" data={muniShapes}>
+              <Layer id="muni-fill" type="fill" paint={{ "fill-color": muniFill, "fill-opacity": 0.55 }} />
+              <Layer
+                id="muni-line"
+                type="line"
+                paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.45 }}
+              />
+            </Source>
+            <Source id="municipality-centres" type="geojson" data={muniPoints}>
+              <Layer
+                id="muni-centre"
+                type="circle"
+                paint={{
+                  "circle-color": muniFill,
+                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 2.5, 7, 5.5, 9, 11],
+                  "circle-stroke-color": colors["--color-text-primary"],
+                  "circle-stroke-width": 1,
+                  "circle-opacity": 0.95,
+                }}
+              />
+            </Source>
+          </>
+        )}
         <Source id="area-cells" type="geojson" data={areaCellData}>
           <Layer
             id="area-cells-line"
             type="line"
             // The 0.25° outlines belong to the hotspot cells: with a weather layer on, they only add noise.
-            layout={{ visibility: showWeather ? "none" : "visible" }}
+            layout={{ visibility: hideCells ? "none" : "visible" }}
             paint={{
               "line-color": colors["--viz-selection"],
               "line-width": 0.5,
@@ -340,8 +425,39 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
           />
         </Source>
         <Source id="area" type="geojson" data={areaData}>
-          <Layer id="area-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }} />
+          <Layer
+            id="area-line"
+            type="line"
+            // The pilot box has nothing to say about one state's municipalities: it would only cut across the view.
+            layout={{ visibility: muniOn ? "none" : "visible" }}
+            paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }}
+          />
         </Source>
+        {muniOn && muniHover && (
+          <Popup
+            longitude={muniHover.lng}
+            latitude={muniHover.lat}
+            closeButton={false}
+            closeOnClick={false}
+            anchor="bottom"
+            offset={10}
+            className="map-popup"
+          >
+            <strong>{String(muniHover.props.name)}</strong>
+            <br />
+            {muniHover.props.feels === undefined || muniHover.props.feels === null
+              ? "No value from the model"
+              : `Feels like ${Number(muniHover.props.feels).toFixed(1)} °C`}
+            {muniHover.props.temperature !== undefined &&
+              muniHover.props.temperature !== null &&
+              ` · air ${Number(muniHover.props.temperature).toFixed(1)} °C`}
+            {muniHover.props.humidity !== undefined &&
+              muniHover.props.humidity !== null &&
+              ` · humidity ${Math.round(Number(muniHover.props.humidity))}%`}
+            <br />
+            Model value at the municipality centre
+          </Popup>
+        )}
         {showWeather && wxHover && (
           <Popup
             longitude={wxHover.lng}
@@ -381,6 +497,7 @@ export function CellMap({ mapRef, cells, breaks, area, projection, layer = "hots
           </Popup>
         )}
       </Map>
+      {muniOn && <CompassRing mapRef={mapRef} />}
       {liveStreaks && windField && (
         <WindParticles mapRef={mapRef} field={windField} color={colors["--color-text-primary"]} />
       )}

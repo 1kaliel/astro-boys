@@ -189,3 +189,38 @@ export type LiveWindPoint = {
   wind_from_deg: number | null;
   gust_kmh: number | null;
 };
+
+/** Municipalities of a state (IBGE) as GeoJSON, with the centroid on each feature (`/api/municipalities/{uf}`). */
+export type MunicipalitiesGeoJSON = GeoJSON.FeatureCollection<
+  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+  { code: string; name: string; lon: number; lat: number }
+> & {
+  state: { uf: string; name: string; code: number };
+  bounds: { west: number; south: number; east: number; north: number };
+};
+
+/** Current feels-like temperature at the centroid of each municipality: model values, not station readings. */
+export type MunicipalitiesWeather = {
+  source: string;
+  uf: string;
+  fetched_at: string;
+  model_time: string | null;
+  interval_seconds: number;
+  ttl_seconds: number;
+  /** true = the weather service could not be reached (or the daily budget is spent): the last good answer. */
+  stale: boolean;
+  stale_reason: string | null;
+  items: MunicipalWeatherItem[];
+};
+
+export type MunicipalWeatherItem = {
+  code: string;
+  /** null = no value, never zero. */
+  apparent_temperature_c: number | null;
+  temperature_c: number | null;
+  humidity_pct: number | null;
+  wind_speed_kmh: number | null;
+};
+
+export const municipalitiesUrl = (uf: string) => `/api/municipalities/${uf}`;
+export const municipalitiesWeatherUrl = (uf: string) => `/api/municipalities/${uf}/weather`;
