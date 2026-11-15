@@ -1,0 +1,107 @@
+/*
+ * Data-visualization tokens. Every chart and map color comes from here.
+ * Rules (docs/design-system.md):
+ *   - seq-1 is the least activity, seq-7 the most. In dark mode the anchor flips: more is lighter.
+ *   - Diverging arms are numbered from the midpoint outward (1 = closest to the median).
+ *     neg = below the historical median (blue), pos = above it (orange). Never red: no alert reading.
+ *   - Text never wears a series color; values and labels use the text tokens.
+ *   - The selection outline uses ink, not blue, so it cannot be read as data.
+ */
+:root {
+  /* Sequential (calendar heatmap and map), light: light -> dark */
+  --viz-seq-1: var(--blue-100);
+  --viz-seq-2: var(--blue-200);
+  --viz-seq-3: var(--blue-300);
+  --viz-seq-4: var(--blue-400);
+  --viz-seq-5: var(--blue-500);
+  --viz-seq-6: var(--blue-600);
+  --viz-seq-7: var(--blue-700);
+
+  /* Diverging (anomaly mode), light */
+  --viz-div-mid: var(--neutral-100);
+  --viz-div-neg-1: var(--blue-300);
+  --viz-div-neg-2: var(--blue-400);
+  --viz-div-neg-3: var(--blue-500);
+  --viz-div-neg-4: var(--blue-600);
+  --viz-div-pos-1: var(--orange-300);
+  --viz-div-pos-2: var(--orange-400);
+  --viz-div-pos-3: var(--orange-500);
+  --viz-div-pos-4: var(--orange-600);
+
+  /* Categorical series (trend lines: harmonized, raw Aqua, raw S-NPP) */
+  --viz-series-1: var(--series-blue-light);
+  --viz-series-2: var(--series-orange-light);
+  --viz-series-3: var(--series-aqua-light); /* below 3:1 on light: always direct-labeled */
+
+  /* Marking and chrome */
+  --viz-null: var(--neutral-200); /* no data: never the same as a zero */
+  --viz-cell-outline: var(--color-border); /* hairline, keeps near-zero cells visible */
+  --viz-estimated-outline: var(--neutral-700); /* dashed: estimated from MODIS */
+  --viz-partial-mark: var(--neutral-1000); /* corner mark: month not complete */
+  --viz-selection: var(--color-text-primary);
+  --viz-grid: var(--neutral-200);
+  --viz-axis: var(--neutral-300);
+  --viz-band-opacity: 0.2; /* 90% interval band for estimated months */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    --viz-seq-1: var(--blue-700);
+    --viz-seq-2: var(--blue-600);
+    --viz-seq-3: var(--blue-500);
+    --viz-seq-4: var(--blue-400);
+    --viz-seq-5: var(--blue-300);
+    --viz-seq-6: var(--blue-200);
+    --viz-seq-7: var(--blue-100);
+
+    --viz-div-mid: var(--neutral-800);
+    --viz-div-neg-1: var(--blue-600);
+    --viz-div-neg-2: var(--blue-500);
+    --viz-div-neg-3: var(--blue-400);
+    --viz-div-neg-4: var(--blue-300);
+    --viz-div-pos-1: var(--orange-600);
+    --viz-div-pos-2: var(--orange-500);
+    --viz-div-pos-3: var(--orange-400);
+    --viz-div-pos-4: var(--orange-300);
+
+    --viz-series-1: var(--series-blue-dark);
+    --viz-series-2: var(--series-orange-dark);
+    --viz-series-3: var(--series-aqua-dark);
+
+    --viz-null: var(--neutral-850);
+    --viz-estimated-outline: var(--neutral-300);
+    --viz-partial-mark: var(--neutral-100);
+    --viz-grid: var(--neutral-850);
+    --viz-axis: var(--neutral-800);
+  }
+}
+
+:root[data-theme="dark"] {
+  --viz-seq-1: var(--blue-700);
+  --viz-seq-2: var(--blue-600);
+  --viz-seq-3: var(--blue-500);
+  --viz-seq-4: var(--blue-400);
+  --viz-seq-5: var(--blue-300);
+  --viz-seq-6: var(--blue-200);
+  --viz-seq-7: var(--blue-100);
+
+  --viz-div-mid: var(--neutral-800);
+  --viz-div-neg-1: var(--blue-600);
+  --viz-div-neg-2: var(--blue-500);
+  --viz-div-neg-3: var(--blue-400);
+  --viz-div-neg-4: var(--blue-300);
+  --viz-div-pos-1: var(--orange-600);
+  --viz-div-pos-2: var(--orange-500);
+  --viz-div-pos-3: var(--orange-400);
+  --viz-div-pos-4: var(--orange-300);
+
+  --viz-series-1: var(--series-blue-dark);
+  --viz-series-2: var(--series-orange-dark);
+  --viz-series-3: var(--series-aqua-dark);
+
+  --viz-null: var(--neutral-850);
+  --viz-estimated-outline: var(--neutral-300);
+  --viz-partial-mark: var(--neutral-100);
+  --viz-grid: var(--neutral-850);
+  --viz-axis: var(--neutral-800);
+}
