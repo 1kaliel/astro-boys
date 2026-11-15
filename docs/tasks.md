@@ -16,7 +16,7 @@ Plan: [project-plan.md](project-plan.md) · Schedule and checkpoints: [timeline.
 | L1 | Answer the [open decisions](project-plan.md#open-decisions) Q1–Q12; log each as `DECISION` | Kali + Jean (logs) | ⬜ | Defaults apply if unanswered |
 | L2 | Dashboard stack chosen and logged | Dashboard | 🔄 | Option A chosen: FastAPI + SPA. Frontend framework still to name |
 | L3 | Data contract v1 frozen ([data-dictionary.md](data-dictionary.md)) | Mateus + Guilherme | ⬜ | One reviewer per team |
-| L4 | Names confirmed on every task; submission owner and demo lead named | All | 🔄 | Roles confirmed; demo lead and video-vs-slides still open |
+| L4 | Names confirmed on every task; submission owner and demo lead named | All | ✅ | Final-delivery roles set at Jean's request: Jean leads S2, a seven-slide English deck; Kali remains submission owner (S6); Jean selected Justino for the cross-team final review (S5). See [delivery roles](delivery-roles.md). This closes role/format assignment, not execution or submission. |
 | L5 | All 6 registered on the **same Local Event** and on the team's Members tab | Kali | ✅ | Confirmed by Kali, Sat Nov 14 |
 | L6 | Existing prototype scripts (harmonization pipeline, step-by-step example) brought into the repo, in English | Kali | ⬜ | Reuse before rewriting |
 
@@ -64,10 +64,10 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 | # | Task | Owner | Due (local) | Status |
 |---|------|-------|-------------|--------|
 | S1 | Project page fields drafted in English (summary, description, NASA data, references) | Kali + Jean | Sun 20:00 | 🔄 Draft of every field in [submission.md](submission.md); pending the project name, the demo link and review by Kali and Jean |
-| S2 | Demo: ≤ 30 s video (English subtitles) or ≤ 7 slides; storyboard by Sun 13:00 | Jean (proposed) | Sun 21:00 | ⬜ |
+| S2 | Demo: seven slides in English, including title and intro; storyboard by Sun 13:00 | Jean | Sun 21:00 | ⬜ |
 | S3 | References list: every data source, library, tool; FIRMS citation and disclaimer link | Justino | Sun 20:00 | ✅ Final review done: every data source, library and service in [resources.md](resources.md), with citations, DOIs and the LANCE disclaimer link; every link checked |
 | S4 | AI-use statement for the form + acknowledgment in the repo ([resources.md](resources.md#ai-usage)) | Kali | Sun 20:00 | 🔄 Statement drafted in [submission.md](submission.md#use-of-super-intelligence-ai); Kali's tasks added to the AI-usage table; one point to confirm by Kali |
-| S5 | All links tested in a private window; repo public and in English | Second reviewer (other team) | Sun 22:00 | ⬜ |
+| S5 | All links tested in a private window; repo public and in English | Justino (cross-team final review) | Sun 22:00 | ⬜ |
 | S6 | Submitted; confirmation saved | Kali | Sun 22:30 | ⬜ |
 
 ## Done earlier

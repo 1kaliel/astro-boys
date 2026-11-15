@@ -154,3 +154,8 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 ## D12 screenshot evidence assistance
 
 Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. See [D12 validation](d12-validation.md).
+
+
+## L4 final-delivery assignment assistance
+
+AI assistance helped prepare the L4 role/format record and align the task board and team roster at Jean Gustavo's request. Jean selected Justino for S5. Existing task owners and scientific results are unchanged. This record does not claim a completed presentation, review or submission. See [delivery-roles.md](delivery-roles.md).
