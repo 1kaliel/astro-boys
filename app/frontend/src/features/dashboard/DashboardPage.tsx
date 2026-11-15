@@ -40,6 +40,7 @@ export function DashboardPage() {
   const refreshing = load.status === "ready" && load.refreshing;
   // The mock calendar is labeled by its model version; the offline fixture by its own flag.
   const simulated = dataset ? dataset.synthetic || /^mock/i.test(dataset.modelVersion) : false;
+  const exportContext = dataset ? { area: state.area, modelVersion: dataset.modelVersion, period: state.period } : null;
   const showMap = !narrow || mapOpen;
   // The seasonal profile draws the year of the month picked in the calendar, or the latest year of the data.
   const profileYear = dataset ? Math.min(state.selected?.year ?? dataset.lastYear, dataset.lastYear) : null;
@@ -109,7 +110,7 @@ export function DashboardPage() {
           )}
         </Card>
 
-        {dataset && profileYear !== null && (
+        {dataset && exportContext && profileYear !== null && (
           <>
             <Card
               className="dash-season"
@@ -126,6 +127,7 @@ export function DashboardPage() {
                 startYear={state.startYear}
                 endYear={state.endYear}
                 year={profileYear}
+                exportContext={exportContext}
               />
             </Card>
             <Card
@@ -138,7 +140,12 @@ export function DashboardPage() {
               }
               caption={`Source: NASA FIRMS (MODIS Aqua, VIIRS S-NPP and NOAA-20) · ${TREND_UNIT}, summed over the 0.25° cells of the selected area`}
             >
-              <TrendChart months={dataset.months} startYear={state.startYear} endYear={state.endYear} />
+              <TrendChart
+                months={dataset.months}
+                startYear={state.startYear}
+                endYear={state.endYear}
+                exportContext={exportContext}
+              />
             </Card>
           </>
         )}

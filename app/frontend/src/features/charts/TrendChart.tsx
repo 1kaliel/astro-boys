@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
+import { ImageDownload } from "../../components/ui/DownloadBar";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { annualTotals, axisTicks, niceCeil, type AnnualTotals } from "../../lib/charts";
+import { areaText, exportFileName, periodText, SOURCE_TEXT, type ExportContext } from "../../lib/exportFile";
 import { formatCompact, formatCount } from "../../lib/format";
 import { BASELINE_Y, CHART, INNER_WIDTH, linePath, xOf, yOf, type Point } from "./svg";
 
@@ -9,10 +11,10 @@ export const TREND_UNIT = "hotspot detections per year (complete years only)";
 
 type SeriesKey = "harmonized" | "rawAqua" | "rawSnpp";
 
-const SERIES: ReadonlyArray<{ key: SeriesKey; label: string; note: string }> = [
-  { key: "harmonized", label: "Harmonized", note: "VIIRS-equivalent, the series this dashboard uses" },
-  { key: "rawAqua", label: "Aqua MODIS, raw", note: "native count, not harmonized" },
-  { key: "rawSnpp", label: "S-NPP VIIRS, raw", note: "native count, from February 2012" },
+const SERIES: ReadonlyArray<{ key: SeriesKey; label: string; note: string; mark: string }> = [
+  { key: "harmonized", label: "Harmonized", note: "VIIRS-equivalent, the series this dashboard uses", mark: "Solid line" },
+  { key: "rawAqua", label: "Aqua MODIS, raw", note: "native count, not harmonized", mark: "Dashed line" },
+  { key: "rawSnpp", label: "S-NPP VIIRS, raw", note: "native count, from February 2012", mark: "Wide pale line under the harmonized line" },
 ];
 
 type TrendChartProps = {
@@ -20,6 +22,8 @@ type TrendChartProps = {
   months: readonly CalendarMonth[];
   startYear: number;
   endYear: number;
+  /** Area, period and model version, written into the downloaded image. */
+  exportContext: ExportContext;
 };
 
 /**
@@ -27,7 +31,7 @@ type TrendChartProps = {
  * seems to jump when VIIRS replaces MODIS in 2012; harmonized, the years before and after are comparable.
  * Raw counts of different satellites are drawn as separate lines and never added together.
  */
-export function TrendChart({ months, startYear, endYear }: TrendChartProps) {
+export function TrendChart({ months, startYear, endYear, exportContext }: TrendChartProps) {
   const rows = useMemo(
     () => annualTotals(months).filter((row) => row.year >= startYear && row.year <= endYear),
     [months, startYear, endYear],
@@ -53,7 +57,22 @@ export function TrendChart({ months, startYear, endYear }: TrendChartProps) {
   const sensorChangeX =
     firstViirs > 0 ? (xOf(firstViirs - 1, rows.length) + xOf(firstViirs, rows.length)) / 2 : null;
 
+  const exportMeta = {
+    title: `Trend: raw and harmonized, ${rows[0].year}-${rows[rows.length - 1].year}`,
+    unit: TREND_UNIT,
+    series: "Raw counts of different satellites are separate lines and are never added together.",
+    area: areaText(exportContext.area),
+    period: periodText(startYear, endYear, exportContext.period),
+    modelVersion: exportContext.modelVersion,
+    source: `${SOURCE_TEXT}: Aqua MODIS, S-NPP VIIRS`,
+    legend: [
+      ...SERIES.map((s) => `${s.mark}: ${s.label}, ${s.note}.`),
+      "Hollow point: a year with months estimated from MODIS. Dotted vertical line: VIIRS starts (Feb 2012).",
+    ],
+  };
+
   const chart = (
+    <>
     <div className="chart-scroll">
       <svg
         className="line-chart"
@@ -112,6 +131,12 @@ export function TrendChart({ months, startYear, endYear }: TrendChartProps) {
         ))}
       </svg>
     </div>
+    <ImageDownload
+      meta={exportMeta}
+      fileName={(ext) => exportFileName("trend", [`${startYear}-${endYear}`, exportContext.period], ext)}
+      svgSelector="svg.line-chart"
+    />
+    </>
   );
 
   const table = (

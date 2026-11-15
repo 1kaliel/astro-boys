@@ -156,3 +156,22 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Downloads (D9): "Image: SVG PNG" under a chart, "Table: Download CSV" above the calendar. */
+.download-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.download-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.download-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
