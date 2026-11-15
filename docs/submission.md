@@ -6,24 +6,24 @@ number below comes from [methodology.md](methodology.md) or the live dashboard; 
 the site changes before submitting. Text drafted with an AI assistant from the team's documents; the team reviews
 and owns it.
 
-**Still open before this can be pasted:** the project name, the demo link (S2), a last read by Kali and Jean, and
+**Still open before this can be pasted:** the demo link (S2), a last read by Kali and Jean, and
 the point marked "to confirm" in the AI section.
 
 ## Project name
 
-_To be chosen by the team._ The live site is titled "Hotspot calendar".
+FIREWATCHER
 
 ## High-level summary
 
-Two generations of NASA sensors have recorded active-fire hotspots for more than twenty years, but they cannot be
-compared directly: over the same fire activity, VIIRS detects six to seven times as many hotspots as Aqua MODIS in
-our study area, so the raw record jumps in 2012 for a reason that has nothing to do with fire. We built a method that
-puts the MODIS years on the VIIRS scale, cell by cell and month by month, and a web application that shows the
-result as a burning calendar. For Northeast Brazil it gives one consistent monthly series from July 2002 to today,
-in which every estimated month is labeled and carries a 90% interval. The user picks an area and a period and sees
-which months and years had the most fire activity, how the current month compares with its history, and where the
-anomalies are, and can download the underlying NASA detections. The method was tested on years it had never seen
-and beats the simple conversions; its limits are stated next to the results.
+FIREWATCHER helps users explore historical hotspot activity in Northeast Brazil using NASA FIRMS MODIS and
+VIIRS detections. Raw counts from these instruments are not directly comparable: a sensor transition can
+introduce an artificial step alongside real changes in activity. We estimate the earlier MODIS record on a
+VIIRS-equivalent scale and use observed VIIRS counts from February 2012 onward. The monthly calendar runs
+from July 2002 to November 2026, with observations through 14 November. Estimates, uncertainty, missing
+observations and partial months are labeled. Users can select an area and period, explore seasonal patterns
+and anomalies, and download normalized, filtered native detections. The frozen method passed its stated
+final-test rule at cell-month level without demonstrating regional superiority. A hotspot is not a fire
+count or burned area. This exploratory prototype provides no forecast or risk assessment.
 
 ## Link to project demo
 
@@ -48,17 +48,20 @@ The application is a burning-activity calendar for Northeast Brazil built on NAS
 - **Comparisons:** the current month against the median of the same days in earlier years; an anomaly view
   (how unusual each month was for its place and season); a seasonal profile with the usual range; a long-term
   trend chart that shows the raw MODIS and VIIRS counts beside the harmonized series.
-- **Downloads:** the native NASA detections for the selected area and dates as CSV, with sensor, satellite and
+- **Downloads:** normalized, filtered native NASA detections for the selected area and dates as CSV, with sensor, satellite and
   product version in every row.
 - **Explanations in place:** a "How to read" panel with what is shown, its limitations and its sources.
 
 ### How it works
 
 1. **Data.** MODIS (Aqua and Terra) and VIIRS (Suomi NPP and NOAA-20) detections from NASA FIRMS are normalized,
-   filtered to presumed vegetation fires of nominal or high confidence, and counted per 0.25° cell, local solar
-   month, day or night, and satellite. Sensor, satellite and product version stay in every row.
-2. **Gaps.** Days when a satellite was not observing are detected from the data and checked against NASA and NOAA
-   notices. Incomplete months are flagged and are not treated as low fire activity.
+   filtered to nominal or high confidence and vegetation type where supplied, and counted per 0.25° cell,
+   local solar month, day or night, and satellite. NRT files lack type: it stays null and nominal/high untyped
+   detections enter provisional counts, which may include non-vegetation sources. Sensor, satellite and
+   product version stay in every row.
+2. **Gaps.** Likely observation gaps are inferred from detection deficits and compared with available NASA and NOAA
+   notices. This is not a complete observation mask and not every gap has independent confirmation.
+   Incomplete months are flagged; missing data are not treated as zero activity.
 3. **Transfer function.** In 2012–2019, when Aqua MODIS and Suomi NPP VIIRS observed together at nearly the same
    local time, we fit for each cell, month of year and time of day (a) a factor that converts Aqua counts to
    VIIRS-equivalent counts and (b) a background term for the activity VIIRS sees where Aqua sees none. Cells with
@@ -76,8 +79,9 @@ The application is a burning-activity calendar for Northeast Brazil built on NAS
 - Per cell and month, its mean absolute error is 3.46 detections against 4.22 for the best simple conversion, and
   5.33 for raw MODIS counts. On regional monthly totals it is level with the best simple conversion.
 - The 90% intervals contained the observed value in 94% of cell-months of the development years.
-- A clean clone of the repository rebuilds the published dataset from the raw NASA files in under six minutes,
-  with identical counts.
+- A clean-clone reproduction at commit 5286248 rebuilt the published calendar and was audited. Early-years
+  and 2026 ingestion were repeated on newer code with matching counts; the complete pipeline was not rerun
+  on the latest code. See the reproduction reports linked from methodology.md.
 
 ### What it does not do
 
@@ -87,13 +91,15 @@ The application is a burning-activity calendar for Northeast Brazil built on NAS
   observation to test that directly.
 - Since 2022 the Aqua orbit has drifted to later overpass times, and the conversion is about 20% high for
   2024–2025. This does not enter the product, which uses observed VIIRS from 2012.
-- The 2026 months come from near-real-time data and are provisional.
+- January–July 2026 use standard processing; August onward uses provisional near-real-time records.
+  November is partial through 14 November. NRT records lack type and may include non-vegetation sources.
 - It is an exploratory prototype: no forecast, no risk level, not for emergency decisions.
 
 ### Benefits and goals
 
 Land managers, researchers and fire services can compare any month with two decades of history on one scale,
-without the false jump of 2012, and can see how certain each estimated value is. The method is documented and
+with instrument differences addressed and uncertainty shown for estimates. Harmonization does not establish
+that every change around a sensor transition is artificial. The method is documented and
 reproducible, so it can be extended to other regions with the same NASA files; the Northeast of Brazil is the
 pilot.
 
@@ -147,9 +153,17 @@ algorithm papers, tools, AI assistance) is listed with its license or citation i
 
 ## Before submitting
 
-- [ ] Project name chosen.
+- [x] Project name confirmed by Jean: FIREWATCHER.
 - [ ] Demo link added and opened in a private window.
 - [ ] Both site and repository links opened in a private window (S5).
 - [ ] Numbers above checked against [methodology.md](methodology.md) and the live site.
 - [ ] AI section confirmed by Kali.
 - [ ] Both confirmation boxes ticked on the form.
+
+## S1 editorial review status
+
+Reviewed for Jean with AI assistance against the integrated methodology and task evidence on 15 November 2026.
+No new data or scientific results were generated. The project name, NRT qualification, inferred-gap wording,
+sensor-transition claim and reproduction scope were corrected. Numerical results were retained from the methodology;
+no scientific test or live application test was repeated. Kali and Jean still need to approve the final text,
+S2 must supply its final demo link, and S4/S5 acceptance remains separate. S1 stays in progress.
