@@ -78,6 +78,33 @@ def test_count_uses_the_calendar_cells_dates_and_main_filter(client: TestClient)
     assert body["rows"] == 4
     assert body["cells"] == 2
     assert body["max_rows"] == hotspots.DEFAULT_MAX_ROWS
+    assert body["over_limit"] is False
+    assert body["period"] == "ALL" and body["include_all"] is False
+    assert (body["start"], body["end"]) == ("2005-01-01", "2013-12-31")
+
+
+def test_count_at_the_limit_is_exact(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "4")
+
+    body = client.get("/api/hotspots/count", params=_params()).json()
+
+    assert (body["rows"], body["over_limit"], body["max_rows"]) == (4, False, 4)
+
+
+def test_count_over_the_limit_stops_early_and_says_so(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "3")
+
+    body = client.get("/api/hotspots/count", params=_params()).json()
+
+    # 4 rows match, but the scan stopped at max_rows + 1: `rows` is a lower bound, not the total.
+    assert body["over_limit"] is True
+    assert body["rows"] == 4
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "2")
+    body = client.get("/api/hotspots/count", params=_params()).json()
+    assert (body["rows"], body["over_limit"]) == (3, True)
+    assert body["max_rows"] == 2
 
 
 def test_include_all_adds_rows_outside_the_main_filter(client: TestClient) -> None:
@@ -139,6 +166,18 @@ def test_too_many_rows_is_a_413_before_any_byte(client: TestClient, monkeypatch:
 
     assert response.status_code == 413
     assert "Narrow the area or the years" in response.json()["detail"]
+    # The count stops early: the message says "more than" the limit, never gives a lower bound as the total.
+    assert response.json()["detail"].startswith("More than 3 hotspots match")
+
+
+def test_a_csv_at_the_limit_is_sent_whole(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    # 4 rows match and the limit is 4: the early stop must not refuse it, and no row may be cut.
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "4")
+
+    response = client.get("/api/hotspots.csv", params=_params())
+
+    assert response.status_code == 200
+    assert len(response.text.splitlines()) == 1 + 4
 
 
 def test_a_second_export_at_the_same_time_is_a_429(client: TestClient) -> None:
