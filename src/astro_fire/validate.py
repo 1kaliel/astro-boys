@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from astro_fire import calibration as cal
-from astro_fire import storage
+from astro_fire import storage, uncertainty
 from astro_fire import validation as val
 from astro_fire.calibrate import (
     CALIBRATION_YEARS,
@@ -54,7 +54,13 @@ def _score_years(con, settings: Settings, test_years: Sequence[int], season: Seq
         f"SELECT count(*), count(DISTINCT cell_l2), count(DISTINCT cell_l2) FILTER "
         f"(WHERE cell_l2 NOT IN (SELECT cell_l2 FROM factors)) FROM predictions_{tag}"
     ).fetchone()
+    con.execute(
+        f"CREATE OR REPLACE TEMP TABLE _final_{tag} AS SELECT cell_l2, year, month, period, a AS raw_aqua, "
+        f"f_pooled_background AS estimate, v FROM predictions_{tag}"
+    )
+    uncertainty.add_intervals(con, f"_final_{tag}", "uncertainty", name=f"_final_ci_{tag}")
     return {
+        "interval_coverage_90pct": uncertainty.coverage(con, f"_final_ci_{tag}", f"_final_{tag}"),
         "test_years": list(test_years),
         "incomplete_months_left_out": [list(ym) for ym in incomplete],
         "data_gaps": [{"year": y, "month": mo, "satellite": sat} for y, mo, sat in gaps],
@@ -137,6 +143,9 @@ def run(
     cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name,
                     witness=witness, m_witness=m_witness, reconcile_lambda=lam)
     season = val.high_season_months(con, "panel")
+    uncertainty.out_of_year_estimates(con, "panel", k=k, m=m, pool=pool, witness=witness,
+                                      m_witness=m_witness, reconcile_lambda=lam)
+    uncertainty.error_table(con, "out_of_year")
 
     # Held-out years: touched only from here on, and only to score.
     label = "final test" if final else "development years"

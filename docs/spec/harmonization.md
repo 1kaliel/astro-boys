@@ -214,7 +214,9 @@ is fixed before the final test is opened: see [methodology.md](../methodology.md
 - **Step test:** the raw series jumps at 2012; the harmonized one must not. This before/after chart is the main
   proof in the pitch.
 - Check that the error does not grow with distance in time from the calibration years.
-- Uncertainty: bootstrap over calibration years (200 resamples; 5th–95th percentiles = 90% interval).
+- Uncertainty: 90% intervals from measured out-of-year error on the calibration years, by regime, period
+  and size of the estimate ([methodology.md](../methodology.md#uncertainty-of-the-estimates)). This replaced
+  the bootstrap over calibration years first planned, which only captures factor uncertainty.
 
 Out of sample we can only test where both sensors exist (2012+). Estimates for 2002–2011 assume the sensor
 relation was stable; this is stated in the app.

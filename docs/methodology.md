@@ -263,13 +263,52 @@ to 735 thousand. The estimated years are higher on average; MODIS Aqua's own rec
 source data and not created by the conversion. The chart has no uncertainty band yet, and it shows annual
 totals: 2022 and 2024 include months with S-NPP outages and are low for that reason.
 
+### Uncertainty of the estimates
+
+Intervals come from measured error, not from a model of it. For each calibration year the whole method is
+refitted on the other seven years and applied to that year as in production; the estimates are compared
+with what S-NPP observed. The errors are summarized by regime (Aqua > 0 or Aqua = 0), period (day, night,
+both) and size of the estimate (bins of log2), giving for each group the 5th and 95th percentiles of
+observed / estimated and the mean squared error per unit of estimate (`processed/uncertainty/v1`).
+
+- This replaced the planned bootstrap over calibration years. The bootstrap only measures how uncertain the
+  factors are; the scatter of the counts themselves is far larger (variance 3 to 50 times the estimate,
+  where a Poisson count would have 1).
+- **Check on years the intervals never saw:** on 2020–2021 the 90% interval contains the observed count in
+  94.2% of 142,968 cell-months (91.7% where Aqua > 0, 94.7% where Aqua = 0). It is above 90% because counts
+  cannot go below zero, so the lower bound is rarely exceeded. Not checked on 2022–2023, to keep that test
+  to a single run; the 6% bias found there would lower the coverage.
+- At cell level the intervals are wide: for an estimate of about 40 detections, 0.35 to 1.9 times the
+  estimate by day. Sums over many cells are relatively much more precise.
+- **Sums of cells:** errors of neighboring cells move together, so adding the variances understates the
+  uncertainty of a sum: by a factor of 2.4 for a 1° cell (16 cells) and 13.7 for the whole extent (about
+  3,100 cells), roughly `n_cells^0.32`. The app should widen summed intervals by that factor and say it is
+  approximate.
+- An estimate of exactly zero has no interval (none occurs in the current calendar).
+
+### Anomalies
+
+Per cell, month of year and period, over all fully observed years 2003–2025: historical median, absolute
+and percent anomaly, and robust z-score `(count − median) / (1.4826 × MAD)`. A fully observed month with no
+detection counts as zero in the history, although it has no row in the table. Partial months get no
+anomaly. In sparse cells the MAD is small and z is extreme (19% of cell-months have |z| ≥ 2), so per-cell z
+is a rough indicator; for an area, sum the cells first and compute the anomaly on the sum.
+
+### Continuity after S-NPP
+
+S-NPP stopped observing on 2026-11-02; NOAA-20 carries the series on. Over the 88 months in which both were
+fully observing (2018–2025), S-NPP recorded 1.041 times as many detections as NOAA-20 (1.052 by day, 1.015
+by night; 1.03 to 1.06 by year), inside the 0.9–1.1 range set in the spec. The factor is in
+`artifacts/metrics/calibration_2012-2019.json`. It is not applied yet: the 2026 detections are downloaded
+but not ingested into the counts table.
+
 ### Still to fill in
 
 | Item | Status |
 |------|--------|
-| Bootstrap intervals for the estimates | Not done (H11) |
-| NOAA-20 continuity factor after S-NPP ended | Not done (H11) |
 | Sensitivity to the confidence filter; Terra-only 2000-11 → 2002-06 | Not done (H12) |
+| 2026 detections ingested; NOAA-20 continuity applied; current month marked partial | Not done (data downloaded) |
+| Uncertainty band on the before/after chart (regional annual totals) | Not done |
 | Gap dates checked against instrument notices | Not done |
 
 ## Findings from the team's Belize 2020 audit (pilot, one country, one year)
