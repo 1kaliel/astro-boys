@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from astro_fire import __version__, mock, smoke, storage
+from astro_fire import __version__, batch, mock, smoke, storage
 from astro_fire.config import get_settings
 
 
@@ -22,6 +22,10 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("mock-calendar", help="write a SYNTHETIC calendar table for dashboard development")
     m.add_argument("--bbox", default=",".join(str(v) for v in mock.DEFAULT_BBOX),
                    help="west,south,east,north in degrees; write it as --bbox=-47,-11,-44,-8")
+    i = sub.add_parser("ingest", help="normalize historical Northeast FIRMS detections")
+    i.add_argument("--years", default="2003-2025", help="local solar year or inclusive range (YYYY-YYYY)")
+    i.add_argument("--satellites", nargs="+", choices=batch.SATELLITES, default=list(batch.SATELLITES))
+    sub.add_parser("aggregate", help="aggregate hotspots into monthly counts by satellite")
 
     args = p.parse_args(argv)
     settings = get_settings(astro_data_root=args.data_root)
@@ -43,6 +47,16 @@ def main(argv: list[str] | None = None) -> int:
         result = mock.run(settings, (west, south, east, north))
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "ok" else 1
+    if args.cmd in ("ingest", "aggregate"):
+        try:
+            if args.cmd == "ingest":
+                result = batch.ingest(settings, batch.parse_years(args.years), args.satellites)
+            else:
+                result = batch.aggregate(settings)
+        except (OSError, ValueError) as exc:
+            p.error(str(exc))
+        print(json.dumps(result, indent=2))
+        return 0
     return 2
 
 
