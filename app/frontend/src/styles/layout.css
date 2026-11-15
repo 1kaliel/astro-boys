@@ -7,6 +7,10 @@
   --heatmap-cell-min: var(--size-target-min);
   --heatmap-gap: var(--size-px-2); /* surface gap between cells, never a border */
   --dash-gap: var(--space-4);
+  /* The logo is the brand mark, not data: fixed ends that match public/favicon.svg in both themes (the data ramp
+     --viz-seq-* flips in dark mode). */
+  --logo-start: var(--magma-300);
+  --logo-end: var(--magma-600);
 }
 
 /* App shell */
@@ -42,7 +46,7 @@
   width: var(--size-target-min);
   height: var(--size-target-min);
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--viz-seq-3), var(--viz-seq-6));
+  background: linear-gradient(135deg, var(--logo-start), var(--logo-end));
 }
 
 .app-title {
@@ -51,12 +55,17 @@
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
+  white-space: nowrap;
 }
 
 .app-subtitle {
   margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+}
+
+.app-subtitle-short {
+  display: none;
 }
 
 .app-actions {
@@ -227,6 +236,13 @@
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+/* The delta vs its baseline, on its own line: in ink, never a series or status color. */
+.kpi-comparison {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
 }
 
 .kpi-badges {
@@ -721,9 +737,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* The short subtitle stays: the name alone could read as live fire alerts. */
   .api-status,
-  .app-subtitle {
+  .app-subtitle-full {
     display: none;
+  }
+
+  .app-subtitle-short {
+    display: inline;
   }
 }
 
@@ -737,6 +758,24 @@
 
   .kpi-hero {
     grid-column: 1 / -1;
+  }
+
+  /* App bar on one row: the model badge leaves (the calendar card states the model), How to read stays. */
+  .app-bar {
+    gap: var(--space-2);
+  }
+
+  .app-actions {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+
+  .app-actions .button {
+    white-space: nowrap;
+  }
+
+  .app-actions .app-model {
+    display: none;
   }
 
   .heat-col-full {

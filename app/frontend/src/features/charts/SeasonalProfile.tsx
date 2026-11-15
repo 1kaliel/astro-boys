@@ -86,7 +86,7 @@ export function SeasonalProfile({ months, startYear, endYear, year, exportContex
           </g>
         ))}
         {profile.map((p) => (
-          <text key={p.month} className="chart-tick" x={x(p.month)} y={BASELINE_Y + 18} textAnchor="middle">
+          <text key={p.month} className="chart-tick chart-tick-x" x={x(p.month)} y={BASELINE_Y + 18} textAnchor="middle">
             {monthShort(p.month)}
           </text>
         ))}

@@ -355,6 +355,28 @@
   padding-top: var(--space-3);
 }
 
+/* Fold: secondary detail one click away (native details/summary) */
+.fold {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.fold-summary {
+  min-height: var(--control-size);
+  padding-block: var(--space-2);
+  width: fit-content;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.fold-body {
+  padding-top: var(--space-1);
+}
+
+.fold-body > * {
+  margin: 0;
+}
+
 /* Legend */
 .legend {
   display: flex;

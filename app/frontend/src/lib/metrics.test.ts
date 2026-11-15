@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { CalendarMonth } from "../data/calendarSource";
-import { busiestMonth, estimatedShare, inYears, latestComparison, percentChange, yearToDate } from "./metrics";
+import {
+  busiestMonth,
+  deltaText,
+  estimatedShare,
+  inYears,
+  latestComparison,
+  latestKpiText,
+  percentChange,
+  yearToDate,
+} from "./metrics";
 
 function month(year: number, m: number, value: number, extra: Partial<CalendarMonth> = {}): CalendarMonth {
   const estimated = year < 2012 || (year === 2012 && m < 2);
@@ -93,5 +102,48 @@ describe("latestComparison", () => {
       comparisonYears: 13,
     });
     expect(latestComparison(partial)).toEqual({ kind: "none" });
+  });
+});
+
+describe("deltaText", () => {
+  it("says the size and direction in words, with an arrow and the baseline value", () => {
+    expect(deltaText(40, 100, "the March median")).toBe("▼ 60% below the March median (100)");
+    expect(deltaText(150, 100, "the March median")).toBe("▲ 50% above the March median (100)");
+    expect(deltaText(100, 100, "the March median")).toBe("Equal to the March median (100)");
+    expect(deltaText(5, null, "the March median")).toBe("No comparison available");
+  });
+});
+
+describe("latestKpiText", () => {
+  it("splits the hero into unit and period (detail) and the delta on its own line (comparison)", () => {
+    const partial = month(2026, 11, 20_300, {
+      isPartial: true,
+      daysObserved: 14,
+      medianHist: 22_800,
+      comparison: "same_days",
+      comparisonDays: 14,
+      comparisonYears: 13,
+    });
+    expect(latestKpiText(partial)).toEqual({
+      detail: "VIIRS-equivalent hotspots · November 1–14, 2026",
+      comparison: "▼ 11% below the median of the same 14 days (22.8K), 13 earlier years",
+    });
+  });
+
+  it("compares a complete month with the median of that month", () => {
+    const full = month(2025, 10, 80, { medianHist: 100, comparison: "month" });
+    expect(latestKpiText(full)).toEqual({
+      detail: "VIIRS-equivalent hotspots · October 2025",
+      comparison: "▼ 20% below the October median (100)",
+    });
+  });
+
+  it("never compares a partial month with full months, and has no comparison without an estimate or data", () => {
+    const partial = month(2026, 11, 20, { isPartial: true, daysObserved: 14, comparison: "month" });
+    expect(latestKpiText(partial).comparison).toBe("Partial month, not compared with the November median");
+    expect(latestKpiText({ ...partial, isPartial: false, count: null })).toEqual({
+      detail: "VIIRS-equivalent hotspots · November 2026 · no estimate for this month",
+    });
+    expect(latestKpiText(null)).toEqual({ detail: "No data" });
   });
 });

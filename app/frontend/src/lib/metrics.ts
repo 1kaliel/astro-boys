@@ -1,4 +1,5 @@
 import type { CalendarMonth } from "../data/calendarSource";
+import { formatCompact, formatCount, MONTHS_LONG } from "./format";
 
 export function inYears(months: readonly CalendarMonth[], start: number, end: number): CalendarMonth[] {
   return months.filter((m) => m.year >= start && m.year <= end);
@@ -61,6 +62,43 @@ export function latestComparison(latest: CalendarMonth): LatestComparison {
     return { kind: "same_days", base: latest.medianHist, days: latest.comparisonDays, years: latest.comparisonYears ?? 0 };
   }
   return { kind: "none" };
+}
+
+/**
+ * Delta in ink, in words: "▼ 60% below the March median (100)". More or fewer hotspots is not "good" or "bad",
+ * and nothing here is a risk. The arrow carries the direction, so the size is shown without a sign.
+ */
+export function deltaText(value: number, base: number | null, against: string): string {
+  if (base == null) return "No comparison available";
+  const change = value - base;
+  const pct = percentChange(value, base);
+  const size = pct != null ? `${formatCount(Math.abs(pct))}%` : formatCount(Math.abs(change));
+  if (change === 0) return `Equal to ${against} (${formatCompact(base)})`;
+  const [arrow, word] = change > 0 ? ["▲", "above"] : ["▼", "below"];
+  return `${arrow} ${size} ${word} ${against} (${formatCompact(base)})`;
+}
+
+/**
+ * The two lines under the hero figure: what it counts and over which days (detail), then how it compares
+ * (comparison, absent when there is nothing to compare).
+ */
+export function latestKpiText(latest: CalendarMonth | null): { detail: string; comparison?: string } {
+  if (!latest) return { detail: "No data" };
+  const monthName = MONTHS_LONG[latest.month - 1];
+  const days = latest.isPartial ? `${monthName} 1–${latest.daysObserved}, ${latest.year}` : `${monthName} ${latest.year}`;
+  if (latest.count == null) return { detail: `VIIRS-equivalent hotspots · ${days} · no estimate for this month` };
+  const detail = `VIIRS-equivalent hotspots · ${days}`;
+  const comparison = latestComparison(latest);
+  if (comparison.kind === "same_days") {
+    // Like for like: days 1..d of this month against days 1..d of earlier years.
+    const against = `the median of the same ${comparison.days} days`;
+    return { detail, comparison: `${deltaText(latest.count, comparison.base, against)}, ${comparison.years} earlier years` };
+  }
+  if (comparison.kind === "none") {
+    // A partial month is never compared with full months: it would read as "little activity".
+    return { detail, comparison: `Partial month, not compared with the ${monthName} median` };
+  }
+  return { detail, comparison: deltaText(latest.count, comparison.base, `the ${monthName} median`) };
 }
 
 export function estimatedShare(months: readonly CalendarMonth[]): { estimated: number; total: number } {
