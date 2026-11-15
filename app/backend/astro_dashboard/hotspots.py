@@ -87,6 +87,9 @@ class HotspotQuery:
     end: date
     period: str = "ALL"
     include_all: bool = False
+    # Intensity and relevance (optional; the defaults keep every detection the main filter lets through).
+    min_frp: float | None = None  # minimum FRP in MW; rows with no FRP are left out when it is set
+    min_confidence: str = "l"  # lowest confidence class kept: l < n < h
 
 
 def hotspots_root() -> str:
@@ -119,6 +122,24 @@ def _connect(root: str) -> duckdb.DuckDBPyConnection:
     return con
 
 
+CONFIDENCE_ORDER = ("l", "n", "h")
+
+
+def quality_clauses(min_frp: float | None, min_confidence: str) -> tuple[list[str], list]:
+    """SQL for the intensity (FRP) and relevance (confidence class) filters; empty at their defaults."""
+    if min_confidence not in CONFIDENCE_ORDER:
+        raise ValueError(f"Unknown confidence class {min_confidence!r}")
+    clauses: list[str] = []
+    params: list = []
+    if min_frp is not None and min_frp > 0:
+        clauses.append("frp_mw >= ?")
+        params.append(float(min_frp))
+    if min_confidence != "l":
+        clauses.append("list_contains(?, confidence_class)")
+        params.append(list(CONFIDENCE_ORDER[CONFIDENCE_ORDER.index(min_confidence) :]))
+    return clauses, params
+
+
 def _where(query: HotspotQuery) -> tuple[str, list]:
     clauses = [
         "year BETWEEN ? AND ?",  # partition pruning: only the files of these local solar years are read
@@ -131,6 +152,9 @@ def _where(query: HotspotQuery) -> tuple[str, list]:
         params.append(query.period)
     if not query.include_all:
         clauses.append("passes_main_filter")
+    extra, extra_params = quality_clauses(query.min_frp, query.min_confidence)
+    clauses += extra
+    params += extra_params
     return " AND ".join(clauses), params
 
 

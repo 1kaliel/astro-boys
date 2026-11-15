@@ -1,0 +1,646 @@
+/*
+ * Map-first explorer (DashboardPage). Wide (from 64rem): a full-viewport app under the app bar, a scrolling sidebar
+ * on the left, the map filling the rest, and a bottom panel (timeline and charts) across the width. Narrow: the same
+ * parts stacked. Tokens only; the breakpoint is the documented exception.
+ */
+
+.xp-app.is-wide {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.xp {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 22.5rem minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "side map"
+    "panel panel";
+  min-height: 0;
+}
+
+/* ---- Sidebar ------------------------------------------------------------------------------------------------ */
+
+.xp-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-5);
+  border-inline-end: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.xp-looking,
+.xp-this-month,
+.xp-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.xp-eyebrow,
+.xp-section-title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.xp-section-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.xp-sentence {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: 1.45;
+}
+
+.xp-explain,
+.xp-detail {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.xp-comparison {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.xp-big {
+  margin: 0;
+  font-size: calc(1.5 * var(--font-size-xl));
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+}
+
+.xp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+/* Steps 1–3: a numbered sequence, separated by space, not boxes. */
+.xp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.xp-step-list {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xp-step-list[hidden] {
+  display: none;
+}
+
+.xp-step {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.xp-step-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.xp-step-n {
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.xp-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.xp-steps-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-weight: var(--font-weight-semibold);
+}
+
+.xp-steps-toggle[aria-expanded="true"] .fbar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.xp-reset {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.xp-reset .fbar-reset {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Where: the State select and the box editor; Region and Country hold one option each and stay out of the way. */
+.xp-steps .fbar-geo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.xp-steps .fbar-geo > .fbar-field {
+  display: none;
+}
+
+.xp-steps .fbar-state {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.xp-steps .fbar-state > .fbar-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.xp-steps .fbar-state .control-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.xp-years {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* When: ◀ September 2024 ▶ */
+.xp-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.xp-month-title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.xp-step-button {
+  min-width: var(--space-8);
+  min-height: var(--space-8);
+  font-size: var(--font-size-xs);
+}
+
+.xp-step-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.xp-latest {
+  flex-basis: 100%;
+  border-color: transparent;
+  background: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+}
+
+/* Days of the month, in the sidebar: one column, no boxes (the month total is already in "This month"). */
+.xp-days .month-view-totals {
+  margin: 0;
+}
+
+.xp-days .month-view-total {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.xp-days .month-view-total + .month-view-total {
+  display: none;
+}
+
+.xp-days .month-view-body.has-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.xp-days.calendar-theme,
+.xp-panel-body.calendar-theme {
+  color: var(--color-text-primary);
+}
+
+/* The period figures: three compact rows. */
+.xp-side .kpi-row.kpi-row-3 {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.xp-side .kpi {
+  padding: var(--space-3);
+  box-shadow: none;
+}
+
+.xp-side .kpi-value,
+.xp-side .kpi-hero .kpi-value {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.kpi-action {
+  position: relative;
+  z-index: var(--layer-raised);
+}
+
+.kpi-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.xp-footer {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.xp-footer p {
+  margin: 0;
+}
+
+/* ---- Map: the hero ------------------------------------------------------------------------------------------ */
+
+.xp-map {
+  grid-area: map;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-page);
+}
+
+.is-wide .xp-map .map-panel {
+  position: absolute;
+  inset: 0;
+  gap: 0;
+}
+
+.is-wide .xp-map .map-frame {
+  position: absolute;
+  inset: 0;
+}
+
+.is-wide .xp-map .map-stage {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Floating parts over the map: layer switch top left, tools top right, legend and notes bottom left. */
+.is-wide .xp-map .map-head,
+.is-wide .xp-map .map-sub,
+.is-wide .xp-map .map-info {
+  position: absolute;
+  z-index: var(--layer-raised);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.is-wide .xp-map .map-head {
+  top: var(--space-3);
+  left: var(--space-3);
+  min-height: 0;
+}
+
+.is-wide .xp-map .map-sub {
+  top: calc(var(--space-12) + var(--space-8));
+  left: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+}
+
+.is-wide .xp-map .map-info {
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(26rem, calc(100% - var(--space-12)));
+  max-height: 45%;
+  overflow-y: auto;
+}
+
+.is-wide .xp-map .map-tools {
+  top: var(--space-3);
+  left: auto;
+  right: calc(var(--space-12) + var(--space-2));
+  max-width: 34rem;
+}
+
+.is-wide .xp-map .coord-panel {
+  left: auto;
+  right: 0;
+}
+
+.is-wide .xp-map .map-overlay {
+  left: auto;
+  right: var(--space-12);
+  bottom: var(--space-3);
+}
+
+.is-wide .xp-map .map-hint {
+  left: 50%;
+  top: calc(var(--space-12) + var(--space-8));
+  bottom: auto;
+  transform: translateX(-50%);
+}
+
+/* Map and tools side by side only when the map is wide enough; else the tools go under the layer switch. */
+@media (max-width: 90rem) {
+  .is-wide .xp-map .map-tools {
+    top: calc(var(--space-12) + var(--space-6));
+    left: var(--space-3);
+    right: auto;
+  }
+
+  .is-wide .xp-map .map-sub {
+    top: calc(2 * var(--space-12) + var(--space-6));
+  }
+}
+
+.map-caption {
+  margin: 0;
+}
+
+/* ---- Bottom panel ------------------------------------------------------------------------------------------- */
+
+.xp-panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.is-wide .xp-panel {
+  height: max(28vh, 220px);
+}
+
+.is-wide .xp-panel.is-collapsed {
+  height: auto;
+}
+
+.xp-panel > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.xp-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-5);
+}
+
+.xp-panel-head .card-meta {
+  margin-inline-start: auto;
+}
+
+.xp-collapse {
+  font-size: var(--font-size-xs);
+}
+
+.xp-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2) var(--space-5) var(--space-4);
+}
+
+.xp-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Timeline: the legend and notes beside the grid on wide screens, so the grid gets the panel's height. */
+@media (min-width: 64rem) {
+  .xp-panel .calendar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 13rem;
+    align-items: start;
+    gap: var(--space-2) var(--space-5);
+  }
+
+  /* One slim toolbar row: the labels stay for screen readers. */
+  .xp-panel .cal-tool .control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .xp-panel .calendar .tabs-panel {
+    padding-top: var(--space-2);
+  }
+
+  .xp-panel .calendar-legend-row {
+    gap: var(--space-2);
+  }
+
+  .xp-panel .calendar-legend-states {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .xp-panel .calendar > .tabs {
+    grid-column: 1;
+    grid-row: 1 / span 6;
+  }
+
+  .xp-panel .calendar > :not(.tabs) {
+    grid-column: 2;
+  }
+
+  .xp-panel .calendar-legend-row .calendar-legend-segment {
+    width: 3rem;
+  }
+
+  .xp-panel .calendar-legend-row .calendar-legend-label {
+    font-size: calc(0.9 * var(--font-size-xs));
+  }
+
+  .xp-panel .dash-charts .line-chart {
+    max-height: calc(max(28vh, 220px) - 6rem);
+  }
+
+  .xp-panel .dash-charts .chart-block {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-areas:
+      "chart legend"
+      "chart note";
+    grid-template-rows: auto 1fr;
+    gap: var(--space-3) var(--space-6);
+  }
+
+  .xp-panel .dash-charts .chart-block > .tabs {
+    grid-area: chart;
+  }
+
+  .xp-panel .dash-charts .chart-block > .chart-legend {
+    grid-area: legend;
+    flex-direction: column;
+  }
+
+  .xp-panel .dash-charts .chart-block > .chart-note {
+    grid-area: note;
+  }
+}
+
+/* While new data loads, the old render stays, dimmed. */
+.xp.is-refetching .xp-side,
+.xp.is-refetching .xp-panel,
+.xp-stack.is-refetching .xp-panel {
+  opacity: 0.7;
+  transition: opacity var(--duration-normal);
+}
+
+/* ---- Narrow: stacked ---------------------------------------------------------------------------------------- */
+
+.xp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-4) var(--spacing-page-x) var(--space-6);
+}
+
+.is-narrow .xp-map {
+  margin-inline: calc(-1 * var(--spacing-page-x));
+}
+
+.is-narrow .xp-map .map-panel {
+  gap: var(--space-2);
+}
+
+.is-narrow .xp-map .map-head,
+.is-narrow .xp-map .map-sub,
+.is-narrow .xp-map .map-info {
+  padding-inline: var(--spacing-page-x);
+}
+
+.is-narrow .xp-map .map-stage {
+  min-height: 60svh;
+  border-inline: 0;
+  border-radius: 0;
+}
+
+.is-narrow .xp-map .map-tools {
+  position: static;
+  max-width: none;
+  margin-inline: var(--spacing-page-x);
+  box-shadow: none;
+}
+
+.is-narrow .xp-panel {
+  margin-inline: calc(-1 * var(--spacing-page-x));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.is-narrow .xp-panel-head,
+.is-narrow .xp-panel-scroll {
+  padding-inline: var(--spacing-page-x);
+}
+
+.is-narrow .xp-panel-head .card-meta {
+  display: none;
+}
+
+/* Compact legend over the map: chips and one unit line; the explanation is folded under it. */
+.is-wide .xp-map .map-info {
+  width: auto;
+  max-width: min(30rem, calc(100% - 8rem));
+  gap: var(--space-1);
+}
+
+.xp-map .map-info .legend {
+  gap: var(--space-1);
+}
+
+.xp-map .map-info .fold-body {
+  max-width: 28rem;
+}
+
+/* The guide prompt never covers the map controls: bottom right, above the attribution and the panel. */
+.xp-app.is-wide .hh-prompt {
+  position: fixed;
+  top: auto;
+  right: var(--space-4);
+  bottom: calc(max(28vh, 220px) + var(--space-12));
+}
+
+.xp-app.is-narrow .hh-prompt {
+  position: fixed;
+  top: auto;
+  right: var(--spacing-page-x);
+  bottom: var(--space-4);
+  left: var(--spacing-page-x);
+  justify-content: space-between;
+}

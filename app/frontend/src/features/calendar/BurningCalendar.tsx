@@ -1,9 +1,10 @@
 import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/heatmap";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { ImageDownload, TextDownload } from "../../components/ui/DownloadBar";
+import { ExportMenu } from "../../components/ui/ExportMenu";
 import { Fold } from "../../components/ui/Fold";
 import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
@@ -23,10 +24,12 @@ import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from ".
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
 import { MonthFilter } from "./MonthFilter";
+import { YearPresets } from "./YearPresets";
 import {
   anomalyText,
   buildScale,
   buildSeries,
+  colorClass,
   legendRanges,
   monthSpan,
   peakSeason,
@@ -42,7 +45,7 @@ const RAW_UNIT = "Native hotspot detections per month, counted by the month's so
 const ANOMALY_UNIT = "Robust z-score of the month against the median of that month of the year";
 
 // Chart geometry in pixels (nivo needs numbers; colors and strokes come from tokens in calendar.css).
-const ROW_PX = 26;
+const ROW_PX = 18; // compact rows: 6 to 8 years fit the explorer's bottom panel without scrolling
 const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
 const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
 // On a phone the 12 months fit the card (no sideways scroll, so the year labels stay in view): compact cells, with
@@ -50,6 +53,8 @@ const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of
 const MIN_CELL_PX_PHONE = 20;
 const PHONE = "(max-width: 30rem)";
 const MAX_CELL_PX = 72; // with few months the cells stop growing instead of turning into long bars
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 const THEME = {
   // Our own tooltip draws its box; nivo's wrapper stays transparent.
@@ -111,6 +116,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const [state, dispatch] = useDashboard();
   const phone = useMediaQuery(PHONE);
   const [hovered, setHovered] = useState<{ year: number; month: number } | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   // Only years the data covers are shown: the selector can go past the last published year.
   const startYear = Math.max(state.startYear, dataset.firstYear);
   const endYear = Math.min(state.endYear, dataset.lastYear);
@@ -138,7 +144,33 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     () => buildScale(series.flatMap((row) => row.data.flatMap((cell) => (cell.y === null ? [] : [cell.y])))),
     [series],
   );
-  const onSelect = useCallback((year: number, month: number) => dispatch({ type: "select", year, month }), [dispatch]);
+  // Colors switched off in the legend. The classes mean different ranges when the months on screen, the scale or
+  // the mode change, so the choice is dropped then rather than silently hiding other months.
+  const classSignature = `${anomaly ? "anomaly" : raw ? "raw" : "count"}|${scale ? [scale.min, scale.max, ...scale.breaks].join(",") : ""}`;
+  const [hiddenState, setHiddenState] = useState<{ signature: string; hidden: ReadonlySet<string> }>({
+    signature: classSignature,
+    hidden: new Set(),
+  });
+  const hidden = hiddenState.signature === classSignature ? hiddenState.hidden : EMPTY_SET;
+  const toggleClass = useCallback(
+    (key: string) => {
+      const next = new Set(hidden);
+      if (!next.delete(key)) next.add(key);
+      setHiddenState({ signature: classSignature, hidden: next });
+    },
+    [hidden, classSignature],
+  );
+  const resetClasses = useCallback(() => setHiddenState({ signature: classSignature, hidden: new Set() }), [classSignature]);
+  const isFiltered = useCallback(
+    (datum: CalendarDatum) => {
+      if (hidden.size === 0 || !scale) return false;
+      const key = colorClass(datum, scale, anomaly);
+      return key !== null && hidden.has(key);
+    },
+    [hidden, scale, anomaly],
+  );
+  // A month opens its days (month view); openMonth also selects it, so the map follows.
+  const onSelect = useCallback((year: number, month: number) => dispatch({ type: "openMonth", year, month }), [dispatch]);
 
   const selectedHasData = state.selected
     ? series.some((row) =>
@@ -150,8 +182,8 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const hoverShown =
     hovered && series.some((row) => row.id === String(hovered.year) && row.data.some((c) => c.month === hovered.month));
   const contextValue = useMemo(
-    () => ({ selected: state.selected, tabStop, onSelect, hovered: hoverShown ? hovered : null, setHovered }),
-    [state.selected, tabStop, onSelect, hovered, hoverShown],
+    () => ({ selected: state.selected, tabStop, onSelect, hovered: hoverShown ? hovered : null, setHovered, isFiltered }),
+    [state.selected, tabStop, onSelect, hovered, hoverShown, isFiltered],
   );
 
   // A valid zero has its own fill and is printed as "0"; a count takes a step of the ramp; no data is hatched
@@ -180,13 +212,22 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     !raw && dataset.intervalApproximate && dataset.months.some((m) => m.isEstimated && m.ciLow !== null);
 
   const filter = (
-    <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
+    <>
+      <YearPresets
+        firstYear={dataset.firstYear}
+        lastYear={dataset.lastYear}
+        startYear={startYear}
+        endYear={endYear}
+        onChange={(from, to) => dispatch({ type: "setYears", startYear: from, endYear: to })}
+      />
+      <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
+    </>
   );
 
   if (!scale) {
     return (
       <div className="calendar">
-        {filter}
+        <div className="tabs-bar">{filter}</div>
         <p className="calendar-status" role="status">
           No hotspot data for this selection. Try another time of day, other months or a wider range of years.
         </p>
@@ -269,48 +310,21 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         </CalendarCellContext.Provider>
       </div>
     </div>
-    <ImageDownload
-      meta={exportMeta}
-      fileName={(ext) => exportFileName("calendar", [raw ? "raw" : anomaly ? "anomaly" : "harmonized", shownYears, period], ext)}
-      svgSelector=".calendar-chart svg"
-    />
     </>
   );
 
-  return (
-    <div className="calendar">
-      {filter}
-      {dataset.synthetic && (
-        <p className="calendar-notice">
-          <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
-        </p>
-      )}
-      {!dataset.synthetic && (
-        <p className="calendar-notice">
-          {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
-          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
-          {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
-          {refreshing && ". Updating…"}
-        </p>
-      )}
-      {raw && (
-        <p className="calendar-notice">
-          <strong>Raw by sensor:</strong> each month shows the native count of its source satellite, Aqua MODIS until
-          January 2012 and VIIRS after. The two instruments do not count the same way, so the jump in 2012 is the
-          change of sensor, not a change in fire activity. Switch to Harmonized to compare years.
-          {state.metric === "anomaly" && " Anomalies are computed on the harmonized series only."}
-        </p>
-      )}
-      {anomaly && (
-        <p className="calendar-notice">
-          <strong>Anomaly:</strong> each month is colored by how far it is from the median of that month of the year
-          (robust z-score). It says how unusual a month was; it is not a probability of fire and not a forecast.
-        </p>
-      )}
+  const exportMenu = (
+    <ExportMenu label="Export the burning calendar">
+      <ImageDownload
+        meta={exportMeta}
+        fileName={(ext) => exportFileName("calendar", [raw ? "raw" : anomaly ? "anomaly" : "harmonized", shownYears, period], ext)}
+        svgSelector=".calendar-chart svg"
+        findSvg={() => rootRef.current?.querySelector<SVGSVGElement>(".calendar-chart svg") ?? null}
+      />
       <div className="download-bar" role="group" aria-label="Download the calendar table">
         <span className="download-label">Table</span>
         <TextDownload
-          label="Download CSV"
+          label="CSV"
           mime="text/csv"
           fileName={exportFileName("calendar", [raw ? "raw" : "harmonized", shownYears, period], "csv")}
           build={() =>
@@ -327,20 +341,80 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           }
         />
       </div>
-      <ChartTableTabs label="Burning calendar" chart={chart} table={<CalendarTable series={series} unit={unit} />} />
-      {anomaly ? (
-        <AnomalyLegend unit={ANOMALY_UNIT} />
-      ) : (
-        <CalendarLegend ranges={legendRanges(scale)} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />
+    </ExportMenu>
+  );
+
+  return (
+    <div className="calendar" ref={rootRef}>
+      <ChartTableTabs
+        label="Burning calendar"
+        lead={filter}
+        actions={exportMenu}
+        chart={chart}
+        table={<CalendarTable series={series} unit={unit} />}
+      />
+      {dataset.synthetic && (
+        <p className="calendar-notice">
+          <Badge kind="simulated" /> Synthetic numbers, for building the screen. They are not results.
+        </p>
       )}
-      {showsIntervals && (
-        <Fold summary="About the 90% intervals">
+      {raw && (
+        <p className="calendar-notice">
+          <strong>Raw by sensor:</strong> native counts. The 2012 jump is the change of sensor, not of activity.
+        </p>
+      )}
+      {anomaly && (
+        <p className="calendar-notice">
+          <strong>Anomaly:</strong> how unusual each month is for its month of the year. Not a forecast.
+        </p>
+      )}
+      {anomaly ? (
+        <AnomalyLegend unit={ANOMALY_UNIT} hidden={hidden} onToggle={toggleClass} onReset={resetClasses} />
+      ) : (
+        <CalendarLegend
+          ranges={legendRanges(scale)}
+          unit={raw ? RAW_UNIT : CALENDAR_UNIT}
+          showUnit={raw}
+          hidden={hidden}
+          onToggle={toggleClass}
+          onReset={resetClasses}
+        />
+      )}
+      <Fold summary="About this chart">
+        {!dataset.synthetic && (
+        <p className="calendar-notice">
+          {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
+          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
+          {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
+          {refreshing && ". Updating…"}
+        </p>
+        )}
+        {raw && (
+          <p className="calendar-notice">
+            Each month shows the native count of its source satellite, Aqua MODIS until January 2012 and VIIRS after.
+            The two instruments do not count the same way, so the jump in 2012 is the change of sensor, not a change in
+            fire activity. Switch to Harmonized to compare years.
+            {state.metric === "anomaly" && " Anomalies are computed on the harmonized series only."}
+          </p>
+        )}
+        {anomaly && (
+          <p className="calendar-notice">
+            Each month is colored by how far it is from the median of that month of the year (robust z-score). It says
+            how unusual a month was; it is not a probability of fire and not a forecast.
+          </p>
+        )}
+        <p className="calendar-notice">
+          Each color holds about the same number of months, so the ranges are not evenly spaced; they are recomputed for
+          the months on screen. Hatched months have no data, a dot marks months estimated from MODIS, and a corner mark
+          a month not yet complete.
+        </p>
+        {showsIntervals && (
           <p className="calendar-notice">
             Intervals for an area are approximate: the errors of nearby cells are correlated, so the interval of the sum
             is widened (variance sum × n<sup>0.32</sup>).
           </p>
-        </Fold>
-      )}
+        )}
+      </Fold>
     </div>
   );
 }
@@ -350,6 +424,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
  * The page loads the calendar once (`useCalendarDataset`) and shares it with the KPI row.
  */
 export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: () => void }) {
+  const [state] = useDashboard();
   if (load.status === "loading") {
     return (
       <p className="calendar-status" role="status">
@@ -365,5 +440,6 @@ export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: 
       </div>
     );
   }
+  // The days of the selected month live in the explorer sidebar (MonthView); the timeline always shows the years.
   return <CalendarView dataset={load.dataset} refreshing={load.refreshing} />;
 }

@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { ImageDownload } from "../../components/ui/DownloadBar";
+import { ExportMenu } from "../../components/ui/ExportMenu";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { annualTotals, axisTicks, niceCeil, type AnnualTotals } from "../../lib/charts";
 import { areaText, exportFileName, periodText, SOURCE_TEXT, type ExportContext } from "../../lib/exportFile";
@@ -32,6 +33,7 @@ type TrendChartProps = {
  * Raw counts of different satellites are drawn as separate lines and never added together.
  */
 export function TrendChart({ months, startYear, endYear, exportContext }: TrendChartProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const rows = useMemo(
     () => annualTotals(months).filter((row) => row.year >= startYear && row.year <= endYear),
     [months, startYear, endYear],
@@ -131,11 +133,6 @@ export function TrendChart({ months, startYear, endYear, exportContext }: TrendC
         ))}
       </svg>
     </div>
-    <ImageDownload
-      meta={exportMeta}
-      fileName={(ext) => exportFileName("trend", [`${startYear}-${endYear}`, exportContext.period], ext)}
-      svgSelector="svg.line-chart"
-    />
     </>
   );
 
@@ -171,7 +168,7 @@ export function TrendChart({ months, startYear, endYear, exportContext }: TrendC
   );
 
   return (
-    <div className="chart-block">
+    <div className="chart-block" ref={rootRef}>
       <ul className="chart-legend" aria-label="Lines">
         {SERIES.map((series) => (
           <li key={series.key}>
@@ -190,7 +187,21 @@ export function TrendChart({ months, startYear, endYear, exportContext }: TrendC
           <span>Hollow point: a year with months estimated from MODIS</span>
         </li>
       </ul>
-      <ChartTableTabs label="Trend" chart={chart} table={table} />
+      <ChartTableTabs
+        label="Trend"
+        chart={chart}
+        table={table}
+        actions={
+          <ExportMenu label="Export the trend chart">
+            <ImageDownload
+              meta={exportMeta}
+              fileName={(ext) => exportFileName("trend", [`${startYear}-${endYear}`, exportContext.period], ext)}
+              svgSelector="svg.line-chart"
+              findSvg={() => rootRef.current?.querySelector<SVGSVGElement>("svg.line-chart") ?? null}
+            />
+          </ExportMenu>
+        }
+      />
       <p className="chart-note">
         Read raw, the record seems to jump when VIIRS replaces MODIS in 2012: VIIRS detects several times more hotspots
         than MODIS over the same fires. That step is the change of instrument, not a change in fire activity. The

@@ -4,6 +4,7 @@
 origin of each month, the historical median and the anomalies of the sum. See calendar.py for the rules.
 `GET /api/hotspots/count` and `GET /api/hotspots.csv` give the native hotspots of the same cells and dates
 (hotspots.py). `GET /api/drilldown` splits one L2 cell into its L3 cells for one month (drilldown.py, D11).
+`GET /api/daily` gives the native detections of one satellite per day of a month, with its passes (daily.py).
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from astro_dashboard import drilldown, hotspots
+from astro_dashboard import daily, drilldown, hotspots
 from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
 
@@ -180,6 +181,8 @@ def version(request: Request) -> dict:
 
 
 FIRST_DATE = date(2000, 1, 1)
+# Map layer -> satellite name in hotspots/v1.
+SENSOR_SATELLITES = {"aqua": "Aqua", "terra": "Terra", "snpp": "SNPP", "n20": "N20"}
 
 
 def _hotspot_query(
@@ -192,6 +195,8 @@ def _hotspot_query(
     end: date,
     period: str,
     include_all: bool,
+    min_frp: float | None = None,
+    min_confidence: str = "l",
 ) -> hotspots.HotspotQuery:
     if west >= east or south >= north:
         raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
@@ -202,7 +207,11 @@ def _hotspot_query(
     cells = store.cells_in(Bounds(west=west, south=south, east=east, north=north))
     if not cells:
         raise HTTPException(status_code=422, detail="The selected area overlaps no 0.25 degree cell.")
-    return hotspots.HotspotQuery(cells=cells, start=start, end=end, period=period, include_all=include_all)
+    return hotspots.HotspotQuery(cells=cells, start=start, end=end, period=period,
+        include_all=include_all,
+        min_frp=min_frp,
+        min_confidence=min_confidence,
+    )
 
 
 def _unavailable(error: hotspots.HotspotsUnavailable) -> str:
@@ -224,6 +233,8 @@ class HotspotCountOut(BaseModel):
     end: date
     period: Literal["ALL", "D", "N"]
     include_all: bool
+    min_frp: float | None = None
+    min_confidence: Literal["l", "n", "h"] = "l"
 
 
 @router.get("/hotspots/count", response_model=HotspotCountOut, tags=["hotspots"])
@@ -237,8 +248,12 @@ def hotspots_count(
     north: float = Query(..., ge=-90, le=90),
     period: Literal["ALL", "D", "N"] = "ALL",
     include_all: bool = False,
+    min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
+    min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
 ) -> HotspotCountOut:
-    query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
+    query = _hotspot_query(
+        store, west, south, east, north, start, end, period, include_all, min_frp, min_confidence
+    )
     try:
         counted = hotspots.count(query)
     except hotspots.HotspotsUnavailable as error:
@@ -253,6 +268,8 @@ def hotspots_count(
         end=end,
         period=period,
         include_all=include_all,
+        min_frp=min_frp,
+        min_confidence=min_confidence,
     )
 
 
@@ -287,16 +304,24 @@ def drilldown_cell(
     year: int = Query(..., ge=FIRST_DATE.year, le=2200),
     month: int = Query(..., ge=1, le=12),
     period: Literal["ALL", "D", "N"] = "ALL",
+    min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
+    min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
+    sensor: Literal["harmonized", "aqua", "terra", "snpp", "n20"] = Query(
+        "harmonized",
+        description="Map layer: harmonized uses the month's source satellite, else that satellite",
+    ),
 ) -> DrilldownOut:
     try:
         drilldown.l2_index(cell)
     except drilldown.NotAnL2Cell as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    satellite = store.source_satellite(year, month, period)
+    satellite = SENSOR_SATELLITES.get(sensor) or store.source_satellite(year, month, period)
     if satellite is None or satellite not in drilldown.INSTRUMENTS:
         raise HTTPException(status_code=422, detail=f"The calendar has no data for {year}-{month:02d}.")
     try:
-        result = drilldown.drilldown(cell, year, month, satellite, period)
+        result = drilldown.drilldown(
+            cell, year, month, satellite, period, min_frp=min_frp, min_confidence=min_confidence
+        )
     except hotspots.HotspotsUnavailable as error:
         log.warning("Drill-down failed: %s", error)
         raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
@@ -315,6 +340,93 @@ def drilldown_cell(
     )
 
 
+class DailyPassOut(BaseModel):
+    satellite: str
+    daynight: Literal["D", "N"]
+    # First and last acquisition time of the pass, UTC "HH:MM".
+    start_utc: str
+    end_utc: str
+    # Same times in local solar time "HH:MM" (UTC + longitude/15 of the area centre).
+    start_local: str
+    end_local: str
+    count: int
+
+
+class DailyDayOut(BaseModel):
+    date: date
+    # "observed": the satellite has data that day, count may be 0 (no detection, not "no fire"). "no_data":
+    # the satellite has no row that day anywhere (before its first record, a gap, after last_date).
+    # count is then None, never 0.
+    status: Literal["observed", "no_data"]
+    count: int | None
+    passes: list[DailyPassOut]
+    # Rows of `count` without an acquisition time: counted, but in no pass.
+    untimed: int
+
+
+class DailyOut(BaseModel):
+    year: int
+    month: int
+    period: Literal["ALL", "D", "N"]
+    # Satellite counted: the month's source satellite unless `satellite` was asked. Never two added together.
+    satellite: str
+    instrument: Literal["MODIS", "VIIRS"]
+    cells: int
+    # Last local solar date of that satellite in the partition read.
+    last_date: date
+    days: list[DailyDayOut]
+
+
+@router.get("/daily", response_model=DailyOut, tags=["hotspots"])
+def daily_days(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+    year: int = Query(..., ge=FIRST_DATE.year, le=2200),
+    month: int = Query(..., ge=1, le=12),
+    period: Literal["ALL", "D", "N"] = "ALL",
+    satellite: Literal["Aqua", "Terra", "SNPP", "N20"] | None = Query(
+        None, description="Satellite counted; default the month's source satellite"
+    ),
+) -> DailyOut:
+    if west >= east or south >= north:
+        raise HTTPException(status_code=422, detail="The box needs west < east and south < north.")
+    cells = store.cells_in(Bounds(west=west, south=south, east=east, north=north))
+    if not cells:
+        raise HTTPException(status_code=422, detail="The selected area overlaps no 0.25 degree cell.")
+    satellite = satellite or store.source_satellite(year, month, period)
+    if satellite is None or satellite not in drilldown.INSTRUMENTS:
+        raise HTTPException(status_code=422, detail=f"The calendar has no data for {year}-{month:02d}.")
+    try:
+        result = daily.daily(cells, year, month, satellite, period, center_lon=(west + east) / 2)
+    except daily.NoSatelliteData as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except hotspots.HotspotsUnavailable as error:
+        log.warning("Daily failed: %s", error)
+        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+    return DailyOut(
+        year=year,
+        month=month,
+        period=period,
+        satellite=result.satellite,
+        instrument=result.instrument,
+        cells=len(cells),
+        last_date=result.last_date,
+        days=[
+            DailyDayOut(
+                date=d.date,
+                status=d.status,
+                count=d.count,
+                passes=[DailyPassOut(**asdict(p)) for p in d.passes],
+                untimed=d.untimed,
+            )
+            for d in result.days
+        ],
+    )
+
+
 @router.get("/hotspots.csv", tags=["hotspots"], response_class=StreamingResponse)
 def hotspots_csv(
     store: Annotated[CalendarStore, Depends(get_store)],
@@ -326,8 +438,12 @@ def hotspots_csv(
     north: float = Query(..., ge=-90, le=90),
     period: Literal["ALL", "D", "N"] = "ALL",
     include_all: bool = False,
+    min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
+    min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
 ) -> StreamingResponse:
-    query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
+    query = _hotspot_query(
+        store, west, south, east, north, start, end, period, include_all, min_frp, min_confidence
+    )
     try:
         body = hotspots.export_csv(query)
     except hotspots.Busy as error:
@@ -341,6 +457,8 @@ def hotspots_csv(
     box = "_".join(f"{v:g}" for v in (west, south, east, north))
     suffix = "" if period == "ALL" else f"_{period}"
     suffix += "_all-confidence" if include_all else ""
+    suffix += f"_frp{min_frp:g}" if min_frp else ""
+    suffix += f"_conf-{min_confidence}" if min_confidence != "l" else ""
     filename = f"astro-hotspots_{box}_{start.isoformat()}_{end.isoformat()}{suffix}.csv"
     return StreamingResponse(
         body,

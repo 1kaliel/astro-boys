@@ -93,7 +93,14 @@ def _partition_source(root: str, instrument: str, year: int) -> str:
 
 
 def drilldown(
-    cell: str, year: int, month: int, satellite: str, period: str = "ALL", root: str | None = None
+    cell: str,
+    year: int,
+    month: int,
+    satellite: str,
+    period: str = "ALL",
+    root: str | None = None,
+    min_frp: float | None = None,
+    min_confidence: str = "l",
 ) -> Drilldown:
     """Native detection counts of the 3 x 3 block around `cell` and of the L3 cells of `cell`, for one month
     and one satellite. One read of the month's partition, grouped by L2 and L3 cell."""
@@ -116,6 +123,9 @@ def drilldown(
     if period != "ALL":
         clauses.append("daynight = ?")
         params.append(period)
+    extra, extra_params = hotspots.quality_clauses(min_frp, min_confidence)
+    clauses += extra
+    params += extra_params
     sql = (
         f"SELECT cell_l2, cell_l3, count(*) FROM {_partition_source(root, instrument, year)} "
         f"WHERE {' AND '.join(clauses)} GROUP BY cell_l2, cell_l3"

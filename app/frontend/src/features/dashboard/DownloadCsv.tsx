@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { Icon } from "../../components/ui/Icon";
 import { Popover } from "../../components/ui/Popover";
 import { formatCount } from "../../lib/format";
 import {
@@ -36,6 +37,8 @@ export function DownloadCsv() {
     endYear: state.endYear,
     period: state.period,
     includeAll,
+    minFrp: state.minFrp,
+    relevance: state.relevance,
   };
   const countUrl = hotspotsCountUrl(request);
   const count: CountState = answer.status !== "loading" && answer.url !== countUrl ? { status: "loading" } : answer;
@@ -64,7 +67,6 @@ export function DownloadCsv() {
 
   return (
     <div className="control">
-      <span className="control-label">Download</span>
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -72,10 +74,8 @@ export function DownloadCsv() {
         title="Native hotspots (NASA FIRMS) as CSV"
         trigger={
           <>
-            CSV
-            <span className="chip-icon" aria-hidden="true">
-              ▾
-            </span>
+            <Icon name="download" />
+            Download (CSV)
           </>
         }
       >

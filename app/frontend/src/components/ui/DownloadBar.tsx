@@ -10,19 +10,21 @@ type ImageDownloadProps = {
   fileName: (ext: "svg" | "png") => string;
   /** Finds the chart's `<svg>` inside the parent of the bar. */
   svgSelector: string;
+  /** Finds the chart's `<svg>` when the bar is not next to it (e.g. inside an Export menu, which is portaled). */
+  findSvg?: () => SVGSVGElement | null;
 };
 
 /**
  * "Image: SVG, PNG" for the chart next to it. The file is built in the browser from the SVG on screen, with the
  * styles inlined and the title, unit, area, period, source and model version written as text.
  */
-export function ImageDownload({ meta, fileName, svgSelector }: ImageDownloadProps) {
+export function ImageDownload({ meta, fileName, svgSelector, findSvg }: ImageDownloadProps) {
   const bar = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   const run = async (ext: "svg" | "png") => {
     setError(null);
-    const svg = bar.current?.parentElement?.querySelector<SVGSVGElement>(svgSelector);
+    const svg = findSvg ? findSvg() : bar.current?.parentElement?.querySelector<SVGSVGElement>(svgSelector);
     if (!svg) {
       setError("The chart is not on screen.");
       return;

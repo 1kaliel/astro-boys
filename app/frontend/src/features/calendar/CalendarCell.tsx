@@ -14,6 +14,8 @@ type CellContext = {
   /** The month under the pointer or the keyboard focus. Its row and column are highlighted, the rest is dimmed. */
   hovered: MonthRef | null;
   setHovered: (month: MonthRef | null) => void;
+  /** Months the legend filter switched off: they stay in place, faded. */
+  isFiltered: (datum: CalendarDatum) => boolean;
 };
 
 /** Selection and hover live above the chart; the cell reads them from here so its identity stays stable. */
@@ -23,6 +25,7 @@ export const CalendarCellContext = createContext<CellContext>({
   onSelect: () => undefined,
   hovered: null,
   setHovered: () => undefined,
+  isFiltered: () => false,
 });
 
 // Geometry the SVG needs as numbers. Colors and stroke widths come from CSS tokens (calendar.css).
@@ -109,7 +112,7 @@ export function CalendarDefs() {
  * Pointer or focus on a cell highlights its row (year) and column (month) and dims the others.
  */
 export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: CellComponentProps<CalendarDatum>) {
-  const { selected, tabStop, onSelect, hovered, setHovered } = useContext(CalendarCellContext);
+  const { selected, tabStop, onSelect, hovered, setHovered, isFiltered } = useContext(CalendarCellContext);
   const { entry, year, month } = cell.data;
   const hasData = entry !== null;
   const hasCount = entry !== null && entry.count !== null;
@@ -118,6 +121,7 @@ export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: 
   const isTabStop = tabStop?.year === year && tabStop.month === month;
   const isHovered = hovered?.year === year && hovered.month === month;
   const isDimmed = hovered !== null && hovered.year !== year && hovered.month !== month;
+  const isOff = isFiltered(cell.data);
   const showTooltip = onMouseEnter?.(cell);
   const moveTooltip = onMouseMove?.(cell);
   const hideTooltip = onMouseLeave?.(cell);
@@ -137,6 +141,7 @@ export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: 
         hasData && "calendar-cell-interactive",
         isHovered && "calendar-cell-hover",
         isDimmed && "calendar-cell-dim",
+        isOff && "calendar-cell-off",
         !hasCount && "calendar-cell-empty",
         isZero && "calendar-cell-zero",
       )}

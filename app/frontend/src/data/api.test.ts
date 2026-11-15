@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, drilldownUrl, fetchDrilldown, type DrilldownResponse } from "./api";
+import { ApiError, cellsUrl, drilldownUrl, fetchDrilldown, type DrilldownResponse } from "./api";
 
 /** The fixed contract of GET /api/drilldown (task D11), mocked: the backend is built in parallel. */
 const SAMPLE: DrilldownResponse = {
@@ -61,5 +61,29 @@ describe("drill-down client", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(422);
     expect(error.message).toBe("The drill-down API answered 422.");
+  });
+});
+
+describe("native-detection filters in the drill-down URL", () => {
+  const base = { cell: "G083135.16", year: 2020, month: 9, period: "ALL" as const };
+
+  it("leaves the defaults out", () => {
+    expect(drilldownUrl({ ...base, minFrp: 0, relevance: "l" })).toBe(drilldownUrl(base));
+    expect(drilldownUrl(base)).not.toContain("min_");
+  });
+
+  it("sends the intensity and relevance floors", () => {
+    const url = drilldownUrl({ ...base, minFrp: 50, relevance: "h" });
+    expect(url).toContain("min_frp=50");
+    expect(url).toContain("min_confidence=h");
+  });
+});
+
+describe("map layer in the URLs", () => {
+  it("leaves the harmonized layer out and names a native satellite", () => {
+    expect(cellsUrl("ALL", null)).toBe("/api/cells?period=ALL");
+    expect(cellsUrl("D", { year: 2020, month: 9 }, "snpp")).toContain("sensor=snpp");
+    expect(drilldownUrl({ cell: "G083135.16", year: 2020, month: 9, period: "ALL", sensor: "harmonized" })).not.toContain("sensor");
+    expect(drilldownUrl({ cell: "G083135.16", year: 2020, month: 9, period: "ALL", sensor: "aqua" })).toContain("sensor=aqua");
   });
 });

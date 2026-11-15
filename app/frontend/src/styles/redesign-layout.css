@@ -1,0 +1,406 @@
+/* Redesign layout (team proposal): three KPIs, and on phones one view at a time with a carousel of KPIs. */
+.kpi-row-3 {
+  grid-template-columns: 1.3fr 1fr 1fr;
+}
+
+.mobile-views {
+  position: sticky;
+  top: var(--size-app-bar);
+  z-index: var(--layer-sticky);
+  display: flex;
+  justify-content: center;
+  padding-block: var(--space-2);
+  background: var(--color-page);
+}
+
+.mobile-views .control {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-views .segmented {
+  display: flex;
+  width: 100%;
+}
+
+.mobile-views .segmented-item {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 56rem) {
+  /* KPIs: a swipeable row, each card most of the screen wide, the next one peeking in. */
+  .kpi-row.kpi-row-3 {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(16rem, 82%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    padding-bottom: var(--space-2);
+  }
+
+  .kpi-row.kpi-row-3 > .kpi {
+    scroll-snap-align: start;
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  .kpi-row.kpi-row-3 > .kpi-hero,
+  .kpi-row.kpi-row-3 > .kpi:last-child:nth-child(even) {
+    grid-column: auto;
+  }
+}
+
+/* The sticky filter bar stays above the map's floating tools (same layer, later in the page). */
+.fbar {
+  z-index: calc(var(--layer-sticky) + 1);
+}
+
+/* Region and Country hold one live option each (South America, Brazil): below 100rem they step aside so the filters
+   stay on one row; the State select and the app subtitle still say where the data is. */
+@media (min-width: 56rem) and (max-width: 100rem) {
+  .fbar-geo > .fbar-field {
+    display: none;
+  }
+
+  .fbar-group {
+    padding-inline: var(--space-2);
+  }
+
+  .fbar-state > .fbar-field-wide {
+    width: 13.5rem;
+  }
+}
+
+/* Between phone and wide desktop the bar wraps to two rows: sticky, it would hide a third of the screen. */
+@media (min-width: 56rem) and (max-width: 75rem) {
+  .fbar {
+    position: static;
+  }
+}
+
+/* ---- Hierarchy pass: filters → KPIs → workspace (calendar | map) → analysis ---------------------------------- */
+
+/* KPI cards: the value leads; one line of what it counts, one comparison, the way to the evidence at the bottom. */
+.kpi {
+  gap: var(--space-1);
+}
+
+.kpi-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  min-height: var(--control-size);
+}
+
+.kpi-value {
+  margin-block: var(--space-1);
+  font-size: calc(1.25 * var(--font-size-2xl));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.kpi-hero .kpi-value {
+  font-size: var(--font-size-hero);
+  letter-spacing: -0.02em;
+}
+
+.kpi-badges {
+  margin: 0;
+  padding: 0;
+}
+
+.kpi-detail,
+.kpi-comparison {
+  line-height: 1.4;
+}
+
+.kpi-source-hint {
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
+.kpi-clickable:hover .kpi-source-hint {
+  color: var(--color-text-primary);
+}
+
+.evidence-notes ul {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: var(--space-5);
+}
+
+/* Workspace: calendar and map share a row, same height, tops aligned. 7 + 5 columns: the map needs room for its
+   toolbar; on very wide screens the calendar takes 8. */
+.dash-calendar,
+.dash-map {
+  align-self: stretch;
+}
+
+.dash-calendar {
+  grid-column: span 7;
+}
+
+.dash-map {
+  grid-column: span 5;
+}
+
+@media (min-width: 100rem) {
+  .dash-calendar {
+    grid-column: span 8;
+  }
+
+  .dash-map {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 56rem) {
+  .dash-calendar,
+  .dash-map {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Analysis: one card under the workspace, a little apart from it. */
+.dash-charts {
+  grid-column: 1 / -1;
+  margin-top: var(--space-4);
+}
+
+/* ---- Calendar card ------------------------------------------------------------------------------------------ */
+
+.cal-tool {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.calendar .tabs-panel {
+  padding-top: var(--space-4);
+}
+
+.calendar .tabs-bar {
+  column-gap: var(--space-3);
+}
+
+.calendar .tabs-bar .segmented-item,
+.calendar .tabs-bar .tabs-tab,
+.tabs-bar .export-trigger {
+  padding-inline: var(--space-2);
+}
+
+.month-pick .chip-icon {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.month-popover .month-chips {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 15rem;
+}
+
+.calendar-legend {
+  gap: var(--space-2);
+}
+
+.calendar-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+}
+
+.calendar-legend-row > .calendar-legend-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-px-2);
+}
+
+.calendar-legend-row .calendar-legend-segment {
+  width: 4.25rem;
+}
+
+.calendar-legend-row .calendar-legend-toggle {
+  padding: var(--size-px-2);
+}
+
+.calendar-legend-row .calendar-legend-bar {
+  height: var(--space-2);
+}
+
+.calendar-legend-states {
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.calendar-legend-title,
+.calendar-legend-note {
+  font-size: var(--font-size-xs);
+}
+
+/* ---- Map card ----------------------------------------------------------------------------------------------- */
+
+.map-panel {
+  gap: var(--space-3);
+}
+
+.map-head {
+  align-items: center;
+}
+
+.map-layers {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  width: auto;
+}
+
+.map-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* The toolbar's layer stays inside the map card, under the sticky app bar and filter bar. */
+.map-frame {
+  isolation: isolate;
+}
+
+/* One floating toolbar over the map: view, draw, visible area, coordinates. */
+.map-tools {
+  right: auto;
+  max-width: calc(100% - var(--space-12));
+  align-items: center;
+  gap: var(--size-px-2);
+  padding: var(--size-px-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+}
+
+.map-tools .button,
+.map-tools .segmented,
+.map-tools .coord-toggle {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.map-tools .button:hover {
+  border-color: var(--color-border-strong);
+}
+
+.map-tools .segmented {
+  border: 1px solid var(--color-border);
+}
+
+.map-tools .button,
+.map-tools .segmented-item {
+  padding-inline: var(--space-2);
+}
+
+.map-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.map-tools .coord-toggle[aria-expanded="true"],
+.map-tools .coord-toggle.has-point {
+  border-color: var(--color-text-primary);
+}
+
+/* ---- Analysis card ------------------------------------------------------------------------------------------ */
+
+.dash-charts .chart-block > .tabs {
+  order: 0;
+}
+
+.dash-charts .chart-block > .chart-legend {
+  order: 1;
+}
+
+.dash-charts .chart-block > .chart-note {
+  order: 2;
+  max-width: 75ch;
+}
+
+/* Wide: the chart on the left, its legend and note beside it. */
+@media (min-width: 75rem) {
+  .dash-charts .chart-block {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    grid-template-areas:
+      "chart legend"
+      "chart note";
+    grid-template-rows: auto 1fr;
+    gap: var(--space-3) var(--space-6);
+  }
+
+  .dash-charts .chart-block > .tabs {
+    grid-area: chart;
+  }
+
+  .dash-charts .chart-block > .chart-legend {
+    grid-area: legend;
+    flex-direction: column;
+    padding-top: calc(var(--control-size) + var(--space-4));
+  }
+
+  .dash-charts .chart-block > .chart-note {
+    grid-area: note;
+  }
+
+  .dash-charts .line-chart {
+    max-height: 24rem;
+  }
+}
+
+/* ---- Phones and narrow windows ------------------------------------------------------------------------------ */
+
+@media (max-width: 56rem) {
+  /* The view switch stays under the app bar while the page scrolls. */
+  .mobile-views {
+    margin-inline: calc(-1 * var(--spacing-page-x));
+    padding-inline: var(--spacing-page-x);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .dash-charts {
+    margin-top: 0;
+  }
+
+  .map-tools {
+    max-width: none;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  .tabs-bar {
+    gap: var(--space-2);
+  }
+
+  .cal-tool .control-label {
+    display: none;
+  }
+
+  .tabs-bar > .tabs-list {
+    margin-inline-start: 0;
+  }
+
+  .kpi-hero .kpi-value {
+    font-size: calc(1.5 * var(--font-size-2xl));
+  }
+}

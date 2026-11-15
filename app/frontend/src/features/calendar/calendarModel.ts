@@ -1,3 +1,4 @@
+import { anomalyStep } from "../../lib/charts";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { formatCompact, formatCount, formatLegendCount } from "../../lib/format";
 import type { Period } from "../../state/dashboard";
@@ -106,6 +107,20 @@ export function scaleStep(value: number, scale: ColorScale, steps: number = SEQ_
   if (colors === 1) return Math.ceil(steps / 2); // no spread at all: the middle color
   const bin = scale.breaks.filter((limit) => value >= limit).length; // 0 .. colors - 1
   return Math.round(1 + (bin * (steps - 1)) / (colors - 1));
+}
+
+/**
+ * The color class of a month, the key the legend filter toggles: "zero", "seq-N" (a step of the count ramp) or
+ * "div-N" (a step of the anomaly ramp). Null for a month that is not drawn with a class of the legend (no data,
+ * no estimate, or an anomaly without a comparison).
+ */
+export function colorClass(datum: CalendarDatum, scale: ColorScale, anomaly: boolean): string | null {
+  if (anomaly) {
+    const z = datum.entry?.anomalyZ;
+    return z == null ? null : `div-${anomalyStep(z)}`;
+  }
+  if (datum.y === null) return null;
+  return datum.y === 0 ? "zero" : `seq-${scaleStep(datum.y, scale)}`;
 }
 
 /** What a legend segment covers: from `from` up to (not including) `to`; the last one runs to the maximum. */

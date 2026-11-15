@@ -1,0 +1,602 @@
+/*
+ * App bar, Guide tour and "Understand the data" dialog. Semantic and component tokens only (see
+ * docs/design-system.md); 56rem and 40rem are the documented raw breakpoints (media queries cannot read tokens).
+ */
+:root {
+  --hh-control-height: var(--space-8);
+  --hh-gap: var(--space-2);
+  --tour-width: calc(var(--size-panel-min) * 1.1);
+}
+
+/* ---- App bar ---------------------------------------------------------------------------------------------- */
+.hh-bar {
+  flex-wrap: nowrap;
+  gap: var(--space-4);
+}
+
+.hh-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.hh-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.hh-title-row .app-title {
+  letter-spacing: 0.04em;
+}
+
+.hh-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hh-subtitle-short {
+  display: none;
+}
+
+/* Status dot: the data service and model, in a tooltip (and in words in the phone menu). */
+.hh-status {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-target-min);
+  height: var(--size-target-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  cursor: help;
+}
+
+.hh-status-dot {
+  display: inline-block;
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 var(--size-px-2) var(--color-surface);
+}
+
+[data-status="ok"] > .hh-status-dot,
+.hh-status-dot[data-status="ok"] {
+  background: var(--color-status-good);
+}
+
+[data-status="unavailable"] > .hh-status-dot,
+.hh-status-dot[data-status="unavailable"] {
+  background: var(--color-status-critical);
+}
+
+[data-status="checking"] > .hh-status-dot,
+.hh-status-dot[data-status="checking"] {
+  background: var(--color-status-warning);
+}
+
+/* The three controls */
+.hh-controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--hh-gap);
+}
+
+.hh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: max(var(--control-size), var(--hh-control-height));
+  white-space: nowrap;
+  font-weight: var(--font-weight-semibold);
+  transition:
+    border-color var(--duration-fast),
+    background-color var(--duration-fast);
+}
+
+.hh-button:hover {
+  background: var(--color-surface);
+}
+
+.hh-button.icon-button {
+  min-width: max(var(--control-size), var(--hh-control-height));
+  padding-inline: var(--space-1);
+}
+
+.hh-icon {
+  width: var(--font-size-lg);
+  height: var(--font-size-lg);
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hh-controls .hh-theme {
+  margin-inline-start: var(--space-1);
+}
+
+/* Phone menu, hidden on large screens */
+.hh-mobile {
+  position: relative;
+  display: none;
+  flex: none;
+}
+
+.hh-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: var(--layer-popup);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: min(calc(100vw - 2 * var(--spacing-page-x)), var(--size-panel-min));
+  padding: var(--space-2);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-lg);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  box-shadow: var(--tooltip-shadow);
+}
+
+.hh-menu[hidden] {
+  display: none;
+}
+
+.hh-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-target-touch);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-align: start;
+  cursor: pointer;
+}
+
+.hh-menu-item:hover {
+  background: var(--color-surface);
+}
+
+.hh-menu-item > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.hh-menu-item small {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}
+
+.hh-menu-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* First-visit prompt, under the Guide button (not an auto-start) */
+.hh-prompt {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: var(--spacing-page-x);
+  z-index: var(--layer-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100vw - 2 * var(--spacing-page-x));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-lg);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  box-shadow: var(--tooltip-shadow);
+  animation: hh-rise var(--duration-normal) ease-out;
+}
+
+.hh-prompt-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.hh-prompt-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.hh-prompt .icon-button {
+  border-color: transparent;
+  background: none;
+}
+
+@keyframes hh-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-1)));
+  }
+}
+
+/* Accent button: the one main action of a prompt or a tour step. */
+.tour-next {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-surface-raised);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tour-next:hover {
+  border-color: var(--color-text-primary);
+}
+
+@media (max-width: 56rem) {
+  .hh-controls {
+    display: none;
+  }
+
+  .hh-mobile {
+    display: block;
+  }
+
+  .hh-subtitle-full {
+    display: none;
+  }
+
+  .hh-subtitle-short {
+    display: inline;
+  }
+}
+
+/* ---- Guide tour ------------------------------------------------------------------------------------------- */
+.tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-popup);
+  pointer-events: none;
+}
+
+.tour-blocker {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.tour-spotlight {
+  position: fixed;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 100vmax var(--color-overlay);
+  outline: var(--size-px-2) solid var(--color-ring);
+  outline-offset: var(--size-px-2);
+  transition:
+    top var(--duration-normal) ease-out,
+    left var(--duration-normal) ease-out,
+    width var(--duration-normal) ease-out,
+    height var(--duration-normal) ease-out;
+}
+
+.tour-popover {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(var(--tour-width), calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  transition:
+    top var(--duration-normal) ease-out,
+    left var(--duration-normal) ease-out;
+}
+
+/* Phones: a sheet at the bottom, the target stays in view above it. */
+.tour-popover[data-placement="dock"] {
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  left: var(--space-3);
+  width: auto;
+  max-width: var(--size-container);
+  margin-inline: auto;
+}
+
+.tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tour-count {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.tour-skip {
+  min-height: var(--control-size);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-decoration: underline;
+  text-underline-offset: var(--size-px-2);
+  cursor: pointer;
+}
+
+.tour-skip:hover {
+  color: var(--color-text-primary);
+}
+
+.tour-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+}
+
+.tour-title:focus {
+  outline: none;
+}
+
+.tour-body {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.tour-progress {
+  display: flex;
+  gap: var(--space-1);
+  padding-block: var(--space-1);
+}
+
+.tour-dot {
+  width: var(--space-2);
+  height: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+}
+
+.tour-dot[data-active] {
+  width: var(--space-4);
+  background: var(--color-accent);
+}
+
+.tour-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.tour-actions .button {
+  min-width: calc(var(--space-12) + var(--space-4));
+  min-height: max(var(--control-size), var(--hh-control-height));
+}
+
+@media (max-width: 56rem) {
+  .tour-actions .button,
+  .tour-skip {
+    min-height: var(--size-target-touch);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight,
+  .tour-popover,
+  .hh-button {
+    transition: none;
+  }
+
+  .hh-prompt {
+    animation: none;
+  }
+}
+
+/* ---- Understand the data ---------------------------------------------------------------------------------- */
+.data-guide {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, calc(var(--size-container) * 0.6));
+  padding: 0;
+  overflow: hidden;
+}
+
+.data-guide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-3);
+}
+
+.data-guide-title {
+  margin-bottom: var(--space-1);
+}
+
+.data-guide-title:focus {
+  outline: none;
+}
+
+.data-guide-lead {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.data-guide-close {
+  flex: none;
+  border-color: transparent;
+  background: none;
+}
+
+.data-guide-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0 var(--space-6) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-guide-chip {
+  min-height: var(--control-size);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.data-guide-chip:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.data-guide-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-6) var(--space-4);
+  line-height: var(--line-height-normal);
+}
+
+.data-guide-body section {
+  scroll-margin-top: var(--space-2);
+  padding-block: var(--space-2);
+}
+
+.data-guide-body section + section {
+  border-top: 1px solid var(--color-border);
+}
+
+.data-guide-body section:focus {
+  outline: none;
+}
+
+.data-guide-body ul {
+  padding-inline-start: var(--space-5);
+}
+
+.data-guide-body li + li {
+  margin-top: var(--space-1);
+}
+
+.data-guide-defs,
+.data-guide-meta {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.data-guide-defs > div {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.data-guide-defs dt,
+.data-guide-meta dt {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.data-guide-defs dd,
+.data-guide-meta dd {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.data-guide-meta > div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: var(--space-3);
+}
+
+.data-guide-formula {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: var(--size-px-2) solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+}
+
+.data-guide-note {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-size-xs);
+}
+
+.data-guide .dialog-actions {
+  margin: 0;
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 40rem) {
+  .data-guide {
+    width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .data-guide-head,
+  .data-guide-nav,
+  .data-guide-body,
+  .data-guide .dialog-actions {
+    padding-inline: var(--space-4);
+  }
+
+  .data-guide-meta > div {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .data-guide-chip {
+    min-height: var(--size-target-touch);
+  }
+}
+
+/* The logo leads back to the landing page. */
+.hh-home {
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+}
