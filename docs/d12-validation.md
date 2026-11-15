@@ -2,6 +2,9 @@
 
 Prepared for Jean Gustavo on 15 November 2026 with AI assistance. **D12 is in progress.** No deployment or merge was performed. This PR publishes the evidence from the earlier read-only capture session.
 
+> Update, 17:03 UTC: D12 is done. The final deploy (revision `astro-dashboard-00008-m2v`), the offline test and the
+> final screenshots 09–20 are recorded in [Final capture on revision 00008](#final-capture-on-revision-00008).
+
 ## Live page checked
 
 - URL: https://astro-dashboard-301238386836.us-central1.run.app/
@@ -95,3 +98,67 @@ JPEG headers:
 The captures were not redone: they show the pages they claim to show, and they will be taken again after the final
 deploy. Correction made with an AI assistant for Kali.
 
+
+## Final capture on revision 00008
+
+Captured on 2026-11-15, 16:55 to 17:01 UTC, by Guilherme with an AI assistant (Claude), on the public URL
+https://astro-dashboard-301238386836.us-central1.run.app/, revision `astro-dashboard-00008-m2v` (image
+`astro-dashboard:3957039`, eighth deploy at 16:50 UTC, approved by Kali). The API does not report the revision: it
+comes from the deploy record in the diary, and `/api/version` reports the matching build time (`2026-11-15T16:49:00Z`).
+Screenshots 01–08 above stay as they are: they document revision `astro-dashboard-00006-bll`.
+
+**Browser.** Headless Chrome driven by Playwright (`playwright-core` in a temporary folder outside the repository, not a
+project dependency), device scale factor 1, software WebGL (SwiftShader), real internet so the OpenFreeMap basemap
+loads. Desktop viewport 1280 × 720; phone viewport 390 × 844 with mobile and touch emulation. A fresh browser context
+per capture. JPEG quality 85. Before each capture the script waited for the KPIs and charts, for no "Loading" or
+"updating" text on the page, and, on desktop, for the map to report its style and tiles loaded and the camera still.
+
+**Settings.** Area Northeast Brazil (study area, 4,060 L2 cells), years 2002–2026, day and night, all months. Map month
+November 2026 (the latest, partial) unless a month is picked. Model `fb-l1-terra-rec-4` in the app bar and the calendar
+card.
+
+| File under `artifacts/screenshots/` | What it shows | Viewport | Image, pixels |
+|---|---|---|---|
+| `09-final-overview-desktop.jpg` | Harmonized / Count / light: FIREWATCHER app bar, hero KPI (20.4K so far in November 2026, 11% below the median of the same 14 days), calendar, map, seasonal profile, trend | 1280 × 720, full page | 1280 × 2379 |
+| `10-final-overview-dark-desktop.jpg` | Same, dark theme (OS setting); the calendar card stays light by design | 1280 × 720, full page | 1280 × 2379 |
+| `11-drilldown-desktop.jpg` | Map card: September 2013 picked in the calendar, cell G083135.16 clicked: 16 L3 sub-cells, the 8 neighbor counts (213 to 612), legend "Native detections, S-NPP (VIIRS), September 2013: not harmonized", 639 detections | 1280 × 720, map card | 406 × 1240 |
+| `12-zoom-focus-desktop.jpg` | Map card at zoom 9 over G087133.14: place names above translucent cells, focus outline and chip ("132 VIIRS-equivalent hotspots · November 2026 · Partial month") | 1280 × 720, map card | 406 × 1240 |
+| `13-globe-desktop.jpg` | Map card, Globe: whole globe turned to the study area, the study-area box with its label "Study area: Northeast Brazil · data processed only here", and the globe note | 1280 × 720, map card | 406 × 1240 |
+| `14-raw-by-sensor-desktop.jpg` | Raw by sensor / Count / light, with the raw-view notice | 1280 × 720, full page | 1280 × 2405 |
+| `15-anomaly-desktop.jpg` | Harmonized / Anomaly / light, with the diverging legend and notice | 1280 × 720, full page | 1280 × 2433 |
+| `16-final-phone-top.jpg` | Phone, first screen: app bar, filters, hero KPI | 390 × 844 | 390 × 844 |
+| `17-final-phone-full.jpg` | Phone, whole page; the map stays folded behind "Show map", as designed on phones | 390 × 844, full page | 390 × 4126 |
+| `18-phone-charts.jpg` | Phone, seasonal profile card: January to December on the axis, the usual range, the median and 2026 with the September–November peak | 390 × 844, card | 366 × 565 |
+| `19-how-to-read-phone.jpg` | Phone, "How to read this dashboard" open, title and first section | 390 × 844 | 390 × 844 |
+| `20-offline-local.jpg` | **Not revision 00008.** The local container run of PR 58 with the external network blocked ([offline record](d12-offline-test.md)): "Basemap unavailable: showing the cells only", same KPIs. Built before the FIREWATCHER name, so the app bar still reads "Hotspot calendar". PNG of 11:35 UTC converted to JPEG | 1280 × 720, full page | 1280 × 2256 |
+
+Full-page and card captures (09–15, 17, 18) are rendered from the top of the page and, for the cards, clipped to the
+card, so the sticky app bar is not drawn over them. The map positions in 11 and 12 were set through the MapLibre API
+(centre and zoom), not by dragging; the drill-down in 11 is a real mouse click on the cell, after which the app frames
+the 3 × 3 block itself. Every capture time, size, setting and SHA-256 is in
+[`screenshots-manifest.json`](../artifacts/screenshots/screenshots-manifest.json).
+
+**Checked.**
+
+- `/api/healthz` 200 `ok`; `/api/version` `fb-l1-terra-rec-4` loaded and in the image, 1,838,338 rows, 2002–2026;
+  page title "FIREWATCHER: hotspot calendar for Northeast Brazil"; `/favicon.svg` 200; CSV count for 16 cells
+  (-41, -10, -40, -9) in 2013: 2,064 rows; `/api/drilldown` G083135.16, September 2013: S-NPP VIIRS, 639 detections,
+  subdivided, 9 cells in the 3 × 3 block, 16 L3 cells summing to 639. Checked before (16:53 UTC) and after (17:01 UTC)
+  the capture, same answers: [`live-api-checks-00008.json`](../artifacts/screenshots/live-api-checks-00008.json).
+- Console: no console errors and no page errors in any capture. Two MapLibre warnings (a sprite icon `circle-11`
+  missing from the dark OpenFreeMap style; "Unknown projection name: undefined" when switching to Globe) and, in the
+  globe capture, five tile requests cancelled by MapLibre while the view moved:
+  [`browser-console-errors-00008.json`](../artifacts/screenshots/browser-console-errors-00008.json).
+- No sideways page scroll: document width 1280 at 1280 px and 390 at 390 px.
+- Each image was looked at.
+
+**Retakes.** The first captures of 11, 12 and 13 were element screenshots: Playwright scrolled the page and the sticky
+app bar and filter bar were drawn across the map card. They were retaken from the top of the page, clipped to the card,
+and 12 was moved from a cell on the study-area edge (G087131.02) to an inland one (G087133.14). Capture 18 was retaken
+the same way for consistency. The discarded attempts' console entries are kept in the console file.
+
+**Not verified.** A physical phone (390 px is browser emulation only), Safari and Firefox (Chrome only), a screen
+reader, a slow network, the dark theme at phone width, image downloads and the CSV download in this session.
+
+The offline fallback (local container from `data/`, external network blocked) is recorded in
+[d12-offline-test.md](d12-offline-test.md) and runs with `deploy/local/run-offline.sh`.
