@@ -241,3 +241,120 @@ def aggregate(settings: Settings) -> dict:
         )
         output.rename(target)
     return _finish(manifest, settings, target, rows)
+
+
+# --- Current-year detections from the FIRMS area API (raw/firms/api/<SOURCE>/<bbox>/*.csv) -------------
+
+API_SOURCES = {  # FIRMS source prefix → (sensor label used in hotspot IDs, instrument)
+    "VIIRS_SNPP": ("viirs-snpp", "VIIRS"),
+    "VIIRS_NOAA20": ("viirs-jpss1", "VIIRS"),
+}
+
+
+def _api_files(settings: Settings, source: str) -> list[Path]:
+    root = Path(storage.uri(settings, "raw", "firms", "api", source))
+    return sorted(root.glob("*/*.csv")) if root.is_dir() else []
+
+
+def ingest_api(settings: Settings, year: int) -> dict:
+    """Normalize one year of FIRMS area-API detections and write its hotspots and counts partitions.
+
+    Standard-processing (`_SP`) files are used where they exist; near-real-time (`_NRT`) files only for
+    later dates. NRT files carry no `type` column: every NRT detection is treated as type 0 (presumed
+    vegetation fire), so static sources are not removed from those months. They are recognizable by the
+    `NRT` suffix of `version`.
+
+    Writes `processed/hotspots/<v>/instrument=VIIRS/year=<year>/` and
+    `processed/cell_month_counts/<v>/year=<year>/`, replacing those partitions only.
+    """
+    if settings.is_remote:
+        raise ValueError("use a local data root, then publish the partitions")
+    version = settings.dataset_version
+    hotspots_root = Path(storage.uri(settings, "processed", "hotspots", version))
+    hotspots_dir = hotspots_root / "instrument=VIIRS" / f"year={year}"
+    counts_dir = Path(storage.uri(settings, "processed", "cell_month_counts", version)) / f"year={year}"
+    manifest = Manifest(new_run_id("ingest-api"), "ingest-api", settings.redacted())
+    west, south, east, north = BBOX
+    summary: dict[str, dict] = {}
+    with tempfile.TemporaryDirectory(prefix="astro_api_") as temp, storage.connect(settings) as con:
+        staging = Path(temp)
+        shards = staging / "shards"
+        shards.mkdir()
+        for prefix, (sensor, instrument) in API_SOURCES.items():
+            sp, nrt = _api_files(settings, f"{prefix}_SP"), _api_files(settings, f"{prefix}_NRT")
+            if not sp and not nrt:
+                continue
+            for path in sp + nrt:
+                manifest.add_input(path.as_posix())
+            parts = []
+            if sp:
+                relation = con.read_csv([str(p) for p in sp], header=True, all_varchar=True)
+                relation.create_view("sp", replace=True)
+                parts.append("SELECT * FROM sp")
+            if nrt:
+                relation = con.read_csv([str(p) for p in nrt], header=True, all_varchar=True)
+                relation.create_view("nrt", replace=True)
+                after = "WHERE acq_date > (SELECT max(acq_date) FROM sp)" if sp else ""
+                parts.append(f"SELECT *, '0' AS type FROM nrt {after}")
+            combined = staging / f"{sensor}_{year}_api.csv"
+            con.execute(
+                f"COPY ({' UNION ALL BY NAME '.join(parts)}) TO '{combined}' (FORMAT csv, HEADER true)"
+            )
+            raw_rows, nrt_rows = con.execute(
+                f"SELECT count(*), count(*) FILTER (WHERE version LIKE '%NRT') "
+                f"FROM read_csv('{combined}', header = true, all_varchar = true)"
+            ).fetchall()[0]
+            name = f"{sensor}_{year}_api"
+            satellites = [s for s, first in ARCHIVES[sensor][1].items() if first <= year]
+            con.execute(DEDUPLICATE_SQL, [str(combined)])
+            duplicates = con.execute(
+                "SELECT coalesce(sum(exact_duplicates), 0) FROM deduplicated"
+            ).fetchall()[0][0]
+            rows = con.sql(
+                INGEST_SQL.format(mir="bright_ti4", tir="bright_ti5"),
+                params=[name, west, east, south, north, satellites, instrument, year, year, name],
+            )
+            rows.write_parquet(str(shards / f"{sensor}.parquet"), compression="zstd")
+            summary[prefix] = {"files_sp": len(sp), "files_nrt": len(nrt), "raw_rows": raw_rows,
+                               "raw_rows_nrt": nrt_rows, "exact_duplicates_dropped": int(duplicates)}
+        if not summary:
+            raise ValueError("no FIRMS area-API files under raw/firms/api")
+        inputs = str(shards / "*.parquet")
+        hot = staging / "hotspots"
+        con.execute(
+            "COPY (SELECT * FROM read_parquet(?)) TO ? "
+            "(FORMAT PARQUET, COMPRESSION ZSTD, PARTITION_BY (instrument, year))",
+            [inputs, str(hot)],
+        )
+        partition = hot / "instrument=VIIRS" / f"year={year}"
+        if not partition.is_dir():
+            raise ValueError(f"no detections for local year {year} in the API files")
+        con.sql(AGGREGATE_SQL, params=[str(hot / "**" / "*.parquet")]).create("monthly_counts")
+        counts = staging / "counts"
+        con.execute(
+            "COPY monthly_counts TO ? (FORMAT PARQUET, COMPRESSION ZSTD, PARTITION_BY (year))",
+            [str(counts)],
+        )
+        hotspot_rows, passing = con.execute(
+            "SELECT count(*), count(*) FILTER (WHERE passes_main_filter) FROM read_parquet(?)", [inputs]
+        ).fetchall()[0]
+        coverage = con.execute(
+            "SELECT satellite, min(month), max(month), sum(n_hotspots) FROM monthly_counts "
+            "GROUP BY 1 ORDER BY 1"
+        ).fetchall()
+        for source, target in ((partition, hotspots_dir), (counts / f"year={year}", counts_dir)):
+            shutil.rmtree(target, ignore_errors=True)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(source, target)
+    manifest.add_output(hotspots_dir.as_posix(), rows=hotspot_rows)
+    manifest.add_output(counts_dir.as_posix(), rows=sum(int(c[3]) for c in coverage))
+    manifest.checks = {
+        "year": year, "sources": summary, "hotspot_rows": hotspot_rows, "passing_main_filter": passing,
+        "months_by_satellite": [list(c) for c in coverage],
+        "nrt_type_assumption": "NRT files have no type column; NRT detections are treated as type 0",
+    }
+    manifest.finish()
+    return {
+        "status": manifest.status, "hotspots": hotspots_dir.as_posix(), "counts": counts_dir.as_posix(),
+        "manifest": manifest.write(storage.uri(settings, "manifests")), **manifest.checks,
+    }

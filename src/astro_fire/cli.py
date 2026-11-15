@@ -51,6 +51,8 @@ def main(argv: list[str] | None = None) -> int:
     i.add_argument("--years", default="2003-2025", help="local solar year or inclusive range (YYYY-YYYY)")
     i.add_argument("--satellites", nargs="+", choices=batch.SATELLITES, default=list(batch.SATELLITES))
     sub.add_parser("aggregate", help="aggregate hotspots into monthly counts by satellite")
+    ia = sub.add_parser("ingest-api", help="normalize one year of FIRMS area-API files (current year)")
+    ia.add_argument("--year", type=int, default=2026)
     h = sub.add_parser("harmonize", help="build the historical dashboard calendar from calibrated factors")
     h.add_argument("--counts", help="override the monthly count dataset folder")
     h.add_argument("--factors", help="override the calibration factor dataset folder")
@@ -108,9 +110,11 @@ def main(argv: list[str] | None = None) -> int:
         result = mock.run(settings, (west, south, east, north))
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "ok" else 1
-    if args.cmd in ("ingest", "aggregate"):
+    if args.cmd in ("ingest", "aggregate", "ingest-api"):
         try:
-            if args.cmd == "ingest":
+            if args.cmd == "ingest-api":
+                result = batch.ingest_api(settings, args.year)
+            elif args.cmd == "ingest":
                 result = batch.ingest(settings, batch.parse_years(args.years), args.satellites)
             else:
                 result = batch.aggregate(settings)

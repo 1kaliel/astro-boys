@@ -125,7 +125,7 @@ contract, and logs the choice as a `DECISION`. Defaults apply until the owner sa
 | Q4 | Method and years | Default: F + B with pooling; calibrate 2012–2019, test 2020–2021; OLS as baseline | Kali |
 | Q5 | Primary metric | Default: hotspot count; active days as secondary | Kali |
 | Q6 | Extent and demo region | ✅ **Northeast Brazil only, as the pilot.** Brazil-wide is stretch | Team |
-| Q7 | Start of the series | Default: 2003 in the MVP (Aqua); Terra-only 2000-11 → 2002-06 as should-have | Kali |
+| Q7 | Start of the series | ✅ July 2002 (Aqua's first months). Terra-only 2000-11 → 2002-06 was fitted and checked but is not published ([why](methodology.md#extending-the-record-before-2003)) | Kali |
 | Q8 | AGGS scope | Default: grid now; drill-down and priority index are stretch | Guilherme |
 | Q9 | Prediction / early warning | Default: out | Kali |
 | Q10 | Names on tasks | ✅ Confirmed ([team.md](team.md)). Demo lead and video-vs-slides still to confirm | Team |
