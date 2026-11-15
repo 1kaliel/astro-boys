@@ -8,6 +8,8 @@ import { cx } from "../../lib/cx";
 import { useMediaQuery } from "../../lib/hooks";
 import { useDashboard, type Period } from "../../state/dashboard";
 import { BurningCalendar, CALENDAR_UNIT } from "../calendar/BurningCalendar";
+import { SEASONAL_UNIT, SeasonalProfile } from "../charts/SeasonalProfile";
+import { TREND_UNIT, TrendChart } from "../charts/TrendChart";
 import { AppBar } from "./AppBar";
 import { FilterBar } from "./FilterBar";
 import { KpiRow } from "./KpiRow";
@@ -39,6 +41,8 @@ export function DashboardPage() {
   // The mock calendar is labeled by its model version; the offline fixture by its own flag.
   const simulated = dataset ? dataset.synthetic || /^mock/i.test(dataset.modelVersion) : false;
   const showMap = !narrow || mapOpen;
+  // The seasonal profile draws the year of the month picked in the calendar, or the latest year of the data.
+  const profileYear = dataset ? Math.min(state.selected?.year ?? dataset.lastYear, dataset.lastYear) : null;
 
   return (
     <div className="app">
@@ -100,6 +104,40 @@ export function DashboardPage() {
             </div>
           )}
         </Card>
+
+        {dataset && profileYear !== null && (
+          <>
+            <Card
+              className="dash-season"
+              title="Seasonal profile"
+              actions={
+                <span className="card-meta">
+                  {profileYear} against {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
+                </span>
+              }
+              caption={`Source: NASA FIRMS · ${SEASONAL_UNIT}, summed over the 0.25° cells of the selected area · months before February 2012 are estimated from MODIS`}
+            >
+              <SeasonalProfile
+                months={dataset.months}
+                startYear={state.startYear}
+                endYear={state.endYear}
+                year={profileYear}
+              />
+            </Card>
+            <Card
+              className="dash-trend"
+              title="Trend: raw and harmonized"
+              actions={
+                <span className="card-meta">
+                  {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
+                </span>
+              }
+              caption={`Source: NASA FIRMS (MODIS Aqua, VIIRS S-NPP and NOAA-20) · ${TREND_UNIT}, summed over the 0.25° cells of the selected area`}
+            >
+              <TrendChart months={dataset.months} startYear={state.startYear} endYear={state.endYear} />
+            </Card>
+          </>
+        )}
       </main>
 
       <footer className="app-footer">

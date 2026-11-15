@@ -3,6 +3,8 @@ import { createContext, useContext, useMemo, useReducer, type Dispatch, type Rea
 /** Day, night or both, as in the data contract (`period` column). */
 export type Period = "ALL" | "D" | "N";
 export type Scale = "harmonized" | "raw";
+/** What the calendar colors show: the count of each month, or how unusual it is for that month of the year. */
+export type Metric = "count" | "anomaly";
 export type Bounds = { west: number; south: number; east: number; north: number };
 
 /** Pilot extent: Northeast Brazil MVP clip (docs/spec/harmonization.md). */
@@ -15,6 +17,7 @@ export type DashboardState = {
   area: Bounds;
   period: Period;
   scale: Scale;
+  metric: Metric;
   startYear: number;
   endYear: number;
   /** Months of the year shown (1..12). Empty means every month. */
@@ -27,6 +30,7 @@ export type DashboardAction =
   | { type: "setArea"; area: Bounds }
   | { type: "setPeriod"; period: Period }
   | { type: "setScale"; scale: Scale }
+  | { type: "setMetric"; metric: Metric }
   | { type: "setYears"; startYear: number; endYear: number }
   | { type: "setMonths"; months: readonly number[] }
   | { type: "select"; year: number; month: number };
@@ -35,6 +39,7 @@ const initialState: DashboardState = {
   area: PILOT_BOUNDS,
   period: "ALL",
   scale: "harmonized",
+  metric: "count",
   startYear: FIRST_YEAR,
   endYear: LAST_YEAR,
   months: [],
@@ -49,6 +54,8 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       return { ...state, period: action.period };
     case "setScale":
       return { ...state, scale: action.scale };
+    case "setMetric":
+      return { ...state, metric: action.metric };
     case "setYears": {
       // Keep the range ordered whichever end the user moved.
       const startYear = Math.min(action.startYear, action.endYear);

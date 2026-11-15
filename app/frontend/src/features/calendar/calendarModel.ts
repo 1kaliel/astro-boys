@@ -1,5 +1,5 @@
 import type { CalendarMonth } from "../../data/calendarSource";
-import { formatCount, formatLegendCount } from "../../lib/format";
+import { formatCompact, formatCount, formatLegendCount } from "../../lib/format";
 import type { Period } from "../../state/dashboard";
 import { monthLong, monthShort } from "./calendarText";
 
@@ -179,9 +179,45 @@ export function monthSpan(months: readonly number[]): string {
 // ---------------------------------------------------------------------------------------------------------
 // Words
 
+const SENSOR_NAMES: Record<string, string> = {
+  Aqua: "Aqua MODIS",
+  Terra: "Terra MODIS",
+  SNPP: "S-NPP VIIRS",
+  N20: "NOAA-20 VIIRS",
+};
+
+/** "Aqua MODIS", "S-NPP VIIRS": the satellite and instrument a month comes from. */
+export function sensorName(sourceSatellite: string | null | undefined): string {
+  return (sourceSatellite && SENSOR_NAMES[sourceSatellite]) || "the source satellite";
+}
+
+/**
+ * How a month compares with its median, in words: "25% above the September median (120K), robust z +1.3".
+ * The z-score says how unusual the month is for that month of the year; it is not a probability of fire.
+ * Null when the month has no comparison (no median, or a partial month without same-days history).
+ */
+export function anomalyText(entry: CalendarMonth): string | null {
+  if (entry.medianHist == null || entry.anomalyAbs == null) return null;
+  const against =
+    entry.comparison === "same_days" && entry.comparisonDays != null
+      ? `the median of the same ${entry.comparisonDays} days`
+      : `the ${monthLong(entry.month)} median`;
+  const size =
+    entry.anomalyPct != null ? `${formatCount(Math.abs(entry.anomalyPct))}%` : formatCount(Math.abs(entry.anomalyAbs));
+  const direction = entry.anomalyAbs === 0 ? "Equal to" : `${size} ${entry.anomalyAbs > 0 ? "above" : "below"}`;
+  const z = entry.anomalyZ != null ? `, robust z ${entry.anomalyZ > 0 ? "+" : ""}${entry.anomalyZ.toFixed(1)}` : "";
+  return `${direction} ${against} (${formatCompact(entry.medianHist)})${z}`;
+}
+
 /** Provenance, in words. Color and outline are never the only signal. */
 export function provenanceText(entry: CalendarMonth): string {
-  const parts = [entry.isEstimated ? "Estimated from MODIS" : "Observed by VIIRS"];
+  const parts = [
+    entry.rawView
+      ? `Native count of ${sensorName(entry.sourceSatellite)}, not harmonized`
+      : entry.isEstimated
+        ? "Estimated from MODIS"
+        : "Observed by VIIRS",
+  ];
   if (entry.isPartial) parts.push(`Partial month (${entry.daysObserved} days observed)`);
   return parts.join(". ");
 }

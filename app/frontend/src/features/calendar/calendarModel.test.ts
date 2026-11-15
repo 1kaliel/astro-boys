@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { parseApiResponse, parseFixture, type ApiCalendar, type CalendarMonth } from "../../data/calendarSource";
+import {
+  parseApiResponse,
+  parseFixture,
+  rawView,
+  type ApiCalendar,
+  type CalendarMonth,
+} from "../../data/calendarSource";
 import {
   SEQ_BINS,
+  anomalyText,
   buildScale,
   buildSeries,
   cellAriaLabel,
@@ -445,5 +452,63 @@ describe("month names", () => {
     expect(Array.from({ length: 12 }, (_, i) => monthShort(i + 1))).toEqual([
       "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ]);
+  });
+});
+
+describe("the raw-by-sensor view", () => {
+  const estimated = month({
+    year: 2010,
+    month: 9,
+    count: 170000,
+    isEstimated: true,
+    medianHist: 120000,
+    anomalyAbs: 50000,
+    anomalyPct: 41.7,
+    anomalyZ: 1.3,
+    comparison: "month",
+    sourceSatellite: "Aqua",
+    rawSource: 27000,
+  });
+
+  it("shows the native count of the source satellite, with no interval, estimate mark or anomaly", () => {
+    const [raw] = rawView([estimated]);
+
+    expect(raw.count).toBe(27000);
+    expect(raw.rawView).toBe(true);
+    expect([raw.isEstimated, raw.ciLow, raw.ciHigh, raw.anomalyZ, raw.medianHist]).toEqual([false, null, null, null, null]);
+    expect(provenanceText(raw)).toBe("Native count of Aqua MODIS, not harmonized");
+    expect(anomalyText(raw)).toBeNull();
+  });
+
+  it("has no value where the API gave no raw count (the offline fixture)", () => {
+    const [raw] = rawView([month({ count: 100 })]);
+
+    expect(raw.count).toBeNull();
+    expect(provenanceText(raw)).toBe("Native count of the source satellite, not harmonized");
+  });
+});
+
+describe("anomalyText", () => {
+  it("says how far the month is from its median, with the robust z-score", () => {
+    const above = month({ month: 9, medianHist: 120000, anomalyAbs: 50000, anomalyPct: 41.7, anomalyZ: 1.34 });
+    const below = month({ month: 9, medianHist: 120000, anomalyAbs: -30000, anomalyPct: -25, anomalyZ: -0.8 });
+
+    expect(anomalyText(above)).toBe(`42% above the ${monthLong(9)} median (120K), robust z +1.3`);
+    expect(anomalyText(below)).toBe(`25% below the ${monthLong(9)} median (120K), robust z -0.8`);
+  });
+
+  it("names the same days for an unfinished month and has nothing to say without a comparison", () => {
+    const partial = month({
+      isPartial: true,
+      medianHist: 22785,
+      anomalyAbs: -2405,
+      anomalyPct: -10.6,
+      anomalyZ: null,
+      comparison: "same_days",
+      comparisonDays: 14,
+    });
+
+    expect(anomalyText(partial)).toBe("11% below the median of the same 14 days (22.8K)");
+    expect(anomalyText(month({ medianHist: null }))).toBeNull();
   });
 });

@@ -1,0 +1,158 @@
+/*
+ * Line charts (trend, seasonal profile). Colors come from the viz tokens; the SVG is drawn in a fixed
+ * 640 x 280 box and scales with the card, and on a narrow screen the chart scrolls sideways instead of
+ * shrinking its labels.
+ */
+.chart-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.chart-scroll {
+  overflow-x: auto;
+}
+
+.line-chart {
+  display: block;
+  width: 100%;
+  min-width: 30rem;
+  height: auto;
+}
+
+.chart-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.chart-tick,
+.chart-marker-label {
+  fill: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.chart-marker {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-point {
+  fill: currentColor;
+  stroke: var(--color-surface);
+  stroke-width: 1;
+}
+
+/* A year with estimated months, or a partial month: hollow, so it does not depend on color. */
+.chart-point-estimated {
+  fill: var(--color-surface);
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.chart-errorbar {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+/* Series: one hue each, and a line style each, so the lines read without color. */
+.chart-series-harmonized {
+  color: var(--viz-series-1);
+}
+
+.chart-series-rawAqua {
+  color: var(--viz-series-2);
+}
+
+.chart-series-rawAqua .chart-line {
+  stroke-dasharray: 6 4;
+}
+
+/* Under the harmonized line, which equals it after 2012: wider, so both stay visible. */
+.chart-series-rawSnpp {
+  color: var(--viz-series-3);
+}
+
+.chart-series-rawSnpp .chart-line {
+  stroke-width: 6;
+  stroke-opacity: 0.55;
+}
+
+.chart-series-year {
+  color: var(--viz-series-2);
+}
+
+.chart-band {
+  fill: var(--viz-series-1);
+  fill-opacity: 0.18;
+  stroke: none;
+}
+
+.chart-line-median {
+  color: var(--viz-series-1);
+  stroke-dasharray: 5 4;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart-swatch {
+  flex: none;
+  width: 1.75rem;
+  height: 0.625rem;
+}
+
+.chart-swatch-band {
+  border-radius: 2px;
+  background: var(--viz-series-1);
+  opacity: 0.3;
+}
+
+.chart-note,
+.chart-status {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.chart-status {
+  padding: var(--space-4) 0;
+  font-size: var(--font-size-sm);
+}
+
+/* Dashboard grid: the two charts share a row on wide screens. */
+.dash-trend,
+.dash-season {
+  grid-column: span 6;
+}
+
+@media (max-width: 75rem) {
+  .dash-trend,
+  .dash-season {
+    grid-column: 1 / -1;
+  }
+}

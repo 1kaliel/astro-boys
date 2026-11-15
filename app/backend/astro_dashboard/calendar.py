@@ -17,6 +17,9 @@ The data contract is docs/data-dictionary.md. The rules this module applies:
 * The unfinished month is compared with the same days of earlier years, from `month_to_date/v1` (days 1..N of
   that month, summed over the area per year; a year with no row in the area counts as zero). A partial month
   never gets the full-month median: without that table it has no median and no anomaly.
+* Raw counts stay per satellite (`raw_aqua`, `raw_terra`, `raw_snpp`, `raw_n20`, each summed over the area):
+  they are never added together, and null means the satellite had no data in that month. `raw_source` is the
+  native count of the month's source satellite, the number a chart of raw counts would show.
 """
 
 from __future__ import annotations
@@ -30,6 +33,8 @@ import duckdb
 
 CELL_SIZE_DEG = 0.25
 PERIODS = ("ALL", "D", "N")
+# Native filtered counts per satellite (docs/data-dictionary.md).
+RAW_COLUMNS = ("raw_aqua", "raw_terra", "raw_snpp", "raw_n20")
 # 90% interval of an area: Z_90 * sqrt(sum(var) * n_cells ** CORRELATION_EXPONENT). Adding the variances
 # alone assumes independent cells and understates the error of a sum (2.4x for 16 cells, 13.7x for the
 # whole extent); the exponent is the fit in docs/methodology.md and docs/data-dictionary.md.
@@ -72,6 +77,13 @@ class MonthRow:
     # Years the median is taken over, and the days it covers: None = whole months, N = days 1..N of the month.
     median_n_years: int | None = None
     median_days: int | None = None
+    # Native counts per satellite, summed over the area; None = the satellite had no data in that month.
+    raw_aqua: int | None = None
+    raw_terra: int | None = None
+    raw_snpp: int | None = None
+    raw_n20: int | None = None
+    # Native count of the month's source satellite (not harmonized, not comparable between MODIS and VIIRS).
+    raw_source: int | None = None
     anomaly_abs: float | None = None
     anomaly_pct: float | None = None
     anomaly_z: float | None = None
@@ -98,13 +110,24 @@ class CalendarStore:
 
     def __init__(self, parquet_glob: str, to_date_glob: str | None = None) -> None:
         self._con = duckdb.connect()
+        present = {
+            r[0]
+            for r in self._con.execute(
+                "DESCRIBE SELECT * FROM read_parquet(?, hive_partitioning = true, union_by_name = true)",
+                [parquet_glob],
+            ).fetchall()
+        }
+        # A calendar without the raw columns (old fixtures) still loads: its raw counts are null.
+        raw = ", ".join(
+            f"{c}::INTEGER AS {c}" if c in present else f"NULL::INTEGER AS {c}" for c in RAW_COLUMNS
+        )
         self._con.execute(
-            """
+            f"""
             CREATE TABLE cal AS
             SELECT cell_l2, year::INTEGER AS year, month::INTEGER AS month, period,
                    count_harmonized, var_harmonized, is_estimated, is_partial,
-                   days_observed::INTEGER AS days_observed, origin, source_satellite, model_version
-            FROM read_parquet(?, hive_partitioning = true)
+                   days_observed::INTEGER AS days_observed, origin, source_satellite, model_version, {raw}
+            FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
             """,
             [parquet_glob],
         )
@@ -124,7 +147,9 @@ class CalendarStore:
                    bool_or(is_estimated) AS is_estimated, bool_or(is_partial) AS is_partial,
                    max(days_observed) AS days_observed,
                    min(origin) AS origin, min(source_satellite) AS source_satellite,
-                   count(count_harmonized) > 0 AS has_count
+                   count(count_harmonized) > 0 AS has_count,
+                   count(raw_aqua) > 0 AS has_aqua, count(raw_terra) > 0 AS has_terra,
+                   count(raw_snpp) > 0 AS has_snpp, count(raw_n20) > 0 AS has_n20
             FROM cal GROUP BY year, month, period
             """
         )
@@ -223,7 +248,9 @@ class CalendarStore:
             ), sums AS (
                 SELECT year, month, sum(count_harmonized) AS total, sum(var_harmonized) AS var_sum,
                        count(var_harmonized) AS n_var, count(*) AS n_rows,
-                       count(count_harmonized) AS n_count
+                       count(count_harmonized) AS n_count,
+                       sum(raw_aqua) AS aqua, sum(raw_terra) AS terra, sum(raw_snpp) AS snpp,
+                       sum(raw_n20) AS n20
                 FROM cal WHERE period = ? AND cell_l2 IN (SELECT cell_l2 FROM sel)
                 GROUP BY year, month
             )
@@ -233,7 +260,13 @@ class CalendarStore:
                    CASE WHEN c.has_count AND coalesce(s.n_count, 0) = coalesce(s.n_rows, 0)
                         THEN coalesce(s.total, 0.0) END,
                    s.var_sum, coalesce(s.n_var, 0), coalesce(s.n_rows, 0),
-                   c.is_estimated, c.is_partial, c.days_observed, c.origin, c.source_satellite
+                   c.is_estimated, c.is_partial, c.days_observed, c.origin, c.source_satellite,
+                   -- Per satellite: null if it had no data anywhere in the extent that month; a cell of the
+                   -- area without a value had no detection by it (zero).
+                   CASE WHEN c.has_aqua THEN coalesce(s.aqua, 0) END,
+                   CASE WHEN c.has_terra THEN coalesce(s.terra, 0) END,
+                   CASE WHEN c.has_snpp THEN coalesce(s.snpp, 0) END,
+                   CASE WHEN c.has_n20 THEN coalesce(s.n20, 0) END
             FROM coverage c LEFT JOIN sums s USING (year, month)
             WHERE c.period = ? ORDER BY c.year, c.month
             """,
@@ -308,6 +341,10 @@ def _month_row(
     days_observed: int,
     origin: str,
     source_satellite: str,
+    raw_aqua: int | None,
+    raw_terra: int | None,
+    raw_snpp: int | None,
+    raw_n20: int | None,
     *,
     cells: int,
 ) -> MonthRow:
@@ -334,7 +371,18 @@ def _month_row(
         days_observed=int(days_observed),
         origin=origin,
         source_satellite=source_satellite,
+        raw_aqua=_int(raw_aqua),
+        raw_terra=_int(raw_terra),
+        raw_snpp=_int(raw_snpp),
+        raw_n20=_int(raw_n20),
+        raw_source=_int(
+            {"Aqua": raw_aqua, "Terra": raw_terra, "SNPP": raw_snpp, "N20": raw_n20}.get(source_satellite)
+        ),
     )
+
+
+def _int(value: float | None) -> int | None:
+    return None if value is None else int(value)
 
 
 def _default_baseline(months: list[MonthRow]) -> tuple[int, int] | None:

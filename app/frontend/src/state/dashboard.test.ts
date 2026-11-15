@@ -5,6 +5,7 @@ const base: DashboardState = {
   area: PILOT_BOUNDS,
   period: "ALL",
   scale: "harmonized",
+  metric: "count",
   startYear: FIRST_YEAR,
   endYear: LAST_YEAR,
   months: [],
