@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   areaText,
+  CALENDAR_CSV_COLUMNS,
   calendarCsv,
   composeExportSvg,
   csvField,
   exportFileName,
   periodText,
   wrapText,
+  type CalendarCsvCell,
+  type CalendarCsvContext,
   type CalendarCsvRow,
   type ExportMeta,
 } from "./exportFile";
@@ -21,21 +24,31 @@ const META: ExportMeta = {
   source: "NASA FIRMS",
 };
 
-const cell = (month: number, count: number | null, flags: { estimated?: boolean; partial?: boolean } = {}) => ({
+const cell = (
+  month: number,
+  count: number | null,
+  flags: { estimated?: boolean; partial?: boolean; ci?: [number, number]; hasData?: boolean } = {},
+): CalendarCsvCell => ({
   month,
   label: ["Jan", "Feb", "Mar"][month - 1],
   count,
+  ciLow: flags.ci?.[0] ?? (flags.estimated ? null : count),
+  ciHigh: flags.ci?.[1] ?? (flags.estimated ? null : count),
   estimated: flags.estimated ?? false,
   partial: flags.partial ?? false,
+  sourceSatellite: count === null ? null : flags.estimated ? "Aqua" : "SNPP",
+  hasData: flags.hasData ?? true,
 });
 
+const CONTEXT: CalendarCsvContext = { series: "harmonized", timeOfDay: "ALL", modelVersion: "v1", intervalApproximate: true };
+
 const ROWS: CalendarCsvRow[] = [
-  { year: 2002, cells: [cell(1, null), cell(2, 0), cell(3, 12345.6, { estimated: true })] },
+  { year: 2002, cells: [cell(1, null, { hasData: false }), cell(2, 0), cell(3, 12345.6, { estimated: true, ci: [10000.4, 15000.5] })] },
   { year: 2003, cells: [cell(1, 7), cell(2, null), cell(3, 9, { partial: true })] },
 ];
 
 describe("calendarCsv", () => {
-  const lines = calendarCsv(ROWS, META).trimEnd().split("\r\n");
+  const lines = calendarCsv(ROWS, META, CONTEXT).trimEnd().split("\r\n");
 
   it("starts with comment rows that state unit, area, period, series, model version and source", () => {
     const header = lines.filter((l) => l.startsWith("#")).join("\n");
@@ -45,12 +58,20 @@ describe("calendarCsv", () => {
     expect(header).toContain("# Series: Harmonized");
     expect(header).toContain("# Model version: v1");
     expect(header).toContain("# Source: NASA FIRMS");
+    expect(header).toContain("approximate");
   });
 
-  it("keeps no data empty and a real zero as 0, with plain integers", () => {
-    expect(lines).toContain("year,Jan,Feb,Mar");
-    expect(lines).toContain("2002,,0,12346");
-    expect(lines).toContain("2003,7,,9");
+  it("has one row per month with interval, flags and provenance columns", () => {
+    expect(lines).toContain(CALENDAR_CSV_COLUMNS.join(","));
+    expect(lines).toContain("2002,3,12346,10000,15001,true,false,Aqua,harmonized,ALL,v1");
+    expect(lines).toContain("2003,3,9,9,9,false,true,SNPP,harmonized,ALL,v1");
+    expect(lines.filter((l) => /^\d{4},/.test(l))).toHaveLength(6);
+  });
+
+  it("keeps no data empty and a real zero as 0", () => {
+    expect(lines).toContain("2002,1,,,,,,,harmonized,ALL,v1");
+    expect(lines).toContain("2002,2,0,0,0,false,false,SNPP,harmonized,ALL,v1");
+    expect(lines).toContain("2003,2,,,,false,false,,harmonized,ALL,v1");
   });
 
   it("lists the estimated and partial months", () => {
@@ -63,7 +84,7 @@ describe("calendarCsv", () => {
       { year: 2002, cells: [cell(1, 1, { estimated: true }), cell(2, 1, { estimated: true }), cell(3, 1, { estimated: true })] },
       { year: 2003, cells: [cell(1, 1, { estimated: true }), cell(2, null), cell(3, 1, { estimated: true })] },
     ];
-    expect(calendarCsv(rows, META)).toContain("# Estimated from MODIS (before 2012-02): 2002-01 to 2002-03 2003-01 2003-03");
+    expect(calendarCsv(rows, META, CONTEXT)).toContain("# Estimated from MODIS (before 2012-02): 2002-01 to 2002-03 2003-01 2003-03");
   });
 
   it("has no comma inside a comment row", () => {

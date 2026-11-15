@@ -215,8 +215,12 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
       month: cell.month,
       label: cell.x,
       count: cell.y,
+      ciLow: cell.entry?.ciLow ?? null,
+      ciHigh: cell.entry?.ciHigh ?? null,
       estimated: cell.entry?.isEstimated ?? false,
       partial: cell.entry?.isPartial ?? false,
+      sourceSatellite: cell.entry?.sourceSatellite ?? null,
+      hasData: Boolean(cell.entry),
     })),
   }));
   const chart = (
@@ -308,7 +312,18 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           label="Download CSV"
           mime="text/csv"
           fileName={exportFileName("calendar", [raw ? "raw" : "harmonized", shownYears, period], "csv")}
-          build={() => calendarCsv(csvRows, { ...exportMeta, title: "Burning calendar table", unit })}
+          build={() =>
+            calendarCsv(
+              csvRows,
+              { ...exportMeta, title: "Burning calendar table", unit },
+              {
+                series: raw ? "raw_by_sensor" : "harmonized",
+                timeOfDay: period,
+                modelVersion: dataset.modelVersion,
+                intervalApproximate: !raw && dataset.intervalApproximate,
+              },
+            )
+          }
         />
       </div>
       <ChartTableTabs label="Burning calendar" chart={chart} table={<CalendarTable series={series} unit={unit} />} />

@@ -47,8 +47,47 @@ function commentRow(label: string, value: string): string {
   return `# ${label}: ${value.replace(/,/g, ";").replace(/[\r\n]+/g, " ")}`;
 }
 
-export type CalendarCsvCell = { month: number; label: string; count: number | null; estimated: boolean; partial: boolean };
+export type CalendarCsvCell = {
+  month: number;
+  label: string;
+  /** Null = no data or no estimate: an empty field, never 0. */
+  count: number | null;
+  /** 90% interval (estimated months; equal to `count` when observed). Null = none: an empty field. */
+  ciLow: number | null;
+  ciHigh: number | null;
+  estimated: boolean;
+  partial: boolean;
+  /** Satellite the number comes from (`Aqua`, `SNPP`, `N20`). Null = unknown or no data. */
+  sourceSatellite: string | null;
+  /** False when the month has no row at all (outside the data): its flags are empty, not "false". */
+  hasData: boolean;
+};
 export type CalendarCsvRow = { year: number; cells: readonly CalendarCsvCell[] };
+
+/** What every data row of the calendar CSV repeats, so a row keeps its provenance when the file is cut or merged. */
+export type CalendarCsvContext = {
+  /** `harmonized` or `raw_by_sensor`. */
+  series: string;
+  /** `ALL`, `D` or `N`. */
+  timeOfDay: Period;
+  modelVersion: string;
+  /** True when the intervals of an area sum are approximate (correlated errors of nearby cells). */
+  intervalApproximate: boolean;
+};
+
+export const CALENDAR_CSV_COLUMNS = [
+  "year",
+  "month",
+  "count",
+  "ci90_low",
+  "ci90_high",
+  "is_estimated",
+  "is_partial",
+  "source_satellite",
+  "series",
+  "time_of_day",
+  "model_version",
+] as const;
 
 /** Month indexes (year * 12 + month - 1) as runs: "2003-01 to 2012-01 2013-05". */
 function monthRuns(indexes: readonly number[]): string {
@@ -63,12 +102,17 @@ function monthRuns(indexes: readonly number[]): string {
   return runs.join(" ");
 }
 
+const round = (value: number | null) => (value === null ? null : Math.round(value));
+const flag = (cell: CalendarCsvCell, value: boolean) => (cell.hasData ? (value ? "true" : "false") : null);
+
 /**
- * The calendar table as CSV: a header of "#" comment rows (title, unit, area, period, series, model version, source),
- * then one row per year with one column per month. A month with no data or no estimate is an empty field, never 0.
- * Counts are rounded to whole numbers like the table on screen, without thousands separators. Estimated and partial months are listed in comment rows at the end.
+ * The calendar table as CSV, one row per month on screen: a header of "#" comment rows (title, unit, area, period,
+ * series, model version, source), then `year,month,count,ci90_low,ci90_high,is_estimated,is_partial,source_satellite,
+ * series,time_of_day,model_version`. A month with no data or no estimate has an empty count, never 0; a month outside
+ * the data has empty flags too. Counts and intervals are rounded to whole numbers like the table on screen.
+ * The estimated and partial months are also listed in comment rows at the end.
  */
-export function calendarCsv(rows: readonly CalendarCsvRow[], meta: ExportMeta): string {
+export function calendarCsv(rows: readonly CalendarCsvRow[], meta: ExportMeta, context: CalendarCsvContext): string {
   const lines = [
     commentRow("Title", meta.title),
     commentRow("Unit", meta.unit),
@@ -77,12 +121,35 @@ export function calendarCsv(rows: readonly CalendarCsvRow[], meta: ExportMeta): 
     commentRow("Series", meta.series),
     commentRow("Model version", meta.modelVersion),
     commentRow("Source", meta.source),
-    commentRow("Note", `Empty field = no data or no estimate (not zero). ${NOT_FIRES_TEXT}`),
+    commentRow("Note", `Empty count = no data or no estimate (not zero). ${NOT_FIRES_TEXT}`),
+    commentRow(
+      "Interval",
+      `ci90_low and ci90_high are the 90% interval of months estimated from MODIS (equal to count when observed; empty when there is none).${
+        context.intervalApproximate ? " For an area the interval is approximate: the errors of nearby cells are correlated." : ""
+      }`,
+    ),
   ];
-  const months = rows[0]?.cells ?? [];
-  lines.push(["year", ...months.map((cell) => cell.label)].map(csvField).join(","));
+  lines.push(CALENDAR_CSV_COLUMNS.join(","));
   for (const row of rows) {
-    lines.push([row.year, ...row.cells.map((cell) => (cell.count === null ? null : Math.round(cell.count)))].map(csvField).join(","));
+    for (const cell of row.cells) {
+      lines.push(
+        [
+          row.year,
+          cell.month,
+          round(cell.count),
+          round(cell.ciLow),
+          round(cell.ciHigh),
+          flag(cell, cell.estimated),
+          flag(cell, cell.partial),
+          cell.sourceSatellite,
+          context.series,
+          context.timeOfDay,
+          context.modelVersion,
+        ]
+          .map(csvField)
+          .join(","),
+      );
+    }
   }
   const flagged = (pick: (cell: CalendarCsvCell) => boolean) =>
     monthRuns(
