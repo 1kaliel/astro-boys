@@ -25,6 +25,9 @@ Outputs under `data/`:
   `n_all_confidence` counts vegetation detections in that key across confidence classes.
 - `manifests/` records input checksums, row counts and output paths for both stages.
   Ingest records raw input rows and exact duplicate rows removed before clipping, per file and in total.
+  It then counts deduplicated rows outside the bounding box (including invalid coordinates).
+  `other_rows_dropped` reconciles the remaining difference from the timestamp, local year, instrument,
+  satellite and day/night filters.
 
 Both commands reject an existing version in the selected local data root. Keep simultaneous jobs on different
 data roots. After QA and coordination with Kali, publish the counts from a configured host:

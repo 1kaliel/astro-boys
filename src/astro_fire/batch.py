@@ -152,9 +152,11 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
     first, last = years
     manifest = Manifest(new_run_id("ingest"), "ingest", settings.redacted())
     duplicates_by_file: dict[str, int] = {}
+    outside_bbox_by_file: dict[str, int] = {}
     manifest.checks = {
         "local_years": years, "satellites": satellites, "bbox": BBOX,
         "exact_duplicate_rows_by_file": duplicates_by_file,
+        "rows_outside_bbox_by_file": outside_bbox_by_file,
     }
     with tempfile.TemporaryDirectory(dir=target.parent) as temp, storage.connect(settings) as con:
         staging = Path(temp)
@@ -172,11 +174,17 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
                 source, csv = _source(settings, sensor, year, staging)
                 print(f"Ingesting {csv.name}", flush=True)
                 con.execute(DEDUPLICATE_SQL, [str(csv)])
-                unique, duplicates = con.execute(
-                    "SELECT count(*), coalesce(sum(exact_duplicates), 0) FROM deduplicated"
-                ).fetchall()[0]
+                unique, duplicates, outside_bbox = con.execute("""
+                    SELECT count(*), coalesce(sum(exact_duplicates), 0),
+                           count(*) FILTER (WHERE NOT coalesce(
+                               try_cast(longitude AS DOUBLE) BETWEEN ? AND ?
+                               AND try_cast(latitude AS DOUBLE) BETWEEN ? AND ?, false
+                           ))
+                    FROM deduplicated
+                """, [west, east, south, north]).fetchall()[0]
                 manifest.add_input(source.as_posix(), rows=unique + duplicates)
                 duplicates_by_file[csv.name] = duplicates
+                outside_bbox_by_file[csv.name] = outside_bbox
                 rows = con.sql(
                     INGEST_SQL.format(mir=mir, tir=tir),
                     params=[
@@ -198,7 +206,15 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
             [inputs, str(output)],
         )
         output.rename(target)
-    manifest.checks["exact_duplicate_rows_dropped"] = sum(duplicates_by_file.values())
+    input_rows = sum(item["rows"] for item in manifest.inputs)
+    duplicate_rows = sum(duplicates_by_file.values())
+    outside_bbox_rows = sum(outside_bbox_by_file.values())
+    manifest.checks.update(
+        raw_input_rows=input_rows,
+        exact_duplicate_rows_dropped=duplicate_rows,
+        rows_outside_bbox_dropped=outside_bbox_rows,
+        other_rows_dropped=input_rows - duplicate_rows - outside_bbox_rows - count,
+    )
     return _finish(manifest, settings, target, count)
 
 

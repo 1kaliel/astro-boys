@@ -42,6 +42,9 @@ def test_near_midnight_deduplication_and_filtering(tmp_path, monkeypatch):
     manifest = json.loads(Path(ingest["manifest"]).read_text(encoding="utf-8"))
     assert [source["rows"] for source in manifest["inputs"]] == [8, 1]
     assert manifest["checks"]["exact_duplicate_rows_dropped"] == 1
+    assert manifest["checks"]["raw_input_rows"] == 9
+    assert manifest["checks"]["rows_outside_bbox_dropped"] == 1
+    assert manifest["checks"]["other_rows_dropped"] == 2
     result = batch.aggregate(settings)
     assert result["rows"] == 1
     with duckdb.connect() as con:
