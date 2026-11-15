@@ -69,9 +69,10 @@ class YearsNotAvailable(HotspotsUnavailable):
 
 
 class TooManyRows(ValueError):
-    def __init__(self, rows: int, max_rows: int) -> None:
-        super().__init__(f"{rows:,} hotspots match; the limit is {max_rows:,}. Narrow the area or the years.")
-        self.rows = rows
+    def __init__(self, max_rows: int) -> None:
+        super().__init__(
+            f"More than {max_rows:,} hotspots match, the limit of one file. Narrow the area or the years."
+        )
         self.max_rows = max_rows
 
 
@@ -152,18 +153,36 @@ def _check_years(root: str, query: HotspotQuery) -> None:
         )
 
 
-def count(query: HotspotQuery, root: str | None = None) -> int:
+@dataclass(frozen=True)
+class Count:
+    """Answer of `count`. `rows` is exact when `over_limit` is False. When True the scan stopped at
+    `limit + 1` rows, so `rows` is only that stopping point (a lower bound), never the real total."""
+
+    rows: int
+    over_limit: bool
+
+
+def count(query: HotspotQuery, root: str | None = None, limit: int | None = None) -> Count:
+    """Count the matching rows, stopping as soon as there are more than `limit` (default `max_rows()`).
+
+    A full count of a large range reads every year of the bucket (about 19 s for 2002-2026 in the pilot area)
+    only to learn that it is over the limit; the early stop answers that in a fraction of the time."""
     root = root or hotspots_root()
+    limit = limit if limit is not None else max_rows()
     con = _connect(root)
     where, params = _where(query)
     try:
         _check_years(root, query)
-        row = con.execute(f"SELECT count(*) FROM {_source(root)} WHERE {where}", params).fetchone()
+        row = con.execute(
+            f"SELECT count(*) FROM (SELECT 1 FROM {_source(root)} WHERE {where} LIMIT {int(limit) + 1})",
+            params,
+        ).fetchone()
     except duckdb.Error as error:
         raise HotspotsUnavailable(f"hotspots/v1 could not be read: {error}") from error
     finally:
         con.close()
-    return int(row[0]) if row else 0
+    rows = int(row[0]) if row else 0
+    return Count(rows=rows, over_limit=rows > limit)
 
 
 def export_csv(query: HotspotQuery, root: str | None = None, limit: int | None = None) -> Iterator[bytes]:
@@ -177,9 +196,9 @@ def export_csv(query: HotspotQuery, root: str | None = None, limit: int | None =
     if not _EXPORTS.acquire(blocking=False):
         raise Busy("Another CSV export is running. Try again in a moment.")
     try:
-        rows = count(query, root)
-        if rows > limit:
-            raise TooManyRows(rows, limit)
+        counted = count(query, root, limit)
+        if counted.over_limit:
+            raise TooManyRows(limit)
         con = _connect(root)
         where, params = _where(query)
         sql = (

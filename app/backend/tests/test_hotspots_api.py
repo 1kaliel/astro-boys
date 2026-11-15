@@ -78,6 +78,33 @@ def test_count_uses_the_calendar_cells_dates_and_main_filter(client: TestClient)
     assert body["rows"] == 4
     assert body["cells"] == 2
     assert body["max_rows"] == hotspots.DEFAULT_MAX_ROWS
+    assert body["over_limit"] is False
+    assert body["period"] == "ALL" and body["include_all"] is False
+    assert (body["start"], body["end"]) == ("2005-01-01", "2013-12-31")
+
+
+def test_count_at_the_limit_is_exact(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "4")
+
+    body = client.get("/api/hotspots/count", params=_params()).json()
+
+    assert (body["rows"], body["over_limit"], body["max_rows"]) == (4, False, 4)
+
+
+def test_count_over_the_limit_stops_early_and_says_so(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "3")
+
+    body = client.get("/api/hotspots/count", params=_params()).json()
+
+    # 4 rows match, but the scan stopped at max_rows + 1: `rows` is a lower bound, not the total.
+    assert body["over_limit"] is True
+    assert body["rows"] == 4
+    monkeypatch.setenv("ASTRO_CSV_MAX_ROWS", "2")
+    body = client.get("/api/hotspots/count", params=_params()).json()
+    assert (body["rows"], body["over_limit"]) == (3, True)
+    assert body["max_rows"] == 2
 
 
 def test_include_all_adds_rows_outside_the_main_filter(client: TestClient) -> None:

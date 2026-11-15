@@ -211,3 +211,19 @@ Suggested, not mandatory; the functional contract is what matters ([spec/dashboa
   ]
 }
 ```
+
+### `GET /api/hotspots/count` (task D6)
+
+Asks how many native hotspots (NASA FIRMS detections, never "fires") the CSV of `GET /api/hotspots.csv` would hold,
+before downloading. Same query as the CSV: `west`, `south`, `east`, `north`, `start`, `end` (local solar dates),
+`period` (`ALL`, `D`, `N`), `include_all`.
+
+| Field | Meaning |
+|-------|---------|
+| `rows` | Number of matching rows. **Exact only when `over_limit` is `false`.** When `over_limit` is `true` the scan stopped at `max_rows + 1`, so `rows` is `max_rows + 1`: a lower bound, never the real total, and it must not be shown as one |
+| `over_limit` | `true` when more than `max_rows` rows match, so the CSV is refused (HTTP 413). Counting stops early, which is why a large range answers in a fraction of a second instead of reading every year |
+| `max_rows` | Largest CSV, 500,000 rows by default (`ASTRO_CSV_MAX_ROWS`) |
+| `cells` | 0.25 degree cells in the area |
+| `start`, `end`, `period`, `include_all` | The query, echoed |
+
+Years missing from a local copy answer 503, never `rows: 0`.

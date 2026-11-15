@@ -214,7 +214,10 @@ def _unavailable(error: hotspots.HotspotsUnavailable) -> str:
 
 class HotspotCountOut(BaseModel):
     # Native hotspot detections (NASA FIRMS) of the area cells and dates; never "fires".
+    # Exact when over_limit is False. When over_limit is True the count stopped at max_rows + 1: `rows` is
+    # then only that stopping point (a lower bound), never the real total.
     rows: int
+    over_limit: bool
     max_rows: int
     cells: int
     start: date
@@ -237,12 +240,13 @@ def hotspots_count(
 ) -> HotspotCountOut:
     query = _hotspot_query(store, west, south, east, north, start, end, period, include_all)
     try:
-        rows = hotspots.count(query)
+        counted = hotspots.count(query)
     except hotspots.HotspotsUnavailable as error:
         log.warning("Hotspots count failed: %s", error)
         raise HTTPException(status_code=503, detail=_unavailable(error)) from error
     return HotspotCountOut(
-        rows=rows,
+        rows=counted.rows,
+        over_limit=counted.over_limit,
         max_rows=hotspots.max_rows(),
         cells=len(query.cells),
         start=start,

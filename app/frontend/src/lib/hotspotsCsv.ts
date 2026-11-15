@@ -12,7 +12,10 @@ export type HotspotsRequest = {
 
 /** Answer of `GET /api/hotspots/count` (app/backend/astro_dashboard/api.py). */
 export type HotspotsCount = {
+  /** Exact when `over_limit` is false. When true the server stopped counting at `max_rows + 1`: not a total. */
   rows: number;
+  /** More than `max_rows` match. Absent in answers of older servers: then `rows > max_rows` says it. */
+  over_limit?: boolean;
   max_rows: number;
   cells: number;
   start: string;
@@ -41,3 +44,21 @@ export function hotspotsQuery(request: HotspotsRequest): string {
 
 export const hotspotsCountUrl = (request: HotspotsRequest) => `/api/hotspots/count?${hotspotsQuery(request)}`;
 export const hotspotsCsvUrl = (request: HotspotsRequest) => `/api/hotspots.csv?${hotspotsQuery(request)}`;
+
+/** True when the selection is too large for one file. Never trust `rows` as a total in that case. */
+export const isOverLimit = (count: Pick<HotspotsCount, "rows" | "max_rows" | "over_limit">): boolean =>
+  count.over_limit ?? count.rows > count.max_rows;
+
+export type YearSuggestion = { label: string; startYear: number; endYear: number };
+
+/** Narrower year ranges to offer when the selection is too large: the latest 5 years, then the last year alone. */
+export function narrowerYearRanges(startYear: number, endYear: number): YearSuggestion[] {
+  const suggestions: YearSuggestion[] = [];
+  if (endYear - startYear + 1 > 5) {
+    suggestions.push({ label: "Latest 5 years", startYear: endYear - 4, endYear });
+  }
+  if (endYear > startYear) {
+    suggestions.push({ label: `Only ${endYear}`, startYear: endYear, endYear });
+  }
+  return suggestions;
+}
