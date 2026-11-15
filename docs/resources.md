@@ -155,7 +155,11 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 
 Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. See [D12 validation](d12-validation.md).
 
-### S1 editorial review for Jean (15 November 2026)
+## L4 final-delivery assignment assistance
+
+AI assistance helped prepare the L4 role/format record and align the task board and team roster at Jean Gustavo's request. Jean selected Justino for S5. Existing task owners and scientific results are unchanged. This record does not claim a completed presentation, review or submission. See [delivery-roles.md](delivery-roles.md).
+
+## S1 editorial review for Jean (15 November 2026)
 
 AI assistance was used to revise docs/submission.md against the team's existing methodology: project name,
 sensor-transition wording, inferred coverage gaps, NRT type limitations and reproduction scope. No new method,
