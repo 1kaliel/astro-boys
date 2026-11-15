@@ -263,3 +263,34 @@ export type MonthFieldPoint = {
 };
 
 export const weatherMonthUrl = (year: number, month: number) => `/api/weather/month?year=${year}&month=${month}`;
+
+/** Daily native detections of one sensor in an area (`/api/hotspots/daily`), for the Skyline view. */
+export type DailyHotspotsResponse = {
+  sensor: string;
+  sensor_name: string;
+  period: Period;
+  start: string;
+  end: string;
+  cells: number;
+  /** Native (not harmonized) counts of one sensor. Days without detections are not listed: they are zero days. */
+  days: { date: string; count: number }[];
+};
+
+export function hotspotsDailyUrl(
+  sensor: string,
+  area: { west: number; south: number; east: number; north: number },
+  year: number,
+  period: Period,
+): string {
+  const params = new URLSearchParams({
+    sensor,
+    start: `${year}-01-01`,
+    end: `${year}-12-31`,
+    period,
+    west: String(area.west),
+    south: String(area.south),
+    east: String(area.east),
+    north: String(area.north),
+  });
+  return `/api/hotspots/daily?${params}`;
+}

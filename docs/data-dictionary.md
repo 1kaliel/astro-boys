@@ -333,6 +333,17 @@ First version for **Ceará** (`uf = ce`; any other state is a 404). Two sources,
 - **Colors.** Fixed classes of the feels-like temperature (22, 24, 26, 28, 30, 32 degrees C) on the cool weather ramp. They
   split the range and are not comfort or alert thresholds; no color means danger.
 
+### Daily native detections of one sensor (`GET /api/hotspots/daily`)
+
+The Skyline view of the calendar. Request: `sensor` (one of `SNPP`, `N20`, `Aqua`, `Terra`; never a sum of two), `start`,
+`end` (the local solar dates), the box (`west`, `south`, `east`, `north`) and `period` (`ALL`, `D` or `N`). The same cells,
+the same main filter and the same local-date rule as the count endpoint. Answer: `sensor`, `sensor_name`, `period`,
+`start`, `end`, `cells` and `days` (`date`, `count`): only the days that have detections. A day that is not listed is a
+measured zero of that sensor, not a missing value; the chart draws it as zero.
+
+These are **native** counts (not harmonized). The series must not be compared with the MODIS years, nor summed across
+sensors. Answers are cached for six hours per request.
+
 ## API shape (if the app has a backend)
 
 Suggested, not mandatory; the functional contract is what matters ([spec/dashboard.md](spec/dashboard.md)).

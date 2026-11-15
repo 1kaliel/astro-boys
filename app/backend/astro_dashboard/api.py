@@ -620,6 +620,70 @@ def hotspots_count(
     )
 
 
+_DAILY_CACHE: dict[tuple, tuple[float, list[dict]]] = {}
+_DAILY_TTL_SECONDS = 6 * 3600
+_DAILY_ENTRIES = 64
+
+
+class DailyPointOut(BaseModel):
+    date: date
+    # Native detections of the one sensor on that local solar day; days without any are left out.
+    count: int
+
+
+class DailyOut(BaseModel):
+    sensor: str
+    sensor_name: str
+    period: Literal["ALL", "D", "N"]
+    start: date
+    end: date
+    cells: int
+    # Native (not harmonized) counts of one sensor: a chart of this must say so.
+    days: list[DailyPointOut]
+
+
+@router.get("/hotspots/daily", response_model=DailyOut, tags=["hotspots"])
+def hotspots_daily(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    sensor: Literal["SNPP", "N20", "Aqua", "Terra"] = Query(...),
+    start: Annotated[date, Query(description="First local solar date, YYYY-MM-DD")] = date(2012, 1, 1),
+    end: Annotated[date, Query(description="Last local solar date, YYYY-MM-DD")] = date(2025, 12, 31),
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+    period: Literal["ALL", "D", "N"] = "ALL",
+) -> DailyOut:
+    """Daily native detections of one sensor in an area (the Skyline view), cached six hours per request."""
+    import time as _time
+
+    query = _hotspot_query(store, west, south, east, north, start, end, period, False)
+    key = (sensor, query.cells, start, end, period)
+    now = _time.time()
+    hit = _DAILY_CACHE.get(key)
+    if hit and now - hit[0] < _DAILY_TTL_SECONDS:
+        days = hit[1]
+    else:
+        try:
+            rows = hotspots.daily(query, sensor)
+        except hotspots.HotspotsUnavailable as error:
+            log.warning("Daily hotspots failed: %s", error)
+            raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+        days = [{"date": d, "count": c} for d, c in rows]
+        if len(_DAILY_CACHE) >= _DAILY_ENTRIES:
+            _DAILY_CACHE.pop(next(iter(_DAILY_CACHE)))
+        _DAILY_CACHE[key] = (now, days)
+    return DailyOut(
+        sensor=sensor,
+        sensor_name=hotspots.SENSORS[sensor],
+        period=period,
+        start=start,
+        end=end,
+        cells=len(query.cells),
+        days=[DailyPointOut(**d) for d in days],
+    )
+
+
 @router.get("/hotspots.csv", tags=["hotspots"], response_class=StreamingResponse)
 def hotspots_csv(
     store: Annotated[CalendarStore, Depends(get_store)],

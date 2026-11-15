@@ -114,7 +114,11 @@ def _connect(root: str) -> duckdb.DuckDBPyConnection:
     return con
 
 
-def _where(query: HotspotQuery) -> tuple[str, list]:
+# One sensor at a time: the daily series never adds MODIS and VIIRS raw counts together (AGENTS.md guardrail).
+SENSORS = {"SNPP": "VIIRS S-NPP", "N20": "VIIRS NOAA-20", "Aqua": "MODIS Aqua", "Terra": "MODIS Terra"}
+
+
+def _where(query: HotspotQuery, sensor: str | None = None) -> tuple[str, list]:
     clauses = [
         "year BETWEEN ? AND ?",  # partition pruning: only the files of these local solar years are read
         "date_local BETWEEN ? AND ?",
@@ -126,6 +130,9 @@ def _where(query: HotspotQuery) -> tuple[str, list]:
         params.append(query.period)
     if not query.include_all:
         clauses.append("passes_main_filter")
+    if sensor is not None:
+        clauses.append("satellite = ?")
+        params.append(sensor)
     return " AND ".join(clauses), params
 
 
@@ -147,6 +154,28 @@ def count(query: HotspotQuery, root: str | None = None) -> int:
     return int(row[0]) if row else 0
 
 
+def daily(query: HotspotQuery, sensor: str, root: str | None = None) -> list[tuple[date, int]]:
+    """Native detections per local solar day of ONE sensor; only the days that have any.
+
+    Days without detections are not rows: the chart draws them as zero, a measurement, not a gap."""
+    if sensor not in SENSORS:
+        raise ValueError(f"sensor must be one of {sorted(SENSORS)}")
+    root = root or hotspots_root()
+    con = _connect(root)
+    where, params = _where(query, sensor)
+    try:
+        rows = con.execute(
+            f"SELECT date_local, count(*) FROM {_source(root)} WHERE {where} "
+            "GROUP BY date_local ORDER BY date_local",
+            params,
+        ).fetchall()
+    except duckdb.Error as error:
+        raise HotspotsUnavailable(f"hotspots/v1 could not be read: {error}") from error
+    finally:
+        con.close()
+    return [(r[0] if isinstance(r[0], date) else date.fromisoformat(str(r[0])), int(r[1])) for r in rows]
+
+
 def export_csv(query: HotspotQuery, root: str | None = None, limit: int | None = None) -> Iterator[bytes]:
     """Check the row count, then stream the CSV in blocks (Cloud Run caps unstreamed responses at 32 MiB).
 
@@ -164,8 +193,7 @@ def export_csv(query: HotspotQuery, root: str | None = None, limit: int | None =
         con = _connect(root)
         where, params = _where(query)
         sql = (
-            f"SELECT {', '.join(COLUMNS)} FROM {_source(root)} WHERE {where} "
-            "ORDER BY acq_ts_utc, hotspot_id"
+            f"SELECT {', '.join(COLUMNS)} FROM {_source(root)} WHERE {where} ORDER BY acq_ts_utc, hotspot_id"
         )
         try:
             cursor = con.execute(sql, params)

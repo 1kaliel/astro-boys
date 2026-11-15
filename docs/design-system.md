@@ -346,3 +346,12 @@ tilted with the map's pitch and turned with its bearing). The map is tilted (50 
 right mouse button or two fingers; every other layer is flat and north up. The pilot box outline is hidden here. The
 legend says the values are model values at one point per municipality, that the classes are not thresholds, and the
 sources. The layer selector has six options, so on a narrow screen it scrolls sideways instead of breaking its labels.
+
+## Skyline (the daily view of the calendar)
+
+A third view of the calendar, after Chart and Table: one year of one sensor, day by day. A flat heat map (days as boxes
+on a week grid) folds into an isometric skyline (the same boxes as bars, the height is the count) and back. The projection
+is linear, so equal heights have equal lengths on screen anywhere in the grid. Colours are the hotspot ramp tokens
+(`--magma-*`); the legend uses the same tokens. The view is for reading one year: the year picker covers 2013 to 2025 of
+VIIRS S-NPP. Keys: arrows move between days, Escape clears, Home and End go to the first and last day. The skyline is
+not a replacement of the harmonized calendar and carries its own label: "native hotspot detections, not harmonized".

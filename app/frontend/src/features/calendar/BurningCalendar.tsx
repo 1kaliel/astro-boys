@@ -13,6 +13,7 @@ import { FIRST_YEAR, LAST_YEAR, useDashboard, type Period } from "../../state/da
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
 import { AnomalyLegend, CalendarLegend } from "./CalendarLegend";
 import { CalendarTable } from "./CalendarTable";
+import { SkylineTab } from "./SkylineTab";
 import { MonthFilter } from "./MonthFilter";
 import {
   anomalyText,
@@ -295,6 +296,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         label="Burning calendar"
         chart={chart}
         table={<CalendarTable series={series} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />}
+        extra={{ name: "Skyline", panel: <SkylineTab /> }}
       />
       {anomaly ? (
         <AnomalyLegend unit={ANOMALY_UNIT} />
