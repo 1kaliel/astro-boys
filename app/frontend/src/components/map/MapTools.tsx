@@ -7,11 +7,13 @@ import { PILOT_BOUNDS } from "../../state/dashboard";
 import { Button } from "../ui/Button";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 
-export type Projection = "mercator" | "globe";
+/** "3d" is the react-globe.gl view; the other two are MapLibre projections. */
+export type Projection = "mercator" | "globe" | "3d";
 
 const PROJECTIONS: ReadonlyArray<SegmentOption<Projection>> = [
   { value: "mercator", label: "Flat" },
   { value: "globe", label: "Globe" },
+  { value: "3d", label: "3D" },
 ];
 
 type MapToolsProps = {
@@ -22,7 +24,7 @@ type MapToolsProps = {
 };
 
 /**
- * Tools drawn over the map: flat/globe view, draw a rectangle (terra-draw, loaded only when asked) and use the
+ * Tools drawn over the map: flat / globe / 3D view, draw a rectangle (terra-draw, loaded only when asked) and use the
  * visible map area (easiest on a phone). Typed bounds live in the filter bar.
  */
 export function MapTools({ mapRef, projection, onProjection, onArea }: MapToolsProps) {
@@ -87,12 +89,14 @@ export function MapTools({ mapRef, projection, onProjection, onArea }: MapToolsP
     <>
       <div className="map-tools">
         <SegmentedControl label="Map view" options={PROJECTIONS} value={projection} onChange={onProjection} hideLabel />
-        {drawing ? (
-          <Button onClick={stopDrawing}>Cancel</Button>
-        ) : (
-          <Button onClick={() => void startDrawing()}>Draw area</Button>
-        )}
-        <Button onClick={applyVisibleArea}>Use visible area</Button>
+        {/* Drawing and "visible area" belong to MapLibre; the 3D view has its own two-click selection. */}
+        {projection !== "3d" &&
+          (drawing ? (
+            <Button onClick={stopDrawing}>Cancel</Button>
+          ) : (
+            <Button onClick={() => void startDrawing()}>Draw area</Button>
+          ))}
+        {projection !== "3d" && <Button onClick={applyVisibleArea}>Use visible area</Button>}
       </div>
       {(drawing || error) && (
         <p className={cx("map-note", "map-hint", error && "map-error")} role={error ? "alert" : undefined}>

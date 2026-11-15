@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 import { cellsUrl, useRemote, type CellsResponse } from "../../data/api";
 import { MONTHS_LONG } from "../../lib/format";
@@ -10,6 +10,9 @@ import { CellMap } from "./CellMap";
 import { MapTools, type Projection } from "./MapTools";
 
 const EMPTY: CellsResponse["cells"] = [];
+
+// The 3D view pulls in three.js: it only downloads when someone opens it.
+const GlobeView = lazy(() => import("./GlobeView"));
 
 /**
  * Map panel (task D3). Loaded on demand (React.lazy), so phones only download MapLibre when they open the map.
@@ -46,7 +49,18 @@ export default function MapPanel() {
       </div>
 
       <div className="map-stage">
-        <CellMap mapRef={mapRef} cells={cells} breaks={breaks} area={state.area} projection={projection} />
+        {projection === "3d" ? (
+          <Suspense fallback={<p className="map-note">Loading the 3D globe…</p>}>
+            <GlobeView
+              cells={cells}
+              breaks={breaks}
+              area={state.area}
+              onArea={(area) => dispatch({ type: "setArea", area })}
+            />
+          </Suspense>
+        ) : (
+          <CellMap mapRef={mapRef} cells={cells} breaks={breaks} area={state.area} projection={projection} />
+        )}
         <MapTools
           mapRef={mapRef}
           projection={projection}

@@ -62,7 +62,7 @@ type CellMapProps = {
   /** Fixed, strictly increasing class limits from the API (the same for every month). */
   breaks: readonly number[];
   area: Bounds;
-  projection: "mercator" | "globe";
+  projection: "mercator" | "globe"; // the MapLibre projections; the 3D view is GlobeView
 };
 
 type Hover = { lng: number; lat: number; cell: CellFeatureProps };

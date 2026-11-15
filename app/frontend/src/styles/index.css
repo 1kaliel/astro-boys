@@ -5,6 +5,7 @@
 @import "./components.css";
 @import "./calendar.css";
 @import "./layout.css";
+@import "./globe.css";
 /* After layout.css: the chart cards override the full-row default of `.dash > *`. */
 @import "./charts.css";
 
