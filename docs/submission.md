@@ -1,14 +1,33 @@
-# Submission draft: project page fields
+# Submission: project page fields
 
-Draft for Kali and Jean to review and paste into the Space Apps project page (tasks S1 and S4). The fields are the
-ones listed in the official [Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/). Every
-number below comes from https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md or the live dashboard; check them again if the data or
-the site changes before submitting. Text drafted with an AI assistant from the team's documents; the team reviews
-and owns it.
+The text of the Space Apps project page, as saved on the form on 15 November 2026 at 19:19 Brasília time
+(22:21 UTC entry in the [diary](diary/2026-11-15.md)). Saved, **not yet submitted**. The fields are the ones of
+the official [Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/). Every
+number below comes from https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md or the live app. Text drafted with an AI assistant from the team's
+documents; the team reviews and owns it.
 
-**Still open before this can be pasted:** the demo link (S2); Mateus confirming how the FIREWATCHER logo was made
-(the AI section says no AI-generated images); a check that the AI section still matches the final demo slides.
-Every link below is absolute, so the text can be pasted as it is.
+**Still open:** the demo link (S2, the only empty required field); Mateus confirming how the FIREWATCHER logo was
+made; the private-window test (S5); "Submit for Judging" (S6).
+
+## How the form is laid out
+
+The form differs from the guide in three places, so this page follows the form:
+
+| Form field | Control | What was entered |
+|------------|---------|------------------|
+| Project Name | text | `FIREWATCHER` |
+| Summary | text, 1,500 characters at most (50 to 200 words suggested) | the high-level summary below (1,306 characters) |
+| Project Demonstration | one URL | empty until S2 |
+| Project | one URL | the web application |
+| Project Details | rich text | the detailed description below, including its last two sections |
+| Use of Super Intelligence (SI) | checklist, no text | five options, listed below |
+| NASA Data | list of links (text and URL) | 9 links, listed below |
+| Space Agency Partner & Other Data | list of links, 25 at most | 25 links, listed below |
+| Agree to Terms and Conditions; Confirm All Work is Original | two checkboxes | ticked by Kali |
+
+Because the form has no text field for the AI statement, the FIRMS acknowledgement or the paper citations, they
+are the last two sections of Project Details. The link fields cut a URL at a closing parenthesis, so the DOI of
+Giglio et al. (2003) is entered with `%28` and `%29`.
 
 ## Project name
 
@@ -130,71 +149,127 @@ Python 3.12, DuckDB and partitioned Parquet for the pipeline (managed with uv, t
 the backend; TypeScript, React and Vite for the frontend, with nivo and MapLibre GL JS; Google Cloud (Cloud
 Storage, a Compute Engine VM, Cloud Build and Cloud Run). Full list with licenses: https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md
 
-## Use of Super Intelligence (AI)
+### NASA data, acknowledgement and references
+
+All detections come from NASA FIRMS (Fire Information for Resource Management System), part of NASA LANCE: MODIS
+Collection 6 / 6.1 active fire detections (MCD14ML), Terra and Aqua, 2000–2025; VIIRS 375 m active fire product,
+Suomi NPP (VNP14IMG), 2012–2026, and NOAA-20 (VJ114IMG), 2018–2026; near-real-time VIIRS files (VNP14IMGTDL_NRT,
+VJ114IMGTDL_NRT) for August to November 2026. NASA and NOAA mission notices on satellite outages and orbit
+changes were used to check the gaps found in the data. The published calendar uses the Brazil country files
+clipped to the Northeast; the experimental preview on the landing page uses the same files for all of Brazil.
+
+We acknowledge the use of data from NASA LANCE FIRMS (https://earthdata.nasa.gov/firms), part of the NASA Earth
+Science Data and Information System (ESDIS). No data from other space agencies is used. NASA does not endorse
+this project.
+
+Algorithm references: Giglio et al. (2003), MODIS contextual fire detection; Schroeder et al. (2014), VIIRS 375 m
+active fire product; Twedt et al. (2023), MODIS orbit drift; Giglio, Schroeder and Hall, MODIS Collection 6 / 6.1
+Active Fire Product User's Guide. Basemap: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap contributors
+(ODbL). Font: Instrument Serif (SIL OFL 1.1). Product DOIs, the LANCE disclaimer and every library with its
+license: https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md
+
+### Use of AI tools
 
 AI tools were used to speed up the work, not to decide how to solve the challenge.
 
 - **What AI did:** wrote and tested code under the direction of team members (data pipeline, calibration and
   validation code, the web application including the landing page and the explorer redesign), ran checks and
-  reproductions, reviewed pull requests, structured and
-  edited documentation in English, and drafted texts such as this page from the team's own documents.
+  reproductions, reviewed pull requests, structured and edited documentation in English, and drafted texts such
+  as this page from the team's own documents.
 - **What the team did:** chose the challenge and the approach, proposed the method and its improvements (the
   transfer function with a background term, the gap mask, Terra as a witness, the reconciliation with regional
   totals, the blind final test), decided every trade-off recorded in the diary, and reviewed the results.
 - **Tools:** Claude Code (Anthropic) and Codex (OpenAI) as coding assistants, and chat assistants for
-  structuring and translating notes; the tool used for each task is recorded at
-  https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md#ai-usage
+  structuring and translating notes.
 - **Where it is marked:** AI-assisted code and documents are listed per task in the repository
   (https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md#ai-usage), and the diary entries say when a step was done with an AI assistant.
-- **No AI-generated data, images, audio or video:** every number comes from NASA FIRMS detections processed by
-  the pipeline; the charts are drawn from that data; the screenshots are captures of the running site. The one
-  synthetic table (`astro-fire mock-calendar`) was used only to build screens and is labeled as synthetic.
+- **No AI-generated data:** every number comes from NASA FIRMS detections processed by the pipeline; the charts
+  are drawn from that data; the screenshots are captures of the running site.
 - **Plan and research notes:** the team's first plan and research notes were written by team members; chat
   assistants helped structure, consolidate and translate them into English (`docs/project-plan.md`,
   `docs/spec/`). The choices in them are the team's, recorded as DECISION entries in the diary.
 
+The earlier draft of the fifth point also said "no AI-generated images, audio or video". That part is left out
+until Mateus confirms how the logo was made; the one synthetic table (`astro-fire mock-calendar`) was used only
+to build screens and is labeled as synthetic.
+
+## Use of Super Intelligence (SI)
+
+A checklist on the form, kept for data collection and not shown to the judges. Ticked:
+
+- [x] Research or Information Gathering
+- [x] Data Analysis and Interpretation
+- [x] Coding, Debugging, or Troubleshooting
+- [x] Writing, Editing, or Translation
+- [x] Visual Design or Image Creation (the landing page and explorer layout were built with an AI assistant)
+- [ ] Ideation or Brainstorming
+- [ ] Building SI/ML Into the Project
+- [ ] Presentation, Video, or Audio (tick it if the demo deck was made with AI)
+- [ ] Other Project-Related SI Use
+
+The written statement is the "Use of AI tools" section of the detailed description above.
+
 ## NASA data
 
-All detections come from **NASA FIRMS** (Fire Information for Resource Management System), part of NASA LANCE:
+Nine links, in this order:
 
-- MODIS Collection 6 / 6.1 active fire detections (MCD14ML), Terra and Aqua, 2000–2025.
-- VIIRS 375 m active fire product, Suomi NPP (VNP14IMG), 2012–2026.
-- VIIRS 375 m active fire product, NOAA-20 (VJ114IMG), 2018–2026.
-- Near-real-time VIIRS files (VNP14IMGTDL_NRT, VJ114IMGTDL_NRT) for August to November 2026.
-
-Also used: NASA and NOAA mission notices on satellite outages and orbit changes, to check the gaps found in the
-data. The published calendar uses the Brazil country files clipped to the Northeast; the experimental preview
-on the landing page uses the same files for all of Brazil. We acknowledge the use of data from NASA LANCE
-FIRMS (https://earthdata.nasa.gov/firms), part of the NASA Earth Science Data and Information System (ESDIS).
-Product DOIs and the LANCE disclaimer: https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md#data-sources-used
+| # | Link text | Link URL |
+|---|-----------|----------|
+| 1 | NASA FIRMS (Fire Information for Resource Management System) | <https://firms.modaps.eosdis.nasa.gov/> |
+| 2 | MODIS Collection 6 / 6.1 Active Fire Detections (MCD14ML), Terra and Aqua: FIRMS country files | <https://firms.modaps.eosdis.nasa.gov/country/> |
+| 3 | VIIRS 375 m Active Fire Product, Suomi NPP (VNP14IMG V002) | <https://doi.org/10.5067/VIIRS/VNP14IMG.002> |
+| 4 | VIIRS 375 m Active Fire Product, NOAA-20 (VJ114IMG V002) | <https://doi.org/10.5067/VIIRS/VJ114IMG.002> |
+| 5 | VIIRS S-NPP 375 m Active Fire, near real time (VNP14IMGTDL_NRT) | <https://doi.org/10.5067/FIRMS/VIIRS/VNP14IMGT_NRT.002> |
+| 6 | VIIRS NOAA-20 375 m Active Fire, near real time (VJ114IMGTDL_NRT) | <https://doi.org/10.5067/FIRMS/VIIRS/VJ114IMGT_NRT.002> |
+| 7 | MODIS Collection 6 and 6.1 Active Fire Product User's Guide | <https://earthdata.nasa.gov/s3fs-public/2023-09/MODIS_C6_C6.1_Fire_User_Guide_1.0.pdf> |
+| 8 | NASA Earthdata alerts and outages (satellite gap notices) | <https://www.earthdata.nasa.gov/data/alerts-outages> |
+| 9 | NASA LANCE disclaimer | <https://www.earthdata.nasa.gov/data/projects/lance/disclaimer> |
 
 ## Space agency partner data and other references
 
-No data from other space agencies is used. Everything else, with license or citation, is at
-https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md
+No data from other space agencies is used. Twenty-five links, the most the form takes, in this order:
 
-- **Algorithm references:** Giglio et al. (2003), MODIS contextual fire detection; Schroeder et al. (2014),
-  VIIRS 375 m active fire product; Twedt et al. (2023), MODIS orbit drift; Giglio, Schroeder and Hall, MODIS
-  Collection 6 / 6.1 Active Fire Product User's Guide.
-- **Basemap and font:** OpenFreeMap, © OpenMapTiles, data from OpenStreetMap contributors (ODbL); Instrument
-  Serif (Google Fonts, SIL OFL 1.1).
-- **Pipeline:** Python 3.12, uv, DuckDB, Parquet, gcsfs, Matplotlib (magma colormap), pytest, Ruff, HTTPX,
-  Hatchling.
-- **Web application:** FastAPI, Uvicorn, React, Vite, TypeScript, Base UI, nivo, MapLibre GL JS, react-map-gl,
-  Terra Draw, Vitest, Node.js, Docker.
-- **Services:** Google Cloud (Cloud Storage, Compute Engine, Cloud Build, Artifact Registry, Cloud Run),
-  GitHub and GitHub Actions, gitleaks.
-- **AI tools:** Claude Code (Anthropic), Codex (OpenAI) and chat assistants, as described in the AI section.
+| # | Link text | Link URL |
+|---|-----------|----------|
+| 1 | FIREWATCHER credits: every source, library, license and AI use | <https://github.com/1kaliel/astro-boys/blob/main/docs/resources.md> |
+| 2 | Giglio et al. (2003), An enhanced contextual fire detection algorithm for MODIS | <https://doi.org/10.1016/S0034-4257%2803%2900184-6> |
+| 3 | Schroeder et al. (2014), The New VIIRS 375 m active fire detection data product | <https://doi.org/10.1016/j.rse.2013.12.008> |
+| 4 | Twedt et al. (2023), Impact of satellite orbit drift on MODIS Earth scene observations (NASA NTRS) | <https://ntrs.nasa.gov/citations/20240001409> |
+| 5 | OpenFreeMap basemap | <https://openfreemap.org/> |
+| 6 | OpenMapTiles | <https://www.openmaptiles.org/> |
+| 7 | OpenStreetMap contributors (ODbL) | <https://www.openstreetmap.org/copyright> |
+| 8 | Instrument Serif font (SIL OFL 1.1) | <https://fonts.google.com/specimen/Instrument+Serif> |
+| 9 | Python | <https://www.python.org/> |
+| 10 | uv | <https://docs.astral.sh/uv/> |
+| 11 | DuckDB | <https://duckdb.org/> |
+| 12 | Matplotlib (magma colormap) | <https://matplotlib.org/> |
+| 13 | FastAPI | <https://fastapi.tiangolo.com/> |
+| 14 | Uvicorn | <https://uvicorn.dev/> |
+| 15 | React | <https://react.dev/> |
+| 16 | Vite | <https://vite.dev/> |
+| 17 | TypeScript | <https://www.typescriptlang.org/> |
+| 18 | Base UI | <https://base-ui.com/> |
+| 19 | nivo | <https://nivo.rocks/> |
+| 20 | MapLibre GL JS | <https://maplibre.org/> |
+| 21 | react-map-gl | <https://visgl.github.io/react-map-gl/> |
+| 22 | Terra Draw | <https://github.com/JamesLMilner/terra-draw> |
+| 23 | Google Cloud (Cloud Storage, Compute Engine, Cloud Build, Cloud Run) | <https://cloud.google.com/> |
+| 24 | Claude Code (Anthropic), AI coding assistant | <https://claude.com/claude-code> |
+| 25 | Codex (OpenAI), AI coding assistant | <https://openai.com/codex/> |
 
 ## Before submitting
 
 - [x] Project name confirmed by Jean: FIREWATCHER.
+- [x] Every field except the demo link filled and saved on the form (15 November, 19:19 Brasília), then read
+      back from a reloaded page.
 - [ ] Demo link added and opened in a private window.
 - [ ] Both site and repository links opened in a private window (S5).
 - [x] Numbers above checked against https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md and the live site
       (independent audit, 15 November, 21:30 UTC; recheck only if the data or the site changes).
 - [x] AI section confirmed by Kali (recheck against the final demo slides).
-- [ ] Both confirmation boxes ticked on the form.
+- [ ] How the logo was made confirmed by Mateus.
+- [x] Both confirmation boxes ticked on the form (Kali).
+- [ ] "Submit for Judging" clicked and the confirmation saved (S6).
 
 ## S1 editorial review status
 
