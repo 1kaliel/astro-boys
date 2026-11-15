@@ -34,3 +34,7 @@ The public application still shows the wording before PR 47. This review validat
 5. Mark D10 complete only after that recheck.
 
 Review and documentation prepared with AI assistance, disclosed in resources.md. No data, model or numerical result was changed.
+
+## Follow-up correction (09:02 UTC)
+
+PR 47 now explicitly focuses the title on opening via Base UI's existing initialFocus prop and a title ref. The body stays keyboard-focusable. This addresses the observed scroll trigger in code; it has not yet been validated in a running corrected build. CI, deployment and the deployed recheck remain required.

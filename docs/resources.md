@@ -45,6 +45,8 @@ At least one NASA data source is required for global judging.
 | Li, F., et al. (2018). Comparison of Fire Radiative Power Estimates From VIIRS and MODIS Observations. *JGR Atmospheres*. https://doi.org/10.1029/2017JD027823 | Near-simultaneous MODIS–VIIRS comparison (to read and confirm before citing in the submission) |
 | NASA Earthdata notices on the MODIS → VIIRS transition and the end of S-NPP observations (links in [data-access.md](data-access.md#sensor-timeline)) | Sensor timeline |
 
+Base UI Dialog custom focus management: https://base-ui.com/react/components/dialog#custom-focus-management — existing-library API used for the D10 initial title focus correction.
+
 ## Official notices: satellite gaps and orbit changes
 
 Checked on Sun Nov 15, 2026 against NASA (Earthdata alerts, LAADS DAAC, MODIS MCST, NTRS, Terra project) and NOAA
