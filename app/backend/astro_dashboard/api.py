@@ -3,7 +3,7 @@
 `GET /api/calendar` returns the monthly series of an area: the harmonized counts of its cells summed, with the
 origin of each month, the historical median and the anomalies of the sum. See calendar.py for the rules.
 `GET /api/hotspots/count` and `GET /api/hotspots.csv` give the native hotspots of the same cells and dates
-(hotspots.py).
+(hotspots.py). `GET /api/drilldown` splits one L2 cell into its L3 cells for one month (drilldown.py, D11).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from astro_dashboard import hotspots
+from astro_dashboard import drilldown, hotspots
 from astro_dashboard.bake import read_build_info
 from astro_dashboard.calendar import Bounds, CalendarStore, NoCellsInArea
 
@@ -242,6 +242,65 @@ def hotspots_count(
         end=end,
         period=period,
         include_all=include_all,
+    )
+
+
+class CellCountOut(BaseModel):
+    id: str
+    # Native detections of the month's source satellite (never harmonized, never "fires").
+    count: int
+
+
+class DrilldownOut(BaseModel):
+    cell: str
+    year: int
+    month: int
+    period: Literal["ALL", "D", "N"]
+    # The month's source satellite, the one the calendar's raw_source counts, as stored in hotspots/v1.
+    satellite: str
+    instrument: str
+    min_detections: int
+    # False when the cell has fewer than min_detections detections (stop rule): then l3 is empty.
+    subdivided: bool
+    # The 3 x 3 block of L2 cells (the cell included), rows from the south and columns from the west.
+    neighbors: list[CellCountOut]
+    # L3 cells of `cell` with at least one detection, sorted by id.
+    l3: list[CellCountOut]
+    total: int
+
+
+@router.get("/drilldown", response_model=DrilldownOut, tags=["hotspots"])
+def drilldown_cell(
+    store: Annotated[CalendarStore, Depends(get_store)],
+    cell: Annotated[str, Query(description="L2 cell id, e.g. G083135.16")],
+    year: int = Query(..., ge=FIRST_DATE.year, le=2200),
+    month: int = Query(..., ge=1, le=12),
+    period: Literal["ALL", "D", "N"] = "ALL",
+) -> DrilldownOut:
+    try:
+        drilldown.l2_index(cell)
+    except drilldown.NotAnL2Cell as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    satellite = store.source_satellite(year, month, period)
+    if satellite is None or satellite not in drilldown.INSTRUMENTS:
+        raise HTTPException(status_code=422, detail=f"The calendar has no data for {year}-{month:02d}.")
+    try:
+        result = drilldown.drilldown(cell, year, month, satellite, period)
+    except hotspots.HotspotsUnavailable as error:
+        log.warning("Drill-down failed: %s", error)
+        raise HTTPException(status_code=503, detail="The native hotspots are not available.") from error
+    return DrilldownOut(
+        cell=cell,
+        year=year,
+        month=month,
+        period=period,
+        satellite=result.satellite,
+        instrument=result.instrument,
+        min_detections=drilldown.MIN_DETECTIONS,
+        subdivided=result.subdivided,
+        neighbors=[CellCountOut(id=c, count=n) for c, n in result.neighbors],
+        l3=[CellCountOut(id=c, count=n) for c, n in result.l3],
+        total=result.total,
     )
 
 
