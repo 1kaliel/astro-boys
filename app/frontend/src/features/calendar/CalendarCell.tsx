@@ -204,12 +204,15 @@ export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: 
  * Month names above the columns and years left of the rows. Drawn here (not by nivo's axes) so the month and the
  * year under the pointer can be highlighted.
  */
+const NARROW_COLUMN_PX = 30;
+
 export function CalendarAxes({ cells }: CustomLayerProps<CalendarDatum>) {
   const { hovered } = useContext(CalendarCellContext);
   const columns = new Map<number, { label: string; x: number }>();
   const rows = new Map<string, { label: string; y: number }>();
   for (const cell of cells) {
-    columns.set(cell.data.month, { label: cell.data.x, x: cell.x });
+    // Narrow columns (a phone) get the first letter only; the full name is in the cell's label and detail.
+    columns.set(cell.data.month, { label: cell.width < NARROW_COLUMN_PX ? cell.data.x.charAt(0) : cell.data.x, x: cell.x });
     rows.set(cell.serieId, { label: cell.serieId, y: cell.y });
   }
   return (
