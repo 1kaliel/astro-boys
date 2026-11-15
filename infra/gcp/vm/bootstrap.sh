@@ -19,7 +19,7 @@ GCS_PREFIX="${GCS_PREFIX:-astro}"
 
 echo "== System packages"
 sudo apt-get update -qq
-sudo apt-get install -y -qq git curl unzip tmux >/dev/null
+sudo apt-get install -y -qq git curl unzip tmux make >/dev/null
 
 echo "== uv $UV_VERSION"
 if ! command -v uv >/dev/null || [[ "$(uv --version | awk '{print $2}')" != "$UV_VERSION" ]]; then

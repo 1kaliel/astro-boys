@@ -141,6 +141,10 @@ uv run astro-fire calibrate --counts path/to/cell_month_counts --years 2012-2019
 ```
 
 `ingest` and `aggregate` are described in the [historical Northeast batch runbook](historical-batch.md).
+The years before 2003 (Terra from 2000-11, Aqua from 2002-07) are a separate run added to the main data root:
+[early years](historical-batch.md#early-years-20002002-terra-only-then-aqua-from-july-2002). Full order to
+rebuild everything from a clean clone, with the row counts to check:
+[full reproduction](historical-batch.md#full-reproduction-from-a-clean-clone).
 
 `calibrate` reads the monthly counts (`cell_l2, year, month, daynight, satellite, n_hotspots`; satellites named
 `Aqua` and `SNPP`), chooses the pooling weights by leave-one-year-out cross-validation unless `--k`/`--m` are
