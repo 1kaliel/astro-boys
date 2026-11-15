@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFixture, type CalendarMonth } from "../../data/calendarSource";
+import { parseApiResponse, parseFixture, type ApiCalendar, type CalendarMonth } from "../../data/calendarSource";
 import {
   SEQ_BINS,
   binIndex,
@@ -20,6 +20,10 @@ function month(overrides: Partial<CalendarMonth>): CalendarMonth {
     isEstimated: true,
     isPartial: false,
     daysObserved: 31,
+    medianHist: null,
+    anomalyAbs: null,
+    anomalyPct: null,
+    anomalyZ: null,
     ...overrides,
   };
 }
@@ -136,7 +140,13 @@ describe("parseFixture", () => {
       isEstimated: true,
       isPartial: false,
       daysObserved: 31,
+      medianHist: null,
+      anomalyAbs: null,
+      anomalyPct: null,
+      anomalyZ: null,
     });
+    expect(dataset.period).toBeNull();
+    expect([dataset.firstYear, dataset.lastYear]).toEqual([2003, 2003]);
   });
 
   it("rejects unknown columns and unknown periods", () => {
@@ -150,5 +160,84 @@ describe("parseFixture", () => {
         rows: [[2003, 1, "X", 1, 1, 1, 0, 0, 1]],
       }),
     ).toThrow(/unknown period/);
+  });
+});
+
+describe("parseApiResponse", () => {
+  const apiMonth = {
+    year: 2010,
+    month: 8,
+    count_harmonized: 133812.4,
+    ci_low: null,
+    ci_high: null,
+    is_estimated: true,
+    is_partial: false,
+    days_observed: 31,
+    median_hist: 58825.7,
+    anomaly_abs: 74986.7,
+    anomaly_pct: 127.5,
+    anomaly_z: 4.5,
+  };
+  const doc: ApiCalendar = {
+    area: { cells: 3112 },
+    period: "N",
+    model_version: "fb-l1-terra-3",
+    baseline_years: [2003, 2025],
+    first_year: 2003,
+    last_year: 2025,
+    months: [apiMonth],
+  };
+
+  it("maps the snake_case answer to typed months and keeps the pending interval as null, not zero", () => {
+    const dataset = parseApiResponse(doc);
+
+    expect(dataset.synthetic).toBe(false);
+    expect(dataset.period).toBe("N");
+    expect(dataset.cells).toBe(3112);
+    expect(dataset.baselineYears).toEqual([2003, 2025]);
+    expect([dataset.firstYear, dataset.lastYear]).toEqual([2003, 2025]);
+    const [month] = dataset.months;
+    expect(month.period).toBe("N");
+    expect(month.count).toBe(133812.4);
+    expect(month.ciLow).toBeNull();
+    expect(month.ciHigh).toBeNull();
+    expect(month.isEstimated).toBe(true);
+    expect([month.medianHist, month.anomalyAbs, month.anomalyPct, month.anomalyZ]).toEqual([58825.7, 74986.7, 127.5, 4.5]);
+  });
+
+  it("rejects an answer that is not a calendar", () => {
+    expect(() => parseApiResponse({ detail: "nope" } as unknown as ApiCalendar)).toThrow(/unexpected format/);
+  });
+});
+
+describe("a dataset read with its own period", () => {
+  it("builds the rows from the months of that period even if the selector moved on", () => {
+    const dataset = parseApiResponse({
+      area: { cells: 1 },
+      period: "D",
+      model_version: "m",
+      baseline_years: null,
+      first_year: 2010,
+      last_year: 2010,
+      months: [
+        {
+          year: 2010,
+          month: 3,
+          count_harmonized: 5,
+          ci_low: 5,
+          ci_high: 5,
+          is_estimated: false,
+          is_partial: false,
+          days_observed: 31,
+          median_hist: null,
+          anomaly_abs: null,
+          anomaly_pct: null,
+          anomaly_z: null,
+        },
+      ],
+    });
+    const series = buildSeries(dataset.months, dataset.period ?? "ALL", 2010, 2010);
+
+    expect(valueRange(series)).toEqual({ min: 5, max: 5 });
   });
 });
