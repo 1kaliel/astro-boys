@@ -53,7 +53,12 @@ Rules (docs/data-dictionary.md, and the diary `DECISION`s of D2):
   satellite; it does not prove there was no fire).
 - **Pending intervals stay `null`:** `ci_low` and `ci_high` of estimated months are `null` until the pipeline delivers
   them (H11). Observed months have an interval equal to the count. The interval of a sum uses the summed variance.
-- **Partial months** (`is_partial`, `days_observed`) are flagged and get no anomaly.
+- **Partial months** (`is_partial`, `days_observed`) are flagged and never compared with full months. The
+  unfinished month is compared with the **same days of earlier years**: `median_hist` and the anomalies come from
+  `month_to_date/v1` (days 1..N summed over the area per year, a year without a row counts as 0), with
+  `median_days` = N and `median_n_years`. Any other partial month, or a server without that table, has no median.
+- **No estimate is `null`:** `count_harmonized` is `null` (not 0) when a cell of the area, or the whole extent, has
+  no estimate in the month, as in the estimated partial months of July and August 2002.
 
 Data: `$ASTRO_DATA_ROOT/processed/calendar/$ASTRO_DATASET_VERSION` (defaults `data` and `v1`), loaded once at startup
 (about 3 s, 290 MiB for 1.7 M rows). If it is missing the app still starts, `/healthz` answers and the calendar says 503.
@@ -152,21 +157,24 @@ are added to CI (open decision for the team).
 Full runbook: [deploy/cloudrun/README.md](../deploy/cloudrun/README.md).
 
 The calendar is **baked into the image** (D8). It comes in as a named build context from the git-ignored `data/`,
-so it never enters git or the `app/` build context. Only the calendar (~71 MB); `hotspots/v1` stays in the bucket.
+so it never enters git or the `app/` build context. With it goes `month_to_date/v1` (60 KB), the same days of
+earlier years for the unfinished month; `hotspots/v1` stays in the bucket.
 
 ```bash
 APPLY=1 ./scripts/sync_data.sh pull processed calendar/v1        # from the repo root
+APPLY=1 ./scripts/sync_data.sh pull processed month_to_date/v1   # pull both at the same time
 MODEL=$(cd app/backend && uv run --project .. python -m astro_dashboard.bake --print-model-version \
   ../../data/processed/calendar/v1)
 docker build -t astro-dashboard --build-context calendar=data/processed/calendar/v1 \
-  --build-arg MODEL_VERSION="$MODEL" app/
+  --build-context month_to_date=data/processed/month_to_date/v1 --build-arg MODEL_VERSION="$MODEL" app/
 docker run --rm -p 8080:8080 -e PORT=8080 --memory 1g astro-dashboard
 curl http://localhost:8080/healthz          # {"status":"ok"}
 curl http://localhost:8080/api/version      # model_version loaded, model_version of the image, build record
 ```
 
-The build loads the calendar the way the app does and **fails** if it is missing or its `model_version` is not
-`MODEL_VERSION`; it records what was baked in `/app/data/build-info.json` and in the label `astro.model_version`.
+The build loads the calendar the way the app does and **fails** if it is missing, if its `model_version` is not
+`MODEL_VERSION`, or if `month_to_date` covers other days than the calendar's unfinished month (the two were pulled
+at different times); without `month_to_date` it only warns, and the unfinished month has no median. It records what was baked in `/app/data/build-info.json` and in the label `astro.model_version`.
 An image without data, for skeleton checks: `docker build --build-arg ALLOW_NO_CALENDAR=1 app/` (the calendar then
 answers 503). Mounting other data over it still works (`-e ASTRO_DATA_ROOT=/data -v "$PWD/data:/data:ro"`); the
 app logs a warning when its model differs from the image's.
