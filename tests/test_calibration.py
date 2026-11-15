@@ -228,12 +228,14 @@ def test_choose_weights_prefers_lowest_deviance_then_more_pooling():
 
 def test_choose_pooling_returns_the_level_with_lower_deviance(con):
     _add_second_parent(con)
-    choice = cal.choose_pooling(con, "panel")
+    choice = cal.choose_pooling(con, "panel", witness=False)
     assert choice["pool"] in cal.POOL_LEVELS and choice["k"] in cal.WEIGHT_GRID
-    assert len(choice["scores"]) == len(cal.POOL_LEVELS) * len(cal.WEIGHT_GRID)
+    assert choice["witness"] is False and choice["m_witness"] is None
+    static = [s for s in choice["scores"] if s["background"] == "static"]
+    assert len(static) == len(cal.POOL_LEVELS) * len(cal.WEIGHT_GRID)
     totals = {}
     for pool in cal.POOL_LEVELS:
-        rows = [s for s in choice["scores"] if s["pool"] == pool]
+        rows = [s for s in static if s["pool"] == pool]
         k, m = cal.choose_weights(rows)
         by = {r["weight"]: r for r in rows}
         totals[pool] = (by[k]["deviance_pos"] * by[k]["n_pos"] + by[m]["deviance_zero"] * by[m]["n_zero"]) / (
@@ -246,3 +248,88 @@ def test_choose_pooling_returns_the_level_with_lower_deviance(con):
 def test_negative_weights_are_rejected(con):
     with pytest.raises(ValueError):
         cal.fit_factors(con, "panel", k=-1, m=2)
+
+
+@pytest.fixture
+def witness_con():
+    """Six cells of one parent, September, Aqua always 0. S-NPP sees 9 when Terra saw something, else 1."""
+    con = duckdb.connect()
+    rows = []
+    for c in range(6):
+        cell = f"G000000.{c + 1:02d}"
+        for i, year in enumerate(YEARS):
+            terra = (c + i) % 2  # alternates by cell and year
+            rows.append((cell, year, 9, "D", "SNPP", 9 if terra else 1))
+            if terra:
+                rows.append((cell, year, 9, "D", "Terra", 2))
+            rows += [(cell, year, 10, "D", "Aqua", 5 + i), (cell, year, 10, "D", "SNPP", 20 + 4 * i)]
+    _counts(con, rows)
+    cal.build_panel(con, "counts", YEARS, witness_gap_months=[(2015, 9)])
+    return con
+
+
+def test_panel_carries_the_witness_count_and_its_gaps(witness_con):
+    con = witness_con
+    assert con.execute("SELECT t FROM panel WHERE cell_l2 = 'G000000.01' AND month = 9 AND period = 'D' "
+                       "ORDER BY year").fetchall() == [(0,), (2,), (0,), (None,)]
+    assert con.execute("SELECT count(*) FROM panel WHERE t IS NULL").fetchone() == (6 * 2,)
+    # The witness never adds cells: only Aqua or S-NPP detections define the panel.
+    con.execute("INSERT INTO counts VALUES ('G000000.16', 2013, 9, 'D', 'Terra', 5)")
+    cal.build_panel(con, "counts", YEARS)
+    assert con.execute("SELECT count(DISTINCT cell_l2) FROM panel").fetchone() == (6,)
+
+
+def test_witness_background_separates_active_from_quiet_months(witness_con):
+    con = witness_con
+    cal.fit_factors(con, "panel", k=5, m=0, pool="region", witness=True)
+    b, b0, b1, n0, n1, sat = con.execute(
+        "SELECT b, b_witness0, b_witness1, n_zero_witness0, n_zero_witness1, witness_satellite FROM factors "
+        "WHERE cell_l2 = 'G000000.01' AND month = 9 AND period = 'D'"
+    ).fetchone()
+    assert (b0, b1, sat) == (1.0, 9.0, "Terra")
+    assert (n0, n1) == (2, 1)                       # 2015 is a witness gap: not in either group
+    assert b == pytest.approx((1 + 9 + 1 + 9) / 4)  # the static background still uses every year
+    assert set(cal.WITNESS_COLUMNS) <= {r[0] for r in con.execute("DESCRIBE factors").fetchall()}
+
+
+def test_witness_background_matches_the_generic_fit(witness_con):
+    con = witness_con
+    cal.witness_panel(con, "panel")
+    for pool in cal.POOL_LEVELS:
+        cal.fit_factors(con, "panel", k=5, m=2, pool=pool, witness=True, m_witness=5)
+        cal.fit_factors(con, "panel_witness", k=5, m=5, pool=pool, name="generic")
+        rows = con.execute(
+            "SELECT f.b_witness0, g0.b, f.b_witness1, g1.b, f.m_witness FROM factors f "
+            "JOIN generic g0 USING (cell_l2, month) JOIN generic g1 USING (cell_l2, month) "
+            "WHERE g0.period = f.period || '|0' AND g1.period = f.period || '|1' "
+            "AND f.month = 9 AND f.period = 'D'"
+        ).fetchall()
+        assert len(rows) == 6
+        for b0, g0, b1, g1, m_w in rows:
+            assert (b0, b1, m_w) == (pytest.approx(g0), pytest.approx(g1), 5)
+
+
+def test_apply_uses_the_witness_when_it_is_known(witness_con):
+    con = witness_con
+    cal.fit_factors(con, "panel", k=5, m=0, pool="region", witness=True)
+    con.execute("INSERT INTO counts VALUES ('G000000.01', 2008, 9, 'D', 'Terra', 4)")
+    cal.build_source(con, "counts", "factors", [(2007, 9), (2008, 9), (2009, 9)],
+                     witness_gap_months=[(2009, 9)])
+    cal.apply_factors(con, "source", "factors")
+    rows = con.execute("SELECT year, estimate, estimate_rule FROM estimates WHERE cell_l2 = 'G000000.01' "
+                       "AND period = 'D' ORDER BY year").fetchall()
+    assert rows == [
+        (2007, 1.0, "background_witness_quiet"),
+        (2008, 9.0, "background_witness_active"),
+        (2009, 5.0, "background"),  # witness unknown: the static background
+    ]
+    cal.apply_factors(con, "source", "factors", use_background=False)
+    assert con.execute("SELECT sum(estimate) FROM estimates").fetchone() == (0,)
+
+
+def test_choose_pooling_picks_the_witness_when_it_lowers_the_deviance(witness_con):
+    choice = cal.choose_pooling(witness_con, "panel")
+    assert choice["witness"] is True and choice["m_witness"] in cal.WEIGHT_GRID
+    assert choice["deviance_zero_witness"] < choice["deviance_zero_static_same_months"]
+    assert cal.choose_pooling(witness_con, "panel", witness=False)["witness"] is False
+    assert {s["background"] for s in choice["scores"]} == {"static", "witness"}

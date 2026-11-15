@@ -19,31 +19,46 @@ from pathlib import Path
 import duckdb
 
 from astro_fire import calibration as cal
-from astro_fire import storage
+from astro_fire import coverage, storage
 from astro_fire.config import Settings
 from astro_fire.manifest import Manifest, new_run_id
 
 CALIBRATION_YEARS = tuple(range(2012, 2020))
-TEST_YEARS = (2020, 2021)  # held out for `validate`; calibration must never see them
+# Held-out years. Calibration must never see any of them.
+DEV_YEARS = (2020, 2021)         # development set: scored while the method was being built
+FINAL_TEST_YEARS = (2022, 2023)  # final test: scored once (`validate --final`), after the method is frozen
+LATE_YEARS = (2024, 2025)        # reported with the final test, separately: MODIS orbits drift in these years
+HELD_OUT_YEARS = DEV_YEARS + FINAL_TEST_YEARS + LATE_YEARS
 MODEL_FAMILY = "fb"  # factor F + background B; the model version adds the pooling level, e.g. fb-l1-2
-MODEL_REVISION = 2
+MODEL_REVISION = 3
 REQUIRED_COLUMNS = ("cell_l2", "year", "month", "daynight", "satellite", "n_hotspots")
 FACTOR_COLUMNS = (  # processed/factors/v1 in docs/data-dictionary.md
     "cell_l2", "month", "period", "f", "b", "sum_aqua_pos", "sum_viirs_pos", "n_zero", "sum_viirs_zero",
     "r_region", "b_region", "k", "m", "weight_cell", "calibration_years", "model_version",
-    "r_parent", "b_parent", "pool_level",
+    "r_parent", "b_parent", "pool_level", *cal.WITNESS_COLUMNS,
 )
 
 
-def model_version(pool: str) -> str:
-    return f"{MODEL_FAMILY}-{pool}-{MODEL_REVISION}"
+def model_version(pool: str, witness: bool = False) -> str:
+    return f"{MODEL_FAMILY}-{pool}{'-terra' if witness else ''}-{MODEL_REVISION}"
 
 
-def choose_model(con, panel: str, *, k: float | None, m: float | None, pool: str | None) -> dict:
-    """Pooling level and weights: fixed where given, otherwise by leave-one-year-out Poisson deviance."""
+def witness_gap_months(con, settings: Settings, years: Sequence[int]) -> list[tuple[int, int]]:
+    """Months in which the witness satellite was not fully observing (from the coverage table, if any)."""
+    location = storage.uri(settings, "processed", "coverage_monthly", settings.dataset_version)
+    incomplete = coverage.incomplete_months(con, location, (cal.WITNESS,), tuple(years)) or []
+    return sorted({(y, mo) for y, mo, _ in incomplete})
+
+
+def choose_model(
+    con, panel: str, *, k: float | None, m: float | None, pool: str | None, witness: bool | None = None
+) -> dict:
+    """Pooling level, weights and background type: fixed where given, otherwise by leave-one-year-out
+    Poisson deviance on the calibration years."""
     pools = (pool,) if pool else cal.POOL_LEVELS
-    choice = cal.choose_pooling(con, panel, pools=pools)
-    fixed = [name for name, value in (("k", k), ("m", m), ("pool", pool)) if value is not None]
+    choice = cal.choose_pooling(con, panel, pools=pools, witness=witness)
+    given = (("k", k), ("m", m), ("pool", pool), ("witness", witness))
+    fixed = [name for name, value in given if value is not None]
     choice["k"] = choice["k"] if k is None else float(k)
     choice["m"] = choice["m"] if m is None else float(m)
     choice["chosen_by"] = "leave-one-year-out Poisson deviance, calibration years only"
@@ -136,6 +151,26 @@ def find_gaps(
             if (sat, y, mo) not in seen and (y, mo) not in cal.PARTIAL_REFERENCE_MONTHS]
 
 
+def months_to_exclude(
+    con: duckdb.DuckDBPyConnection, settings: Settings, years: Sequence[int], counts: str = "counts"
+) -> tuple[list[tuple[int, int]], list[tuple[int, int, str]], bool]:
+    """Months that must not be paired because one of the two satellites was not fully observing.
+
+    Uses the monthly coverage table (`astro-fire coverage`) when it exists; a month with no detections at
+    all for one satellite is always excluded. Returns (months, the gaps behind them, coverage table used).
+    """
+    gaps = set(find_gaps(con, counts, years))
+    location = storage.uri(settings, "processed", "coverage_monthly", settings.dataset_version)
+    incomplete = coverage.incomplete_months(con, location, (cal.SOURCE, cal.REFERENCE), tuple(years))
+    months = {(y, mo) for y, mo, _ in gaps}
+    if incomplete is None:  # no coverage table: fall back to the one partial month known in advance
+        months |= {ym for ym in cal.PARTIAL_REFERENCE_MONTHS if ym[0] in years}
+    else:
+        gaps |= set(incomplete)
+        months |= {(y, mo) for y, mo, _ in incomplete}
+    return sorted(months), sorted(gaps), incomplete is not None
+
+
 def _records(con: duckdb.DuckDBPyConnection, sql: str) -> list[dict]:
     cur = con.execute(sql)
     names = [d[0] for d in cur.description]
@@ -149,13 +184,14 @@ def run(
     k: float | None = None,
     m: float | None = None,
     pool: str | None = None,
+    witness: bool | None = None,
     counts_location: str | None = None,
 ) -> dict:
     """Fit the factors and write them, the calibration report and the manifest."""
     years = tuple(sorted(set(years)))
-    overlap = sorted(set(years) & set(TEST_YEARS))
+    overlap = sorted(set(years) & set(HELD_OUT_YEARS))
     if overlap:
-        raise CalibrationError(f"{overlap} are test years, held out for validation; calibrate on other years")
+        raise CalibrationError(f"{overlap} are held out for validation; calibrate on other years")
 
     version = settings.dataset_version
     location = counts_location or storage.uri(settings, "processed", "cell_month_counts", version)
@@ -165,15 +201,16 @@ def run(
 
     rows_in = load_counts(con, location)
     manifest.inputs.append({"path": location, "sha256": None, "rows": rows_in})
-    gaps = find_gaps(con, "counts", years)
-    excluded = sorted(set(cal.PARTIAL_REFERENCE_MONTHS) | {(y, mo) for y, mo, _ in gaps})
-    excluded = [ym for ym in excluded if ym[0] in years]
+    excluded, gaps, coverage_checked = months_to_exclude(con, settings, years)
 
-    cal.build_panel(con, "counts", years, exclude_months=excluded)
-    choice = choose_model(con, "panel", k=k, m=m, pool=pool)
+    cal.build_panel(con, "counts", years, exclude_months=excluded,
+                    witness_gap_months=witness_gap_months(con, settings, years))
+    choice = choose_model(con, "panel", k=k, m=m, pool=pool, witness=witness)
     k, m, pool, scores, chosen_by = (choice[key] for key in ("k", "m", "pool", "scores", "chosen_by"))
-    version_name = model_version(pool)
-    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name)
+    witness, m_witness = choice["witness"], choice["m_witness"]
+    version_name = model_version(pool, witness)
+    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name,
+                    witness=witness, m_witness=m_witness)
 
     panel = _records(con, """
         SELECT count(*) AS rows, count(DISTINCT cell_l2) AS cells, sum(a) AS sum_aqua, sum(v) AS sum_viirs,
@@ -199,10 +236,15 @@ def run(
         "source_satellite": cal.SOURCE,
         "reference_satellite": cal.REFERENCE,
         "calibration_years": list(years),
-        "test_years_untouched": list(TEST_YEARS),
+        "held_out_years_untouched": list(HELD_OUT_YEARS),
         "excluded_months": [list(ym) for ym in excluded],
         "data_gaps": [{"year": y, "month": mo, "satellite": sat} for y, mo, sat in gaps],
+        "coverage_table_used": coverage_checked,
         "weights": {"k": k, "m": m, "pool": pool, "chosen_by": chosen_by,
+                    "background": "witness" if witness else "static", "m_witness": m_witness,
+                    "witness_satellite": cal.WITNESS if witness else None,
+                    "deviance_zero_static_same_months": choice.get("deviance_zero_static_same_months"),
+                    "deviance_zero_witness": choice.get("deviance_zero_witness"),
                     "candidates": list(cal.WEIGHT_GRID), "pool_candidates": list(cal.POOL_LEVELS)},
         "leave_one_year_out": scores,
         "panel": panel,
@@ -233,8 +275,9 @@ def run(
     manifest.checks = {
         "calibration_years": list(years),
         "excluded_months": [list(ym) for ym in excluded],
-        "data_gaps": len(gaps),
-        "k": k, "m": m, "pool": pool, "weights_chosen_by": chosen_by,
+        "data_gaps": len(gaps), "coverage_table_used": coverage_checked,
+        "k": k, "m": m, "pool": pool, "witness": witness, "m_witness": m_witness,
+        "weights_chosen_by": chosen_by,
         "model_version": version_name,
         "panel_rows": panel["rows"], "cells": panel["cells"],
         "overall_ratio": panel["overall_ratio"],

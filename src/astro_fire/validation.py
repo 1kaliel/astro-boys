@@ -9,23 +9,30 @@ test years from Aqua alone, and is scored against what S-NPP observed.
 | global_ratio         | Aqua × one ratio (ΣV / ΣA over everything)      | baseline  |
 | ols                  | a·Aqua + b, one line for everything             | baseline  |
 | month_period_ratio   | Aqua × ratio of that month and day/night        | baseline  |
-| f_pooled             | F(cell, month, period) × Aqua                   | candidate |
-| f_pooled_background  | F × Aqua, or background B where Aqua = 0        | candidate |
+| f_pooled             | F(cell, month, period) × Aqua                   | ablation  |
+| f_pooled_static_background | F × Aqua, or the static B where Aqua = 0  | ablation  |
+| f_pooled_background  | F × Aqua, or B where Aqua = 0 (final method)    | candidate |
+
+The final method uses the Terra-aware background when the factors carry one, otherwise the static one.
 """
 
 from __future__ import annotations
 
+import random
 from collections.abc import Sequence
 
 import duckdb
+
+from astro_fire import calibration as cal
 
 METHODS = (
     ("raw_aqua", "Raw Aqua counts (no harmonization)", "reference"),
     ("global_ratio", "One global ratio", "baseline"),
     ("ols", "OLS line V = a·A + b, global", "baseline"),
     ("month_period_ratio", "Ratio by month × day/night, no cell term", "baseline"),
-    ("f_pooled", "F with pooling", "candidate"),
-    ("f_pooled_background", "F with pooling + background B", "candidate"),
+    ("f_pooled", "F with pooling, no background", "ablation"),
+    ("f_pooled_static_background", "F + static background B", "ablation"),
+    ("f_pooled_background", "F + background B, Terra-aware where fitted", "candidate"),
 )
 FINAL = "f_pooled_background"
 BASELINES = tuple(key for key, _, role in METHODS if role == "baseline")
@@ -46,7 +53,10 @@ _METRICS = """
 def build_eval(
     con: duckdb.DuckDBPyConnection, test_panel: str, factors: str, *, name: str = "eval"
 ) -> str:
-    """Test rows to score: `cell_l2, year, month, period, a, v`.
+    """Test rows to score: `cell_l2, year, month, period, a, v, t`.
+
+    `t` is the witness count from the test panel (null where the witness is unknown, and for cells that
+    are only in the calibration universe, where the test panel has no row to say).
 
     `test_panel` comes from `calibration.build_panel` on the test years (cells active in those years).
     Cells of the calibration universe that were silent in the test years are added with zeros, so a
@@ -60,7 +70,7 @@ def build_eval(
         ),
         slots AS (SELECT DISTINCT year, month, period FROM {test_panel})
         SELECT c.cell_l2, s.year, s.month, s.period,
-               coalesce(t.a, 0)::BIGINT AS a, coalesce(t.v, 0)::BIGINT AS v
+               coalesce(t.a, 0)::BIGINT AS a, coalesce(t.v, 0)::BIGINT AS v, t.t
         FROM cells c CROSS JOIN slots s
         LEFT JOIN {test_panel} t USING (cell_l2, year, month, period)
         """
@@ -76,6 +86,7 @@ def predict(
     Baselines are fitted on `panel` (calibration years). A prediction is null when the method has no
     factor for that row; nulls are reported by `score`, never turned into zeros.
     """
+    background = cal.BACKGROUND_SQL.replace("s.t", "e.t")
     con.execute(
         f"""
         CREATE OR REPLACE TEMP TABLE {name} AS
@@ -98,7 +109,9 @@ def predict(
                CASE WHEN e.a = 0 THEN 0 ELSE e.a * coalesce(f.f, r.r_region) END AS f_pooled,
                -- a cell outside the calibration universe gets no background (see calibration.apply_factors)
                CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
-                    WHEN f.cell_l2 IS NULL THEN 0 ELSE f.b END AS f_pooled_background
+                    WHEN f.cell_l2 IS NULL THEN 0 ELSE f.b END AS f_pooled_static_background,
+               CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
+                    WHEN f.cell_l2 IS NULL THEN 0 ELSE {background} END AS f_pooled_background
         FROM {eval_rows} e
         CROSS JOIN g
         LEFT JOIN mp USING (month, period)
@@ -173,32 +186,82 @@ def _pick(scores: Sequence[dict], level: str, metric: str = "mae") -> dict[str, 
             if s["level"] == level and s["split"] == "all" and s[metric] is not None}
 
 
-def verdict(scores: Sequence[dict]) -> dict:
-    """Does the final method beat every baseline out of sample? If not, which baseline ships instead?
+def regional_difference(
+    con: duckdb.DuckDBPyConnection,
+    predictions: str,
+    baseline: str,
+    *,
+    resamples: int = 5000,
+    seed: int = 20261115,
+) -> dict:
+    """Paired comparison on regional monthly totals: |error of the final method| − |error of `baseline`|.
 
-    `F` without the background is an ablation, not a product candidate: it cannot ship, because it leaves
-    out every detection in months where Aqua saw nothing.
+    Returns the mean difference over the months and a 90% bootstrap interval (months resampled with
+    replacement). Negative means the final method is closer.
     """
-    cell, region = _pick(scores, "cell_month"), _pick(scores, "region_month")
-    beats_cell = all(cell[FINAL] < cell[b] for b in BASELINES)
-    beats_region = all(region[FINAL] < region[b] for b in BASELINES)
-    accepted = beats_cell and beats_region
-    best_cell = min(BASELINES, key=lambda b: cell[b])
-    best_region = min(BASELINES, key=lambda b: region[b])
-    if accepted:
-        ship = FINAL
-    else:  # the baseline that wins where the final method lost; the regional series is what the app shows
-        ship = best_region if not beats_region else best_cell
+    rows = con.execute(
+        f"""
+        SELECT abs(sum({FINAL}) - sum(v)) - abs(sum({baseline}) - sum(v)) AS d
+        FROM {predictions} GROUP BY year, month
+        HAVING count({FINAL}) = count(*) AND count({baseline}) = count(*)
+        ORDER BY year, month
+        """
+    ).fetchall()
+    diffs = [r[0] for r in rows]
+    if not diffs:
+        return {"baseline": baseline, "months": 0, "mean": None, "ci90_low": None, "ci90_high": None}
+    rng = random.Random(seed)
+    n = len(diffs)
+    means = sorted(sum(rng.choice(diffs) for _ in range(n)) / n for _ in range(resamples))
+    return {
+        "baseline": baseline,
+        "months": n,
+        "final_closer_in_months": sum(d < 0 for d in diffs),
+        "mean": sum(diffs) / n,
+        "ci90_low": means[int(0.05 * resamples)],
+        "ci90_high": means[int(0.95 * resamples) - 1],
+    }
+
+
+RULE = (
+    "Pass when (1) the final method has a lower MAE and a lower RMSE than every baseline at cell-month "
+    "level, and (2) on regional monthly totals it is not distinguishably worse than the best baseline: "
+    "the 90% paired bootstrap interval of the difference in absolute error is not entirely above zero. "
+    "If it fails, the best baseline ships and the result is stated. Scored on coverage-adequate months."
+)
+
+
+def best_regional_baseline(scores: Sequence[dict]) -> str:
+    region = _pick(scores, "region_month")
+    return min(BASELINES, key=lambda b: region[b])
+
+
+def verdict(scores: Sequence[dict], regional: dict) -> dict:
+    """Apply the rule written down before the final test was opened (`RULE`).
+
+    `regional` is `regional_difference` against the best regional baseline. `F` without the background is
+    an ablation, not a product option: it leaves out every month where Aqua saw nothing.
+    """
+    cell_mae, cell_rmse = _pick(scores, "cell_month"), _pick(scores, "cell_month", "rmse")
+    region = _pick(scores, "region_month")
+    beats_mae = all(cell_mae[FINAL] < cell_mae[b] for b in BASELINES)
+    beats_rmse = all(cell_rmse[FINAL] < cell_rmse[b] for b in BASELINES)
+    strictly_better = all(region[FINAL] < region[b] for b in BASELINES)
+    not_worse = regional["ci90_low"] is not None and regional["ci90_low"] <= 0
+    accepted = beats_mae and beats_rmse and not_worse
+    best_cell = min(BASELINES, key=lambda b: cell_mae[b])
     return {
         "final_method": FINAL,
-        "beats_baselines_cell_month_mae": beats_cell,
-        "beats_baselines_region_month_mae": beats_region,
+        "cell_month_lower_mae_than_every_baseline": beats_mae,
+        "cell_month_lower_rmse_than_every_baseline": beats_rmse,
+        "region_month_lower_mae_than_every_baseline": strictly_better,
+        "region_month_not_distinguishably_worse": not_worse,
+        "regional_difference": regional,
         "accepted": accepted,
         "best_baseline_cell_month_mae": best_cell,
-        "best_baseline_region_month_mae": best_region,
-        "ship": ship,
-        "rule": "accepted when the final method has a lower MAE than every baseline at both levels; "
-                "otherwise the baseline that beats it ships and the result is stated",
+        "best_baseline_region_month_mae": regional["baseline"],
+        "ship": FINAL if accepted else (regional["baseline"] if not not_worse else best_cell),
+        "rule": RULE,
     }
 
 

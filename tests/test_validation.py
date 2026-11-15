@@ -50,6 +50,8 @@ def test_eval_covers_universe_and_test_only_cells(con):
 def test_predictions_match_hand_calculation(con):
     ratio = 783 / 221  # all S-NPP over all Aqua in the calibration years
     assert september(con, "raw_aqua") == {"A": 55, "B": 6, "C": 0, "D": 0, "E": 0}
+    # No witness background was fitted in this example: the final method equals the static one.
+    assert september(con, "f_pooled_static_background") == september(con, "f_pooled_background")
     expected = {"A": 55 * ratio, "B": 6 * ratio, "C": 0, "D": 0, "E": 0}
     assert september(con, "global_ratio") == pytest.approx(expected)
     assert september(con, "month_period_ratio") == pytest.approx(september(con, "global_ratio"))
@@ -103,40 +105,93 @@ def test_missing_prediction_is_reported_not_zeroed(con):
     assert region["n_missing"] == 1  # the month with a missing cell has no regional total
 
 
-def _scores(maes_cell, maes_region):
+def _scores(cell, region):
     return [
-        {"method": k, "level": level, "split": "all", "value": "all", "mae": mae}
-        for level, maes in (("cell_month", maes_cell), ("region_month", maes_region))
+        {"method": k, "level": level, "split": "all", "value": "all", "mae": mae, "rmse": mae * 3}
+        for level, maes in (("cell_month", cell), ("region_month", region))
         for k, mae in maes.items()
     ]
 
 
-def test_verdict_accepts_only_when_every_baseline_is_beaten_at_both_levels():
+def _regional(low, high, baseline="ols"):
+    return {"baseline": baseline, "months": 24, "mean": (low + high) / 2, "ci90_low": low, "ci90_high": high}
+
+
+def test_verdict_follows_the_written_rule():
     base = {"raw_aqua": 9, "global_ratio": 3, "ols": 2.5, "month_period_ratio": 2.8, "f_pooled": 1.0}
-    good = val.verdict(_scores({**base, val.FINAL: 2.0}, {**base, val.FINAL: 2.0}))
-    assert good["accepted"] and good["ship"] == val.FINAL
-    # Loses on regional totals: the best regional baseline ships, never the F-only ablation.
-    bad = val.verdict(_scores({**base, val.FINAL: 2.0}, {**base, val.FINAL: 2.6}))
-    assert not bad["accepted"] and bad["beats_baselines_cell_month_mae"] and bad["ship"] == "ols"
-    region = {**base, "month_period_ratio": 2.1, val.FINAL: 2.0}
-    worse = val.verdict(_scores({**base, val.FINAL: 2.7}, region))
-    assert not worse["accepted"] and worse["beats_baselines_region_month_mae"] and worse["ship"] == "ols"
-    assert worse["best_baseline_region_month_mae"] == "month_period_ratio"
+    better = {**base, val.FINAL: 2.0}
+    # Better per cell, and regionally better or a tie: pass.
+    assert val.verdict(_scores(better, better), _regional(-5, -1))["accepted"]
+    tie = val.verdict(_scores(better, {**base, val.FINAL: 2.6}), _regional(-3, 4))
+    assert tie["accepted"] and tie["ship"] == val.FINAL
+    assert not tie["region_month_lower_mae_than_every_baseline"]  # the strict comparison is still reported
+    # Distinguishably worse on regional totals: the regional baseline ships, never the F-only ablation.
+    worse = val.verdict(_scores(better, {**base, val.FINAL: 2.6}), _regional(1, 4))
+    assert not worse["accepted"] and worse["ship"] == "ols"
+    # Not better per cell: fail, the best cell-level baseline ships.
+    cell_fail = val.verdict(_scores({**base, val.FINAL: 2.7}, better), _regional(-5, -1))
+    assert not cell_fail["accepted"] and cell_fail["ship"] == "ols"
+    assert "coverage-adequate" in cell_fail["rule"]
+
+
+def test_regional_difference_is_paired_by_month(con):
+    diff = val.regional_difference(con, "predictions", "global_ratio")
+    assert diff["months"] == 12 and diff["baseline"] == "global_ratio"
+    # Only September has detections: final misses the regional total by ~20.6, the global ratio by ~10.9.
+    final_err = abs(167.3 + 34.4 + 1.571 + 3.143 - 227)
+    ratio_err = abs(61 * 783 / 221 - 227)
+    assert diff["mean"] == pytest.approx((final_err - ratio_err) / 12, abs=0.01)
+    assert diff["ci90_low"] <= diff["mean"] <= diff["ci90_high"]
+    assert val.regional_difference(con, "predictions", "global_ratio") == diff  # seeded: reproducible
 
 
 def test_validate_command_end_to_end(tmp_path, capsys):
     write_counts(tmp_path)
     assert cli.main(["--data-root", str(tmp_path), "validate"]) == 0
     out = capsys.readouterr().out
-    assert "| F with pooling + background B | candidate |" in out
+    assert "| F + background B, Terra-aware where fitted | candidate |" in out
+    assert "| F + static background B | ablation |" in out and "development years 2020–2021" in out
     result = json.loads(out[out.index("\n{") :])
     report = json.loads(open(result["report"]).read())
+    assert report["stage"] == "development"
     assert report["calibration_years"] == list(range(2012, 2020)) and report["test_years"] == [2020, 2021]
-    assert report["eval"]["rows"] == 16 * 24 * 2
+    assert report["eval"]["rows"] == 16 * 24 * 2 and report["incomplete_months_left_out"] == []
     assert {s["method"] for s in report["scores"]} == {key for key, _, _ in val.METHODS}
-    assert report["verdict"]["ship"] in {key for key, _, _ in val.METHODS}
-    table = open(result["table"]).read()
-    assert "test years 2020–2021" in table and "NASA FIRMS" in table
+    assert report["verdict"]["rule"] == val.RULE and "late_years" not in report
+    assert "NASA FIRMS" in open(result["table"]).read()
+
+
+def test_final_test_years_are_locked_until_asked_for(tmp_path, capsys):
+    write_counts(tmp_path)
+    with pytest.raises(CalibrationError, match="final test"):
+        validate.run(settings_for(tmp_path), test_years=[2021, 2022])
+    with pytest.raises(CalibrationError, match="final test"):
+        validate.run(settings_for(tmp_path), test_years=[2024])
+    with pytest.raises(CalibrationError, match="do not pass test years"):
+        validate.run(settings_for(tmp_path), test_years=[2022], final=True)
+    assert cli.main(["--data-root", str(tmp_path), "validate", "--final"]) == 0
+    out = capsys.readouterr().out
+    assert "final test 2022–2023" in out and "late years (reported separately) 2024–2025" in out
+    report = json.loads(open(json.loads(out[out.index("\n{") :])["report"]).read())
+    assert report["stage"] == "final test" and report["test_years"] == [2022, 2023]
+    assert report["late_years"]["test_years"] == [2024, 2025]
+
+
+def test_incomplete_test_months_are_scored_separately(tmp_path):
+    write_counts(tmp_path)
+    out = tmp_path / "processed" / "coverage_monthly" / "v1"
+    out.mkdir(parents=True)
+    duckdb.connect().execute(
+        f"COPY (SELECT 'Aqua' AS satellite, 2020 AS year, 8 AS month, false AS is_complete) "
+        f"TO '{out}/part-0.parquet' (FORMAT parquet)"
+    )
+    result = validate.run(settings_for(tmp_path))
+    report = json.loads(open(result["report"]).read())
+    assert result["incomplete_months_left_out"] == [[2020, 8]] and report["coverage_table_used"]
+    n = {s["method"]: s["n"] for s in report["scores"] if s["level"] == "cell_month" and s["split"] == "all"}
+    n_all = {s["method"]: s["n"] for s in report["scores_all_months"]
+             if s["level"] == "cell_month" and s["split"] == "all"}
+    assert n[val.FINAL] == 16 * 23 * 2 and n_all[val.FINAL] == 16 * 24 * 2
 
 
 def test_calibration_and_test_years_must_not_overlap(tmp_path):

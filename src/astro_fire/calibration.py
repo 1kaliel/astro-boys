@@ -26,6 +26,9 @@ import duckdb
 
 SOURCE = "Aqua"
 REFERENCE = "SNPP"
+# Second MODIS satellite, about three hours earlier. Never added to Aqua: it only tells the background
+# whether there was fire activity in the cell that month that Aqua did not record.
+WITNESS = "Terra"
 PERIODS = ("D", "N")
 WEIGHT_GRID = (0, 2, 5, 10, 20, 50, 100, 200)
 # What a cell with little data leans on: the whole extent, or its 1° parent cell (itself pooled to the
@@ -70,12 +73,18 @@ def build_panel(
     source: str = SOURCE,
     reference: str = REFERENCE,
     exclude_months: Sequence[tuple[int, int]] = PARTIAL_REFERENCE_MONTHS,
+    witness: str = WITNESS,
+    witness_gap_months: Sequence[tuple[int, int]] = (),
 ) -> str:
     """Paired table: one row per universe cell × year × month × period with `a` (source) and `v` (reference).
 
     Only use years in which both satellites operated for the whole year, apart from `exclude_months`.
+    `t` is the witness satellite's count in the same cell, month and period: 0 when it recorded nothing,
+    null in `witness_gap_months` (months in which the witness was not fully observing). The witness never
+    decides which cells are in the panel.
     """
     excluded = ", ".join(f"({y}, {m})" for y, m in exclude_months) or "(NULL, NULL)"
+    witness_gaps = ", ".join(f"({y}, {m})" for y, m in witness_gap_months) or "(NULL, NULL)"
     con.execute(
         f"""
         CREATE OR REPLACE TEMP TABLE {name} AS
@@ -88,6 +97,13 @@ def build_panel(
               AND daynight IN ('D', 'N')
             GROUP BY ALL
         ),
+        w AS (
+            SELECT cell_l2, year::INT AS year, month::INT AS month, daynight AS period,
+                   sum(n_hotspots)::BIGINT AS t
+            FROM {counts}
+            WHERE year IN ({_in_list(years)}) AND satellite = $witness AND daynight IN ('D', 'N')
+            GROUP BY ALL
+        ),
         grid AS (
             SELECT cell_l2, y.year, m.month, p.period
             FROM (SELECT DISTINCT cell_l2 FROM c)
@@ -97,10 +113,14 @@ def build_panel(
             WHERE (y.year, m.month) NOT IN ({excluded})
         )
         SELECT g.cell_l2, g.year, g.month, g.period,
-               coalesce(c.a, 0)::BIGINT AS a, coalesce(c.v, 0)::BIGINT AS v
-        FROM grid g LEFT JOIN c USING (cell_l2, year, month, period)
+               coalesce(c.a, 0)::BIGINT AS a, coalesce(c.v, 0)::BIGINT AS v,
+               CASE WHEN (g.year, g.month) IN ({witness_gaps}) THEN NULL
+                    ELSE coalesce(w.t, 0) END::BIGINT AS t
+        FROM grid g
+        LEFT JOIN c USING (cell_l2, year, month, period)
+        LEFT JOIN w USING (cell_l2, year, month, period)
         """,
-        {"source": source, "reference": reference},
+        {"source": source, "reference": reference, "witness": witness},
     )
     return name
 
@@ -119,8 +139,14 @@ def fit_factors(
     pool: str = "region",
     name: str = "factors",
     model_version: str = "dev",
+    witness: bool = False,
+    m_witness: float | None = None,
 ) -> str:
     """Factors per `cell_l2 × month × period`, with the columns of `processed/factors/v1`.
+
+    With `witness`, the background is also fitted separately for months in which the witness satellite
+    recorded something in the cell (`b_witness1`) and months in which it did not (`b_witness0`), with
+    pooling weight `m_witness` (default `m`). `b` stays the background for when the witness is unknown.
 
     `pool = "region"`: a cell leans on the ratio of the whole panel for the same month and period.
     `pool = "l1"`: it leans on its 1° parent cell, whose own ratio leans on the whole panel with the same
@@ -174,6 +200,82 @@ def fit_factors(
         """,
         {"k": float(k), "m": float(m), "model_version": model_version, "pool": pool},
     )
+    _add_witness_background(con, panel, name, pool, m if m_witness is None else m_witness, witness)
+    return name
+
+
+WITNESS_COLUMNS = (
+    "b_witness0", "b_witness1", "n_zero_witness0", "n_zero_witness1",
+    "sum_viirs_zero_witness0", "sum_viirs_zero_witness1", "b_parent_witness0", "b_parent_witness1",
+    "m_witness", "witness_satellite",
+)
+
+
+def _add_witness_background(con, panel: str, factors: str, pool: str, m: float, enabled: bool) -> None:
+    """Add the witness columns to `factors` (all null when the witness is not used)."""
+    if not enabled:
+        nulls = ", ".join(f"NULL::{'VARCHAR' if c == 'witness_satellite' else 'DOUBLE'} AS {c}"
+                          for c in WITNESS_COLUMNS)
+        con.execute(f"CREATE OR REPLACE TEMP TABLE {factors} AS SELECT *, {nulls} FROM {factors}")
+        return
+    if m < 0:
+        raise ValueError("m_witness must be >= 0")
+    b_parent = _b_sql("coalesce(p.n, 0)", "coalesce(p.sv, 0)", "r.sv / nullif(r.n, 0)", "$m")
+    if pool != "l1":
+        b_parent = "r.sv / nullif(r.n, 0)"
+    con.execute(
+        f"""
+        CREATE OR REPLACE TEMP TABLE {factors} AS
+        WITH z AS (  -- zero-Aqua months with a known witness
+            SELECT cell_l2, {PARENT} AS cell_l1, month, period, t > 0 AS w, v
+            FROM {panel} WHERE a = 0 AND t IS NOT NULL
+        ),
+        cell AS (SELECT cell_l2, cell_l1, month, period, w, count(*) AS n, sum(v) AS sv FROM z GROUP BY ALL),
+        par AS (SELECT cell_l1, month, period, w, sum(n) AS n, sum(sv) AS sv FROM cell GROUP BY ALL),
+        reg AS (SELECT month, period, w, sum(n) AS n, sum(sv) AS sv FROM cell GROUP BY ALL),
+        keys AS (
+            SELECT f.cell_l2, {PARENT} AS cell_l1, f.month, f.period, s.w
+            FROM {factors} f CROSS JOIN (VALUES (false), (true)) s(w)
+        ),
+        fitted AS (
+            SELECT k.cell_l2, k.month, k.period, k.w,
+                   coalesce(c.n, 0) AS n_zero, coalesce(c.sv, 0) AS v_zero, {b_parent} AS b_parent
+            FROM keys k
+            LEFT JOIN (SELECT cell_l2, month, period, w, n, sv FROM cell) c USING (cell_l2, month, period, w)
+            LEFT JOIN par p USING (cell_l1, month, period, w)
+            LEFT JOIN reg r USING (month, period, w)
+        ),
+        wide AS (
+            SELECT cell_l2, month, period,
+                   max({_b_sql("n_zero", "v_zero", "b_parent", "$m")}) FILTER (WHERE NOT w) AS b_witness0,
+                   max({_b_sql("n_zero", "v_zero", "b_parent", "$m")}) FILTER (WHERE w)     AS b_witness1,
+                   max(n_zero) FILTER (WHERE NOT w) AS n_zero_witness0,
+                   max(n_zero) FILTER (WHERE w)     AS n_zero_witness1,
+                   max(v_zero) FILTER (WHERE NOT w) AS sum_viirs_zero_witness0,
+                   max(v_zero) FILTER (WHERE w)     AS sum_viirs_zero_witness1,
+                   max(b_parent) FILTER (WHERE NOT w) AS b_parent_witness0,
+                   max(b_parent) FILTER (WHERE w)     AS b_parent_witness1
+            FROM fitted GROUP BY ALL
+        )
+        SELECT f.*, x.* EXCLUDE (cell_l2, month, period), $m::DOUBLE AS m_witness, $sat AS witness_satellite
+        FROM {factors} f JOIN wide x USING (cell_l2, month, period)
+        """,
+        {"m": float(m), "sat": WITNESS},
+    )
+
+
+def witness_panel(con: duckdb.DuckDBPyConnection, panel: str, name: str = "panel_witness") -> str:
+    """The panel with the witness state folded into `period` ('D|0', 'D|1', ...), witness-known rows only.
+
+    `leave_one_year_out` on this table scores the witness background: read its `*_zero` columns.
+    """
+    con.execute(
+        f"""
+        CREATE OR REPLACE TEMP TABLE {name} AS
+        SELECT cell_l2, year, month, period || CASE WHEN t > 0 THEN '|1' ELSE '|0' END AS period, a, v, t
+        FROM {panel} WHERE t IS NOT NULL
+        """
+    )
     return name
 
 
@@ -185,13 +287,17 @@ def build_source(
     *,
     name: str = "source",
     source: str = SOURCE,
+    witness: str = WITNESS,
+    witness_gap_months: Sequence[tuple[int, int]] = (),
 ) -> str:
-    """Source-satellite counts to convert: `cell_l2, year, month, period, a`.
+    """Source-satellite counts to convert: `cell_l2, year, month, period, a, t`.
 
     `months` lists the (year, month) pairs in which the source satellite was operating. Cells of the
     calibration universe get a = 0 where the satellite reported nothing; other cells appear only where
-    they have detections.
+    they have detections. `t` is the witness count: 0 when it recorded nothing, null in
+    `witness_gap_months` (pass every month in which the witness was not fully observing or did not exist).
     """
+    witness_gaps = ", ".join(f"({y}, {mo})" for y, mo in witness_gap_months) or "(NULL, NULL)"
     pairs = sorted({(int(y), int(mo)) for y, mo in months})
     if not pairs:
         raise ValueError("at least one (year, month) is required")
@@ -210,13 +316,40 @@ def build_source(
         grid AS (
             SELECT f.cell_l2, mo.year, f.month, f.period
             FROM {factors} f JOIN months mo USING (month)
+        ),
+        w AS (
+            SELECT cell_l2, year::INT AS year, month::INT AS month, daynight AS period,
+                   sum(n_hotspots)::BIGINT AS t
+            FROM {counts} JOIN months USING (year, month)
+            WHERE satellite = $witness AND daynight IN ('D', 'N')
+            GROUP BY ALL
+        ),
+        rows AS (
+            SELECT cell_l2, year, month, period, coalesce(o.a, 0)::BIGINT AS a
+            FROM grid g FULL JOIN obs o USING (cell_l2, year, month, period)
         )
-        SELECT cell_l2, year, month, period, coalesce(o.a, 0)::BIGINT AS a
-        FROM grid g FULL JOIN obs o USING (cell_l2, year, month, period)
+        SELECT r.*, CASE WHEN (r.year, r.month) IN ({witness_gaps}) THEN NULL
+                         ELSE coalesce(w.t, 0) END::BIGINT AS t
+        FROM rows r LEFT JOIN w USING (cell_l2, year, month, period)
         """,
-        {"source": source},
+        {"source": source, "witness": witness},
     )
     return name
+
+
+# Background for a zero-Aqua month, given the witness count `s.t` (null = unknown).
+BACKGROUND_SQL = (
+    "CASE WHEN s.t IS NULL THEN f.b WHEN s.t > 0 THEN coalesce(f.b_witness1, f.b) "
+    "ELSE coalesce(f.b_witness0, f.b) END"
+)
+BACKGROUND_RULE_SQL = (
+    "CASE WHEN s.t IS NULL OR f.b_witness0 IS NULL THEN 'background' "
+    "WHEN s.t > 0 THEN 'background_witness_active' ELSE 'background_witness_quiet' END"
+)
+
+
+def _has_column(con: duckdb.DuckDBPyConnection, table: str, column: str) -> bool:
+    return any(r[0] == column for r in con.execute(f"DESCRIBE {table}").fetchall())
 
 
 def apply_factors(
@@ -227,13 +360,17 @@ def apply_factors(
     name: str = "estimates",
     use_background: bool = True,
 ) -> str:
-    """VIIRS-equivalent estimate for every row of `source` (`cell_l2, year, month, period, a`).
+    """VIIRS-equivalent estimate for every row of `source` (`cell_l2, year, month, period, a`, optional `t`).
 
     - Aqua > 0: `F × Aqua`; a cell without its own factor uses the regional ratio.
-    - Aqua = 0: `B` for cells of the calibration universe; rows of other cells are dropped.
+    - Aqua = 0: the background for cells of the calibration universe; rows of other cells are dropped.
+      With a witness count `t` and fitted witness backgrounds, `b_witness1` when t > 0 and `b_witness0`
+      when t = 0; plain `b` when the witness is unknown.
     - The estimate is null (missing, never zero) when no factor exists for that month and period.
     """
-    background = "f.b" if use_background else "0"
+    with_witness = use_background and _has_column(con, source, "t")
+    background = BACKGROUND_SQL if with_witness else ("f.b" if use_background else "0")
+    rule = BACKGROUND_RULE_SQL if with_witness else "'background'"
     con.execute(
         f"""
         CREATE OR REPLACE TEMP TABLE {name} AS
@@ -242,7 +379,7 @@ def apply_factors(
         )
         SELECT s.cell_l2, s.year, s.month, s.period, s.a AS raw_aqua,
                CASE WHEN s.a > 0 THEN s.a * coalesce(f.f, r.r_region) ELSE {background} END AS estimate,
-               CASE WHEN s.a = 0 THEN 'background'
+               CASE WHEN s.a = 0 THEN {rule}
                     WHEN f.f IS NOT NULL THEN 'cell_factor'
                     ELSE 'regional_factor' END AS estimate_rule
         FROM {source} s
@@ -371,23 +508,47 @@ def choose_pooling(
     panel: str,
     grid: Sequence[float] = WEIGHT_GRID,
     pools: Sequence[str] = POOL_LEVELS,
+    witness: bool | None = None,
 ) -> dict:
-    """Pooling level and weights with the lowest total out-of-year Poisson deviance.
+    """Pooling level, weights and background type with the lowest out-of-year Poisson deviance.
 
-    Uses the calibration years only.
-
-    Returns `{"pool", "k", "m", "deviance", "scores"}`; `scores` holds every pool level and weight tried.
+    Uses the calibration years only. `witness`: True or False fixes whether the background uses the
+    witness satellite; None compares both on the months where the witness is known and keeps the better.
+    Returns `{"pool", "k", "m", "witness", "m_witness", "deviance", "scores"}`; `scores` holds every
+    combination tried (`background`: static or witness).
     """
+    has_witness = _has_column(con, panel, "t") and con.execute(
+        f"SELECT count(*) FROM {panel} WHERE t IS NOT NULL").fetchone()[0] > 0
+    if witness and not has_witness:
+        raise ValueError("the panel has no witness counts")
+    compare_witness = has_witness and witness is not False
+    if compare_witness:
+        witness_panel(con, panel, "_panel_witness")
+        con.execute(f"CREATE OR REPLACE TEMP TABLE _panel_known AS SELECT * FROM {panel} WHERE t IS NOT NULL")
     scores: list[dict] = []
     best: dict | None = None
     for pool in pools:
         rows = leave_one_year_out(con, panel, grid, pool=pool)
-        scores += rows
+        scores += [{**r, "background": "static"} for r in rows]
         k, m = choose_weights(rows)
         by_weight = {r["weight"]: r for r in rows}
-        n = by_weight[k]["n_pos"] + by_weight[m]["n_zero"]
-        total = (by_weight[k]["deviance_pos"] * by_weight[k]["n_pos"]
-                 + by_weight[m]["deviance_zero"] * by_weight[m]["n_zero"]) / n
-        if best is None or total < best["deviance"] - 1e-12:
-            best = {"pool": pool, "k": k, "m": m, "deviance": total}
+        pos, zero = by_weight[k], by_weight[m]
+        candidate = {"pool": pool, "k": k, "m": m, "witness": False, "m_witness": None}
+        zero_deviance = zero["deviance_zero"]
+        if compare_witness:
+            known = leave_one_year_out(con, "_panel_known", grid, pool=pool)
+            with_witness = leave_one_year_out(con, "_panel_witness", grid, pool=pool)
+            scores += [{**r, "background": "witness"} for r in with_witness]
+            static_known = min(r["deviance_zero"] for r in known if r["deviance_zero"] is not None)
+            _, m_w = choose_weights(with_witness)
+            witness_deviance = {r["weight"]: r for r in with_witness}[m_w]["deviance_zero"]
+            candidate |= {"deviance_zero_static_same_months": static_known,
+                          "deviance_zero_witness": witness_deviance}
+            if witness or witness_deviance < static_known:
+                candidate |= {"witness": True, "m_witness": m_w}
+                zero_deviance = witness_deviance
+        n = pos["n_pos"] + zero["n_zero"]
+        candidate["deviance"] = (pos["deviance_pos"] * pos["n_pos"] + zero_deviance * zero["n_zero"]) / n
+        if best is None or candidate["deviance"] < best["deviance"] - 1e-12:
+            best = candidate
     return {**best, "scores": scores}

@@ -107,7 +107,29 @@ Lets anyone recompute an estimate by hand: `f = (sum_viirs_pos + k·r_parent) / 
 toward (`pool_level`: `l1` = its 1° parent cell, `region` = the whole extent). To convert: `f × Aqua` when
 Aqua > 0, otherwise `b`; a cell with no row uses `r_region × Aqua` and gets no background.
 
-## 5. Sample for app development
+Terra-aware background: `b_witness1` (Terra recorded something in that cell, month and period) and
+`b_witness0` (it did not), with `n_zero_witness*`, `sum_viirs_zero_witness*`, `b_parent_witness*`, `m_witness`
+and `witness_satellite` for the same hand calculation. When Aqua = 0: use `b_witness1` if Terra > 0,
+`b_witness0` if Terra = 0, and `b` if Terra is unknown that month (see `coverage_monthly`) or the witness
+columns are null. **Do not reimplement this: call `astro_fire.calibration.build_source` and `apply_factors`.**
+
+## 5. `processed/coverage_daily/v1/` and `processed/coverage_monthly/v1/`
+
+Which days and months each satellite was observing, from `uv run astro-fire coverage`
+([rule](methodology.md#observation-gaps)).
+
+| Table | Field | Type | Meaning |
+|-------|-------|------|---------|
+| daily | `satellite`, `date_local` | string, date | One row per satellite and local day of the whole period |
+| daily | `n_all` | int | Detections in the whole extent that day, all confidence classes and types |
+| daily | `expected` | double | Detections implied by the other satellites that day; null when none was operating |
+| daily | `status` | string | `ok`, `missing` (outage) or `not_operating` (before its first or after its last record) |
+| monthly | `satellite`, `year`, `month` | string, int, int | |
+| monthly | `days_in_month`, `days_missing`, `days_not_operating`, `days_observed` | int | `days_observed` feeds `calendar.days_observed` |
+| monthly | `coverage_fraction` | double | `days_observed / days_in_month` |
+| monthly | `is_complete` | bool | At least 90% of the days observed. Incomplete months must not be read as low activity |
+
+## 6. Sample for app development
 
 `uv run astro-fire export --sample` writes a small `calendar` extract with this schema (one L1 cell, all years),
 committed under `app/` by the Dashboard team if they want fixtures (max 100 KB) or read from the bucket.
