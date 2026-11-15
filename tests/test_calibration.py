@@ -333,3 +333,47 @@ def test_choose_pooling_picks_the_witness_when_it_lowers_the_deviance(witness_co
     assert choice["deviance_zero_witness"] < choice["deviance_zero_static_same_months"]
     assert cal.choose_pooling(witness_con, "panel", witness=False)["witness"] is False
     assert {s["background"] for s in choice["scores"]} == {"static", "witness"}
+
+
+def test_reconciliation_moves_the_regional_total_toward_the_ratio(con):
+    """Worked example, 2008: 51 Aqua detections in the region, unreconciled estimates sum to 176.0."""
+    r_total = 783 / 221  # all S-NPP over all Aqua in September by day
+    for lam, expected_total in ((0, 176.0), (1, 51 * r_total), (0.5, (176.0 + 51 * r_total) / 2)):
+        cal.fit_factors(con, "panel", k=20, m=2, reconcile_lambda=lam)
+        cal.build_source(con, "counts", "factors", [(2008, 9)])
+        cal.apply_factors(con, "source", "factors")
+        total, raw = con.execute(
+            "SELECT sum(estimate), sum(estimate_unreconciled) FROM estimates WHERE period = 'D'"
+        ).fetchone()
+        assert raw == pytest.approx(176.0, abs=0.05)
+        assert total == pytest.approx(expected_total, abs=0.05)
+    # The cells keep their proportions: every cell is scaled by the same number.
+    ratios = con.execute("SELECT DISTINCT round(estimate / estimate_unreconciled, 9) FROM estimates "
+                         "WHERE period = 'D' AND month = 9").fetchall()
+    assert len(ratios) == 1
+    cal.apply_factors(con, "source", "factors", reconcile=False)
+    total = con.execute("SELECT sum(estimate) FROM estimates WHERE period = 'D'").fetchone()[0]
+    assert total == pytest.approx(176.0, abs=0.05)
+
+
+def test_no_reconciliation_when_the_region_has_too_few_aqua_detections(con):
+    con.execute("UPDATE counts SET n_hotspots = 20 WHERE year = 2008 AND cell_l2 = 'A'")  # region: 26 < 30
+    cal.fit_factors(con, "panel", k=20, m=2, reconcile_lambda=1)
+    cal.build_source(con, "counts", "factors", [(2008, 9)])
+    cal.apply_factors(con, "source", "factors")
+    changed = "SELECT count(*) FROM estimates WHERE estimate <> estimate_unreconciled"
+    assert con.execute(changed).fetchone() == (0,)
+
+
+def test_reconcile_scores_and_choice(witness_con):
+    scores = cal.reconcile_scores(witness_con, "panel", k=5, m=2, pool="l1", witness=True, m_witness=2)
+    assert [s["lambda"] for s in scores] == list(cal.RECONCILE_GRID)
+    assert all(s["mae"] is not None and s["region_month_mae"] is not None for s in scores)
+    made_up = [
+        {"lambda": 0.0, "deviance": 10.0}, {"lambda": 0.5, "deviance": 9.99}, {"lambda": 1.0, "deviance": 9.0}
+    ]
+    assert cal.choose_lambda(made_up) == 1.0
+    assert cal.choose_lambda(made_up[:2]) == 0.0                 # 0.1% better: not enough to add the step
+    assert cal.choose_lambda([{"lambda": 0.0, "deviance": None}]) == 0.0
+    with pytest.raises(ValueError):
+        cal.fit_factors(witness_con, "panel", k=5, m=2, reconcile_lambda=1.5)

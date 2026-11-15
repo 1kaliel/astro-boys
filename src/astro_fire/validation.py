@@ -11,9 +11,11 @@ test years from Aqua alone, and is scored against what S-NPP observed.
 | month_period_ratio   | Aqua × ratio of that month and day/night        | baseline  |
 | f_pooled             | F(cell, month, period) × Aqua                   | ablation  |
 | f_pooled_static_background | F × Aqua, or the static B where Aqua = 0  | ablation  |
-| f_pooled_background  | F × Aqua, or B where Aqua = 0 (final method)    | candidate |
+| f_pooled_witness_background | the same with the Terra-aware B         | ablation  |
+| f_pooled_background  | the final method, exactly as `apply_factors`    | candidate |
 
-The final method uses the Terra-aware background when the factors carry one, otherwise the static one.
+The final method uses whatever the factors carry: the Terra-aware background when fitted, and the
+reconciliation with the regional ratio when its strength is above zero.
 """
 
 from __future__ import annotations
@@ -32,7 +34,8 @@ METHODS = (
     ("month_period_ratio", "Ratio by month × day/night, no cell term", "baseline"),
     ("f_pooled", "F with pooling, no background", "ablation"),
     ("f_pooled_static_background", "F + static background B", "ablation"),
-    ("f_pooled_background", "F + background B, Terra-aware where fitted", "candidate"),
+    ("f_pooled_witness_background", "F + Terra-aware background B, not reconciled", "ablation"),
+    ("f_pooled_background", "Final: F + background B, as fitted (Terra-aware, reconciled)", "candidate"),
 )
 FINAL = "f_pooled_background"
 BASELINES = tuple(key for key, _, role in METHODS if role == "baseline")
@@ -87,10 +90,15 @@ def predict(
     factor for that row; nulls are reported by `score`, never turned into zeros.
     """
     background = cal.BACKGROUND_SQL.replace("s.t", "e.t")
+    has_reconcile = cal._has_column(con, factors, "reconcile_lambda")
+    lam = f"(SELECT coalesce(max(reconcile_lambda), 0) FROM {factors})" if has_reconcile else "0"
+    r_total = "any_value(r_total)" if has_reconcile else "NULL::DOUBLE"
+    final = cal.reconcile_sql("p.f_pooled_witness_background", "g.ra", "g.smu", "g.r_total", lam,
+                              str(cal.RECONCILE_MIN_REGIONAL_AQUA))
     con.execute(
         f"""
         CREATE OR REPLACE TEMP TABLE {name} AS
-        WITH g AS (
+        WITH g0 AS (
             SELECT sum(v) / nullif(sum(a), 0) AS ratio,
                    regr_slope(v, a) AS slope, regr_intercept(v, a) AS intercept
             FROM {panel}
@@ -99,24 +107,35 @@ def predict(
             SELECT month, period, sum(v) / nullif(sum(a), 0) AS ratio FROM {panel} GROUP BY ALL
         ),
         region AS (
-            SELECT month, period, any_value(r_region) AS r_region FROM {factors} GROUP BY ALL
+            SELECT month, period, any_value(r_region) AS r_region, {r_total} AS r_total
+            FROM {factors} GROUP BY ALL
+        ),
+        p AS (
+            SELECT e.cell_l2, e.year, e.month, e.period, e.a, e.v,
+                   e.a::DOUBLE                                 AS raw_aqua,
+                   e.a * g0.ratio                              AS global_ratio,
+                   greatest(0, g0.slope * e.a + g0.intercept)  AS ols,
+                   CASE WHEN e.a = 0 THEN 0 ELSE e.a * mp.ratio END AS month_period_ratio,
+                   CASE WHEN e.a = 0 THEN 0 ELSE e.a * coalesce(f.f, r.r_region) END AS f_pooled,
+                   -- a cell outside the calibration universe gets no background (see apply_factors)
+                   CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
+                        WHEN f.cell_l2 IS NULL THEN 0 ELSE f.b END AS f_pooled_static_background,
+                   CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
+                        WHEN f.cell_l2 IS NULL THEN 0 ELSE {background} END AS f_pooled_witness_background,
+                   r.r_total
+            FROM {eval_rows} e
+            CROSS JOIN g0
+            LEFT JOIN mp USING (month, period)
+            LEFT JOIN region r USING (month, period)
+            LEFT JOIN {factors} f USING (cell_l2, month, period)
+        ),
+        g AS (
+            SELECT year, month, period, sum(a) AS ra, sum(f_pooled_witness_background) AS smu,
+                   any_value(r_total) AS r_total
+            FROM p GROUP BY ALL
         )
-        SELECT e.cell_l2, e.year, e.month, e.period, e.a, e.v,
-               e.a::DOUBLE                                 AS raw_aqua,
-               e.a * g.ratio                               AS global_ratio,
-               greatest(0, g.slope * e.a + g.intercept)    AS ols,
-               CASE WHEN e.a = 0 THEN 0 ELSE e.a * mp.ratio END AS month_period_ratio,
-               CASE WHEN e.a = 0 THEN 0 ELSE e.a * coalesce(f.f, r.r_region) END AS f_pooled,
-               -- a cell outside the calibration universe gets no background (see calibration.apply_factors)
-               CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
-                    WHEN f.cell_l2 IS NULL THEN 0 ELSE f.b END AS f_pooled_static_background,
-               CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
-                    WHEN f.cell_l2 IS NULL THEN 0 ELSE {background} END AS f_pooled_background
-        FROM {eval_rows} e
-        CROSS JOIN g
-        LEFT JOIN mp USING (month, period)
-        LEFT JOIN region r USING (month, period)
-        LEFT JOIN {factors} f USING (cell_l2, month, period)
+        SELECT p.* EXCLUDE (r_total), {final} AS f_pooled_background
+        FROM p JOIN g USING (year, month, period)
         """
     )
     return name
