@@ -7,7 +7,7 @@ Before submitting, check each product's documentation for its required citation 
 
 | Source | What we used | URL | License / citation | Added by |
 |--------|--------------|-----|--------------------|----------|
-| NASA FIRMS, MODIS Collection 6 / 6.1 active fire / hotspot detections (MCD14ML, standard processing), Terra and Aqua | Yearly country files 2000–2025 (`modis_{YYYY}_all_countries.zip`), Brazil, clipped to the Northeast | https://firms.modaps.eosdis.nasa.gov/country/ | MODIS Collection 6 / 6.1 Hotspot / Active Fire Detections MCD14ML distributed from NASA FIRMS. https://doi.org/10.5067/FIRMS/MODIS/MCD14ML. The `version` column in the Brazil files reads `6.2` (2003–2017), `6.03` (2018–2022) and `61.03` (2023–2025): Collection 6 until 2022, Collection 6.1 from 2023 (first and last rows of each file checked) | Justino |
+| NASA FIRMS, MODIS Collection 6 / 6.1 active fire / hotspot detections (MCD14ML, standard processing), Terra and Aqua | Yearly country files 2000–2025 (`modis_{YYYY}_all_countries.zip`), Brazil, clipped to the Northeast | https://firms.modaps.eosdis.nasa.gov/country/ | MODIS Collection 6 / 6.1 Hotspot / Active Fire Detections MCD14ML distributed from NASA FIRMS. https://doi.org/10.5067/FIRMS/MODIS/MCD14ML (the DOI is registered; its NASA landing page returned 404 on Nov 15, 2026). Product guide: Giglio, L., Schroeder, W., Hall, J. V. MODIS Collection 6 and Collection 6.1 Active Fire Product User's Guide, v1.0, https://earthdata.nasa.gov/s3fs-public/2023-09/MODIS_C6_C6.1_Fire_User_Guide_1.0.pdf. The `version` column in the Brazil files reads `6.2` (2003–2017), `6.03` (2018–2022) and `61.03` (2023–2025): Collection 6 until 2022, Collection 6.1 from 2023 (first and last rows of each file checked) | Justino |
 | NASA FIRMS, VIIRS 375 m active fire product, Suomi NPP (VNP14IMG, standard processing; VNP14IMGTDL_NRT, near real time) | Yearly country files 2012–2025; area API 2026 (`VIIRS_SNPP_SP` to 2026-07-31, `VIIRS_SNPP_NRT` to 2026-11-02) | https://firms.modaps.eosdis.nasa.gov/ | NASA VIIRS Land Science Team (2020). VIIRS (S-NPP) I Band 375 m Active Fire Product NRT (Vector data). NASA LANCE MODIS at the MODAPS. https://doi.org/10.5067/FIRMS/VIIRS/VNP14IMGT_NRT.002. Standard product: VNP14IMG V002, https://doi.org/10.5067/VIIRS/VNP14IMG.002 | Justino |
 | NASA FIRMS, VIIRS 375 m active fire product, NOAA-20 / JPSS-1 (VJ114IMG, standard; VJ114IMGTDL_NRT, near real time) | Yearly country files 2018–2025; area API 2026 (`VIIRS_NOAA20_SP` to 2026-07-31, `VIIRS_NOAA20_NRT` to 2026-11-14) | https://firms.modaps.eosdis.nasa.gov/ | NASA VIIRS Land Science Team (2020). VIIRS NOAA-20 (JPSS-1) 375 m I-Band Active Fire Product NRT (Vector Data). NASA LANCE MODIS at the MODAPS. https://doi.org/10.5067/FIRMS/VIIRS/VJ114IMGT_NRT.002. Standard product: Giglio, L. (2024). VIIRS/JPSS1 Active Fires 6-Min L2 Swath 375m V002. NASA LP DAAC. https://doi.org/10.5067/VIIRS/VJ114IMG.002 | Justino |
 
@@ -50,13 +50,16 @@ Sources for this guidance: [FIRMS FAQ](https://www.earthdata.nasa.gov/data/tools
 | [Matplotlib](https://matplotlib.org/) | Static figures for the write-up and the demo (`uv sync --extra figures`) | Matplotlib license (BSD-style) |
 | [magma colormap](https://bids.github.io/colormap/) (van der Walt and Smith, in Matplotlib) | Seven colors sampled for the heatmap and map sequential ramp (`--magma-*`) | CC0 |
 | [uv](https://docs.astral.sh/uv/) | Python env and locked dependencies | Apache-2.0 / MIT |
+| [Docker](https://www.docker.com/), [Node.js](https://nodejs.org/) 24 | Dashboard container (`app/Dockerfile`: images `node:24-slim` for the frontend build, `python:3.12-slim` for the runtime) | Apache-2.0; MIT |
 | [Python](https://www.python.org/) 3.12 | Pipeline language | PSF |
 | [gcsfs](https://github.com/fsspec/gcsfs) | Optional `gs://` access in the pipeline; the dashboard reads `hotspots/v1` from the bucket with it for the CSV download (D6) | BSD-3-Clause |
 | [pytest](https://pytest.org/), [Ruff](https://docs.astral.sh/ruff/) | Tests, lint | MIT |
+| [HTTPX](https://www.python-httpx.org/) | Dashboard backend tests (FastAPI test client) | BSD-3-Clause |
+| [Hatchling](https://hatch.pypa.io/) | Build backend of the pipeline package | MIT |
 | [gitleaks](https://github.com/gitleaks/gitleaks) | CI secret scan | MIT |
-| Google Cloud (Cloud Storage, Compute Engine, Cloud Run, Artifact Registry) | Shared data, pipeline VM, dashboard hosting | Commercial service |
+| Google Cloud (Cloud Storage, Compute Engine, Cloud Run, Artifact Registry, Cloud Build, Identity-Aware Proxy) | Shared data, pipeline VM and SSH to it, dashboard image build and hosting | Commercial service |
 | GitHub, GitHub Actions | Code hosting, CI | Commercial service |
-| [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/) | Dashboard backend and server | MIT; BSD-3-Clause |
+| [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://uvicorn.dev/) | Dashboard backend and server | MIT; BSD-3-Clause |
 | [React](https://react.dev/), [Vite](https://vite.dev/), [TypeScript](https://www.typescriptlang.org/) | Dashboard frontend, build, types | MIT; MIT; Apache-2.0 |
 | [Base UI](https://base-ui.com/) (`@base-ui/react`) | Unstyled accessible UI primitives (tooltip, select, tabs, dialog, number field), styled with our tokens | MIT |
 | [nivo](https://nivo.rocks/) (`@nivo/heatmap` 0.99.0) | Year x month grid of the burning calendar; cells are drawn by our own component | MIT |
@@ -72,7 +75,6 @@ Sources for this guidance: [FIRMS FAQ](https://www.earthdata.nasa.gov/data/tools
 | NASA FIRMS, active fire data attributes (MODIS and VIIRS): https://www.earthdata.nasa.gov/data/tools/firms/active-fire-data-attributes-modis-viirs | Field meanings |
 | NASA FIRMS FAQ: https://www.earthdata.nasa.gov/data/tools/firms/faq | NRT vs standard processing; confidence classes |
 | FIRMS `AttributesReadme.txt` (inside every yearly zip) | Projection, citation and disclaimer guidance |
-| Li, F., et al. (2018). Comparison of Fire Radiative Power Estimates From VIIRS and MODIS Observations. *JGR Atmospheres*. https://doi.org/10.1029/2017JD027823 | Near-simultaneous MODIS–VIIRS comparison (to read and confirm before citing in the submission) |
 | NASA Earthdata notices on the MODIS → VIIRS transition and the end of S-NPP observations (links in [data-access.md](data-access.md#sensor-timeline)) | Sensor timeline |
 
 Base UI Dialog custom focus management: https://base-ui.com/react/components/dialog#custom-focus-management — existing-library API used for the D10 initial title focus correction.
@@ -125,6 +127,7 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 
 | What | Tool | Notes |
 |------|------|-------|
+| Final review of the references list (task S3): completeness against the code and a check of every link and DOI | Claude (Anthropic) | For Justino; the additions are listed in the diary entry of the review |
 | D12 offline fallback test (`deploy/local/run-offline.sh`, `docs/d12-offline-test.md`), the CSV answer for years missing from a local copy (`app/backend/astro_dashboard/hotspots.py`, `api.py`, tests), the favicon and the app-bar badge CSS, and the review of PR 53 | Claude Code (Anthropic) | Written with AI assistance for Guilherme. The offline run used headless Chromium driven by Playwright from a temporary folder (not a project dependency), with every non-localhost request aborted. No data, model or metric was changed |
 | H13 audit of the VM reproduction: logs, manifests and data (`artifacts/h13-reproducibility/vm-audit.md`) and the evidence-status text | Claude (Anthropic) | Read-only checks on the VM and against the bucket, written up for Justino |
 | H13 methodology completion, limitations, local 84-test audit, PR 38 evidence review and integration package | AI assistance | Prepared for Jean Gustavo from existing team work. No new model or production dataset was generated. Full VM reproduction is attributed to its original report; the local audit did not have production inputs. |
