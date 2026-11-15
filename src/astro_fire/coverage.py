@@ -13,6 +13,8 @@ absence, sustained), so that it finds outages and not ordinary day-to-day variat
 single low days are common and normal, because MODIS swaths leave gaps at low latitudes that VIIRS does
 not.
 
+A satellite flying alone (Terra before July 2002) is compared with its own usual day for that month.
+
 Limits: it cannot see a gap shared by every satellite, outages shorter than three days, partial outages,
 or gaps in the rainy season when few detections are expected. Dates should be cross-checked with the
 instrument notices.
@@ -79,6 +81,10 @@ def flag_days(
     """One row per satellite and day of the whole period, with `status`: ok, missing or not_operating.
 
     A satellite is `not_operating` before its first and after its last detection in the data.
+
+    When no other satellite is operating (Terra before Aqua), there is nothing to compare with: the
+    expectation is then the satellite's own average day for that month of the year, and a run of low days
+    is a gap when the detections expected over the whole run reach `min_expected`.
     """
     columns = {r[0] for r in con.execute(f"DESCRIBE {daily}").fetchall()}
     nrt = "n_nrt" if "n_nrt" in columns else "n_all * 0"
@@ -113,19 +119,34 @@ def flag_days(
               ON r.satellite = p.satellite AND r.other = p.other AND r.m = month(p.date_local)
             GROUP BY ALL
         ),
+        usual AS (  -- the satellite's own average day, by month of the year: used only when it flies alone
+            SELECT satellite, month(date_local) AS m, avg(n) AS n_usual
+            FROM obs WHERE operating GROUP BY ALL
+        ),
         judged AS (
-            SELECT o.satellite, o.date_local, o.n AS n_all, o.n_nrt, e.expected, o.operating,
-                   o.operating AND e.expected >= $min_expected AND o.n <= $fraction * e.expected AS low
-            FROM obs o LEFT JOIN expect e USING (satellite, date_local)
+            SELECT o.satellite, o.date_local, o.n AS n_all, o.n_nrt, o.operating,
+                   coalesce(e.expected, CASE WHEN o.operating THEN u.n_usual END) AS expected,
+                   e.expected IS NOT NULL AS has_peer,
+                   CASE WHEN NOT o.operating THEN false
+                        WHEN e.expected IS NOT NULL
+                        THEN e.expected >= $min_expected AND o.n <= $fraction * e.expected
+                        ELSE o.n <= $fraction * u.n_usual END AS low
+            FROM obs o
+            LEFT JOIN expect e USING (satellite, date_local)
+            LEFT JOIN usual u ON u.satellite = o.satellite AND u.m = month(o.date_local)
         ),
         runs AS (  -- consecutive low days share the same `grp`
             SELECT *, date_local - (row_number() OVER (PARTITION BY satellite, low ORDER BY date_local))::INT
                           AS grp
             FROM judged
         )
+        -- With another satellite flying, every low day already has at least `min_expected` expected. A
+        -- satellite flying alone is judged on the whole run: its expected detections must add up to it.
         SELECT satellite, date_local, n_all, n_nrt, expected,
                CASE WHEN NOT operating THEN 'not_operating'
-                    WHEN low AND count(*) OVER (PARTITION BY satellite, low, grp) >= $min_run THEN 'missing'
+                    WHEN low AND count(*) OVER (PARTITION BY satellite, low, grp) >= $min_run
+                         AND sum(expected) OVER (PARTITION BY satellite, low, grp) >= $min_expected
+                    THEN 'missing'
                     ELSE 'ok' END AS status
         FROM runs
         """,

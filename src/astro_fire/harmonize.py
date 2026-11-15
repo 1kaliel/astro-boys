@@ -39,6 +39,13 @@ WITH observed_source AS (
       ON a.cell_l2 = e.cell_l2 AND a.year = e.year AND a.month = e.month
       AND a.daynight = e.period AND a.satellite = 'Aqua'
     UNION ALL
+    -- Before Aqua (to June 2002) only Terra was flying: its own factor set, wider intervals.
+    SELECT e.cell_l2, e.year, e.month, e.period, e.estimate, true, 'Terra', e.raw_aqua,
+           coalesce(a.frp_sum_mw, CASE WHEN e.raw_aqua = 0 THEN 0.0 END)
+    FROM estimates_terra e LEFT JOIN counts a
+      ON a.cell_l2 = e.cell_l2 AND a.year = e.year AND a.month = e.month
+      AND a.daynight = e.period AND a.satellite = 'Terra'
+    UNION ALL
     SELECT c.cell_l2, c.year, c.month, c.daynight,
            c.n_hotspots * CASE WHEN o.satellite = 'N20' THEN coalesce(k.ratio, 1.0) ELSE 1.0 END,
            false, o.satellite, NULL, c.frp_sum_mw
@@ -52,8 +59,13 @@ WITH observed_source AS (
            CASE WHEN NOT s.is_estimated OR c.is_complete OR s.raw_aqua > 0
                 THEN s.frp_sum_mw_native END AS frp_sum_mw_native,
            NOT c.is_complete AS is_partial, c.days_observed::INTEGER AS days_observed,
-           CASE WHEN s.is_estimated AND c.is_complete THEN s.raw_aqua ELSE r.raw_aqua END AS raw_aqua,
-           r.raw_terra, r.raw_snpp, r.raw_n20, {is_nrt} AS is_nrt
+           -- in `series`, raw_aqua holds the count of the source satellite of an estimated row
+           CASE WHEN s.is_estimated AND s.source_satellite = 'Aqua' AND c.is_complete THEN s.raw_aqua
+                ELSE r.raw_aqua END AS raw_aqua,
+           CASE WHEN s.is_estimated AND s.source_satellite = 'Terra' AND c.is_complete THEN s.raw_aqua
+                ELSE r.raw_terra END AS raw_terra,
+           r.raw_snpp, r.raw_n20, {is_nrt} AS is_nrt,
+           CASE WHEN s.is_estimated THEN s.raw_aqua END AS source_count
     FROM series s
     LEFT JOIN raw r USING (cell_l2, year, month, period)
     JOIN monthly_coverage c ON c.satellite = s.source_satellite AND c.year = s.year AND c.month = s.month
@@ -64,7 +76,7 @@ WITH observed_source AS (
     SELECT cell_l2, year, month, 'ALL',
            CASE WHEN count(count_harmonized) = count(*) THEN sum(count_harmonized) END,
            is_estimated, source_satellite, sum(frp_sum_mw_native), is_partial, days_observed,
-           sum(raw_aqua), sum(raw_terra), sum(raw_snpp), sum(raw_n20), is_nrt
+           sum(raw_aqua), sum(raw_terra), sum(raw_snpp), sum(raw_n20), is_nrt, sum(source_count)
     FROM dn GROUP BY ALL
 ), cells AS (
     SELECT *, split_part(cell_l2, '.', 1) AS cell_l1,
@@ -112,9 +124,10 @@ WITH observed_source AS (
     LEFT JOIN window_meta m ON true
     LEFT JOIN baseline h ON h.cell_l2 = b.cell_l2 AND h.month = b.month AND h.period = b.period
     LEFT JOIN window_baseline t ON t.cell_l2 = b.cell_l2 AND t.period = b.period
-    LEFT JOIN uncertainty u
+    LEFT JOIN uncertainty_by_source u
       ON b.is_estimated AND b.count_harmonized > 0 AND u.period = b.period
-     AND u.regime = CASE WHEN b.raw_aqua > 0 THEN 'aqua_positive' ELSE 'aqua_zero' END
+     AND u.source = b.source_satellite
+     AND u.regime = CASE WHEN b.source_count > 0 THEN 'aqua_positive' ELSE 'aqua_zero' END
      AND u.bin = greatest({bin_min}, least({bin_max}, floor(log2(b.count_harmonized))))::INT
 ), final AS (
     SELECT b.* EXCLUDE (q05_ratio, q95_ratio, variance_ratio, same_window, month_median, month_mad,
@@ -153,9 +166,52 @@ SELECT cell_l2, cell_l1,
        anomaly_abs::DOUBLE AS anomaly_abs,
        CASE WHEN median_hist > 0 THEN 100 * anomaly_abs / median_hist END::DOUBLE AS anomaly_pct,
        CASE WHEN mad > 0 THEN anomaly_abs / (1.4826 * mad) END::DOUBLE AS anomaly_z,
-       ?::VARCHAR AS model_version
+       CASE WHEN source_satellite = 'Terra' THEN ?::VARCHAR ELSE ?::VARCHAR END AS model_version
 FROM scored
 """
+
+
+def _terra_only_estimates(con, settings: Settings, terra_complete: set, manifest: Manifest) -> str | None:
+    """Estimates for the months in which only Terra was flying, as the table `estimates_terra`.
+
+    Uses the Terra-source factor set (`processed/factors_terra`, from scripts/terra_source_factors.py) and
+    its error table. Without them the table is empty and those months are left out of the calendar.
+    Returns the model version of the factor set, or None.
+    """
+    version = settings.dataset_version
+    con.execute("CREATE OR REPLACE TEMP TABLE estimates_terra AS SELECT * FROM estimates LIMIT 0")
+    con.execute("CREATE OR REPLACE TEMP TABLE uncertainty_terra AS SELECT * FROM uncertainty LIMIT 0")
+    months = con.execute("""
+        SELECT t.year, t.month FROM monthly_coverage t
+        LEFT JOIN monthly_coverage a ON a.satellite = 'Aqua' AND a.year = t.year AND a.month = t.month
+        WHERE t.satellite = 'Terra' AND t.days_observed > 0 AND coalesce(a.days_observed, 0) = 0
+          AND (t.year, t.month) <= (2012, 1)
+          AND t.year IN (SELECT year FROM counts WHERE satellite = 'Terra')
+    """).fetchall()
+    factors = storage.uri(settings, "processed", "factors_terra", version)
+    errors = storage.uri(settings, "processed", "uncertainty_terra", version)
+    if not months:
+        return None
+    try:
+        con.read_parquet(storage.parquet_glob(factors)).create_view("factors_terra", replace=True)
+    except (duckdb.Error, OSError):
+        return None
+    manifest.inputs.append({"path": factors, "sha256": None, "rows": None})
+    try:
+        con.execute(
+            "CREATE OR REPLACE TEMP TABLE uncertainty_terra AS "
+            f"SELECT * FROM read_parquet('{storage.parquet_glob(errors)}')"
+        )
+        manifest.inputs.append({"path": errors, "sha256": None, "rows": None})
+    except (duckdb.Error, OSError):
+        pass
+    # No witness existed: an unused satellite name gives a witness count of zero everywhere, and the
+    # Terra factor set has no witness backgrounds, so the plain background applies.
+    calibration.build_source(con, "counts", "factors_terra", months, name="source_terra",
+                             source="Terra", witness="(none)")
+    calibration.apply_factors(con, "source_terra", "factors_terra", name="estimates_terra")
+    versions = con.execute("SELECT DISTINCT model_version FROM factors_terra").fetchall()
+    return versions[0][0] if versions else None
 
 
 def run(
@@ -202,7 +258,7 @@ def run(
         model_version = model_versions[0][0]
         months = con.execute("""
             SELECT year, month FROM monthly_coverage
-            WHERE satellite = 'Aqua' AND year >= 2003 AND (year, month) <= (2012, 1)
+            WHERE satellite = 'Aqua' AND days_observed > 0 AND (year, month) <= (2012, 1)
               AND year IN (SELECT year FROM counts WHERE satellite = 'Aqua')
         """).fetchall()
         terra_complete = set(con.execute("""
@@ -213,6 +269,13 @@ def run(
             witness_gap_months=sorted(set(months) - terra_complete),
         )
         calibration.apply_factors(con, "source", "factors")
+        terra_version = _terra_only_estimates(con, settings, terra_complete, manifest)
+        con.execute(
+            "CREATE OR REPLACE TEMP VIEW uncertainty_by_source AS "
+            "SELECT 'Aqua' AS source, regime, period, bin, variance_ratio, q05_ratio, q95_ratio "
+            "FROM uncertainty UNION ALL "
+            "SELECT 'Terra', regime, period, bin, variance_ratio, q05_ratio, q95_ratio FROM uncertainty_terra"
+        )
         coverage_columns = {r[0] for r in con.execute("DESCRIBE monthly_coverage").fetchall()}
         optional = {
             # S-NPP / NOAA-20 ratio by month and period, from `calibrate`; 1.0 where it is missing.
@@ -234,7 +297,7 @@ def run(
             bin_min=uncertainty.BIN_MIN, bin_max=uncertainty.BIN_MAX,
             is_nrt="coalesce(c.is_nrt, false)" if "is_nrt" in coverage_columns else "false",
         )
-        con.execute(sql, [model_version])
+        con.execute(sql, [terra_version, model_version])
         rows, unique, estimates, missing, first, last = con.execute("""
             SELECT count(*), count(DISTINCT (cell_l2, year, month, period)),
                    count(*) FILTER (WHERE is_estimated), count(*) FILTER (WHERE count_harmonized IS NULL),
@@ -257,6 +320,9 @@ def run(
             "estimated_intervals": "from the out-of-year error table" if has_intervals else "missing",
             "estimated_rows_without_interval": no_interval,
             "optional_inputs_used": used_optional,
+            "terra_only_model_version": terra_version,
+            "terra_only_rows": con.execute(
+                "SELECT count(*) FROM calendar WHERE source_satellite = 'Terra'").fetchone()[0],
             "observed_source_by_month": con.execute(
                 "SELECT source_satellite, count(DISTINCT (year, month)), min(year * 100 + month), "
                 "max(year * 100 + month) FROM calendar WHERE NOT is_estimated GROUP BY 1 ORDER BY 1"
