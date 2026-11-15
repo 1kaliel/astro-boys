@@ -221,6 +221,8 @@ export function CellMap({
   const brazil = useBrazil(windOn);
   const brazilData = useMemo(() => brazil?.geojson ?? null, [brazil]);
   const [muniHover, setMuniHover] = useState<{ lng: number; lat: number; props: Record<string, unknown> } | null>(null);
+  // Matches no municipality when nothing is under the pointer (an empty code never occurs in the data).
+  const muniHoverCode = muniHover ? String(muniHover.props.code ?? "") : "";
   const muniShapes = useMemo(() => (municipal ? joinWeather(municipal.geo, municipal.weather) : null), [municipal]);
   const muniPoints = useMemo(
     () => (municipal && muniShapes ? centroidPoints(municipal.geo, muniShapes) : null),
@@ -422,7 +424,7 @@ export function CellMap({
         // it): with the overview as the default view the arrow layer already exists when the style arrives, before
         // `load`, so asking for the image later would be too late.
         onStyleData={(event) => ensureWindArrow(event.target)}
-        cursor={hover || wxHover ? "pointer" : "grab"}
+        cursor={hover || wxHover || muniHover ? "pointer" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-right" showCompass={false} />
@@ -504,6 +506,19 @@ export function CellMap({
           <>
             <Source id="municipalities" type="geojson" data={muniShapes}>
               <Layer id="muni-fill" type="fill" paint={{ "fill-color": muniFill, "fill-opacity": 0.7 }} />
+              {/* The municipality under the pointer: a brighter fill and a clear outline, only for that one. */}
+              <Layer
+                id="muni-hover-fill"
+                type="fill"
+                filter={["==", ["get", "code"], muniHoverCode]}
+                paint={{ "fill-color": colors["--color-text-primary"], "fill-opacity": 0.28 }}
+              />
+              <Layer
+                id="muni-hover-line"
+                type="line"
+                filter={["==", ["get", "code"], muniHoverCode]}
+                paint={{ "line-color": colors["--color-text-primary"], "line-width": 2.5, "line-opacity": 1 }}
+              />
               <Layer
                 id="muni-line"
                 type="line"
