@@ -97,16 +97,8 @@ export default function MapPanel() {
         </div>
       </div>
 
-      <div className="map-stage">
-        <CellMap
-          mapRef={mapRef}
-          cells={cells}
-          breaks={breaks}
-          area={state.area}
-          projection={projection}
-          drill={drill}
-          onDrill={onDrill}
-        />
+      {/* The frame holds the tools and the map: over the map on wide screens, in a row above it on a phone. */}
+      <div className="map-frame">
         <MapTools
           mapRef={mapRef}
           projection={projection}
@@ -116,6 +108,19 @@ export default function MapPanel() {
           onBack={leaveDrill}
           onDrawing={setDrawing}
         />
+        <div className="map-stage">
+          <CellMap
+            mapRef={mapRef}
+            cells={cells}
+            breaks={breaks}
+            area={state.area}
+            projection={projection}
+            drill={drill}
+            onDrill={onDrill}
+            monthLabel={monthLabel}
+            suppressFocus={drawing}
+          />
+        </div>
       </div>
 
       {remote.error && (
@@ -146,6 +151,12 @@ export default function MapPanel() {
         </>
       ) : (
         <>
+          {projection === "globe" && (
+            <p className="map-note">
+              Globe: data were processed only inside the study area (dashed box, Northeast Brazil). Outside it nothing is
+              drawn, which is not zero activity. Click the box or its label to fly in.
+            </p>
+          )}
           {data && data.cells.length === 0 && (
             <p className="map-note">No hotspot detections in this month. No detection does not mean no fire.</p>
           )}
@@ -153,7 +164,7 @@ export default function MapPanel() {
             <Legend
               mode="sequential"
               breaks={breaks}
-              unit="VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month · cells with no detection are not drawn · click a cell for its sub-cells"
+              unit="VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month · cells with no detection that month are left empty (the basemap shows through, not zero) · cell outlines appear when you zoom in; closer in, the colors turn translucent so the basemap reads through (same classes) and the cell at the center, or under the mouse, is outlined and described · click a cell for its sub-cells"
               showMarking={false}
             />
           )}

@@ -9,6 +9,13 @@ type CoordinateFieldProps = {
   onChange: (value: number) => void;
 };
 
+/**
+ * Decimal keypad on phones. Not on iOS: its decimal keypad has no minus key and every coordinate of the study area is
+ * negative, so there Base UI's own choice (the full keyboard) stays.
+ */
+const IOS = typeof navigator !== "undefined" &&
+  (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
 /** Decimal-degree input (WGS84) with +/- 0.25 degree steps, one L2 cell at a time. */
 export function CoordinateField({ label, value, min, max, onChange }: CoordinateFieldProps) {
   const labelId = useId();
@@ -34,7 +41,12 @@ export function CoordinateField({ label, value, min, max, onChange }: Coordinate
         <NumberField.Decrement className="number-field-step" aria-label={`Decrease ${label}`}>
           −
         </NumberField.Decrement>
-        <NumberField.Input className="number-field-input" aria-labelledby={labelId} />
+        <NumberField.Input
+          className="number-field-input"
+          aria-labelledby={labelId}
+          inputMode={IOS ? undefined : "decimal"}
+          enterKeyHint="done"
+        />
         <NumberField.Increment className="number-field-step" aria-label={`Increase ${label}`}>
           +
         </NumberField.Increment>
