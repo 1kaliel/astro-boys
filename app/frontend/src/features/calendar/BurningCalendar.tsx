@@ -154,7 +154,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
       {!dataset.synthetic && (
         <p className="calendar-notice">
           {`Data ${dataset.firstYear}–${dataset.lastYear}, model ${dataset.modelVersion}`}
-          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} cells`}
+          {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} L2 cells with data`}
           {refreshing && ". Updating…"}
         </p>
       )}

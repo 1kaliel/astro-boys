@@ -71,7 +71,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
   const cells = cellsInBounds(area).length;
   const summary = `${sameBounds(area, PILOT_BOUNDS) ? "Northeast Brazil (pilot)" : "Custom area"} · ${cells.toLocaleString(
     "en-US",
-  )} cells`;
+  )} L2 cells`;
 
   function apply(candidate: Bounds) {
     const check = checkArea(candidate, PILOT_BOUNDS);
@@ -97,7 +97,7 @@ function AreaFilter({ area, onArea }: { area: Bounds; onArea: (area: Bounds) => 
           }
         }}
         triggerLabel={`Area: ${summary}. Edit the area`}
-        title="Area: 0.25° cells whose centre is inside"
+        title="Area: every 0.25° (L2) cell that overlaps the box is counted"
         trigger={
           <>
             {summary}

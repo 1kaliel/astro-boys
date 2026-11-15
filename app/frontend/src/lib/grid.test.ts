@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cellBounds, cellIdAt, cellsInBounds, cellsToGeoJSON, clampBounds } from "./grid";
+import { cellBounds, cellIdAt, cellOutlinesGeoJSON, cellsInBounds, cellsToGeoJSON, clampBounds } from "./grid";
 
 const PILOT = { west: -48.8, south: -18.4, east: -34.7, north: -1.0 };
 
@@ -49,5 +49,22 @@ describe("grid", () => {
     const ring = fc.features[0].geometry.coordinates[0];
     expect(ring[0]).toEqual(ring[4]);
     expect(clampBounds({ west: -60, south: -20, east: -30, north: 2 }, PILOT)).toEqual(PILOT);
+  });
+});
+
+describe("area cell outlines", () => {
+  it("draws one 0.25° square per cell the area counts, so the map and the sum use the same list", () => {
+    const area = { west: -41, south: -10, east: -40, north: -9 };
+    const ids = cellsInBounds(area);
+    const outlines = cellOutlinesGeoJSON(ids);
+    expect(outlines.features).toHaveLength(ids.length);
+    expect(ids).toHaveLength(16);
+    for (const feature of outlines.features) {
+      const ring = feature.geometry.coordinates[0];
+      const xs = ring.map((p) => p[0]);
+      const ys = ring.map((p) => p[1]);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(0.25, 9);
+      expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(0.25, 9);
+    }
   });
 });

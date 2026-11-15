@@ -65,6 +65,11 @@ export function cellsToGeoJSON(cells: readonly CellFeatureProps[]): GeoJSON.Feat
   };
 }
 
+/** Outlines of the given L2 cells, for the map: the cells an area is made of (the same list the API sums). */
+export function cellOutlinesGeoJSON(ids: readonly string[]): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  return { type: "FeatureCollection", features: ids.map((id) => boundsToGeoJSON(cellBounds(id))) };
+}
+
 export function boundsToGeoJSON(b: Bounds): GeoJSON.Feature<GeoJSON.Polygon> {
   return {
     type: "Feature",

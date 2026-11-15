@@ -5,7 +5,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useEffect, useMemo, useState, type RefObject } from "react";
 import Map, { Layer, NavigationControl, Popup, Source, type MapLayerMouseEvent, type MapRef } from "react-map-gl/maplibre";
 import { formatCount } from "../../lib/format";
-import { boundsToGeoJSON, cellsToGeoJSON, type Bounds, type CellFeatureProps } from "../../lib/grid";
+import { boundsToGeoJSON, cellOutlinesGeoJSON, cellsInBounds, cellsToGeoJSON, type Bounds, type CellFeatureProps } from "../../lib/grid";
 import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } from "../../lib/hooks";
 import { rampStep } from "../../lib/scale";
 import { PILOT_BOUNDS } from "../../state/dashboard";
@@ -77,6 +77,8 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
   // Zero detections are not drawn: "no detection" (never "no fire"), and empty areas stay empty.
   const cellData = useMemo(() => cellsToGeoJSON(cells.filter((cell) => cell.value > 0)), [cells]);
   const areaData = useMemo(() => boundsToGeoJSON(area), [area]);
+  // The L2 cells of the area, one outline each: what the calendar and KPIs sum, drawn on the map.
+  const areaCellData = useMemo(() => cellOutlinesGeoJSON(cellsInBounds(area)), [area]);
 
   const fillColor = useMemo((): ExpressionSpecification | string => {
     const classes = breaks.length + 1;
@@ -156,6 +158,9 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
         <Source id="cells" type="geojson" data={cellData}>
           {/* No stroke around cells: an estimated month is flagged once (badge), not on thousands of cells. */}
           <Layer id="cells-fill" type="fill" paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }} />
+        </Source>
+        <Source id="area-cells" type="geojson" data={areaCellData}>
+          <Layer id="area-cells-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 0.5, "line-opacity": 0.6 }} />
         </Source>
         <Source id="area" type="geojson" data={areaData}>
           <Layer id="area-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }} />

@@ -95,7 +95,8 @@ def test_run_writes_both_tables_and_a_report(tmp_path):
     duckdb.connect().execute(
         f"""COPY (
             SELECT CASE WHEN (i // 60) % 5 = 0 THEN 'A' ELSE 'B' END AS satellite,
-                   (DATE '2020-07-01' + (i % 60)::INT) AS date_local
+                   (DATE '2020-07-01' + (i % 60)::INT) AS date_local,
+                   CASE WHEN (i % 60) >= 31 THEN '2.0NRT' ELSE '2' END AS version
             FROM range(60000) t(i)
             WHERE NOT ((i // 60) % 5 = 0 AND (i % 60) BETWEEN 20 AND 25)
         ) TO '{hotspots}/data.parquet' (FORMAT parquet)"""
@@ -104,3 +105,58 @@ def test_run_writes_both_tables_and_a_report(tmp_path):
     assert result["status"] == "ok" and result["gap_runs"] == 1 and result["missing_days"] == 6
     assert (tmp_path / "processed" / "coverage_monthly" / "v1" / "part-0.parquet").is_file()
     assert (tmp_path / "processed" / "coverage_daily" / "v1" / "part-0.parquet").is_file()
+    monthly = tmp_path / "processed" / "coverage_monthly" / "v1" / "part-0.parquet"
+    rows = duckdb.connect().execute(
+        f"SELECT satellite, month, days_in_month, days_observed, is_complete, is_nrt FROM '{monthly}' "
+        "ORDER BY 1, 2"
+    ).fetchall()
+    assert rows == [
+        ("A", 7, 31, 25, False, False),   # six days of outage
+        ("A", 8, 31, 29, True, True),     # the data ends on Aug 29: two days not observed yet, still >= 90%
+        ("B", 7, 31, 31, True, False),
+        ("B", 8, 31, 29, True, True),     # August rows are near-real-time
+    ]
+
+
+def test_a_month_that_has_not_finished_is_partial():
+    con = duckdb.connect()
+    con.execute(
+        "CREATE TABLE daily AS SELECT s AS satellite, (DATE '2026-10-01' + i::INT) AS date_local, "
+        "100 AS n_all, CASE WHEN i >= 31 THEN 100 ELSE 0 END AS n_nrt "
+        "FROM range(45) t(i), (VALUES ('A'), ('B')) v(s) WHERE NOT (s = 'A' AND i > 32)"
+    )
+    coverage.flag_days(con, "daily")
+    coverage.monthly(con, "coverage_daily")
+    rows = con.execute(
+        "SELECT satellite, month, days_in_month, days_observed, days_not_operating, is_complete, is_nrt "
+        "FROM coverage_monthly ORDER BY 1, 2"
+    ).fetchall()
+    assert rows == [
+        ("A", 10, 31, 31, 0, True, False),
+        ("A", 11, 30, 2, 28, False, True),    # stopped on Nov 2
+        ("B", 10, 31, 31, 0, True, False),
+        ("B", 11, 30, 14, 16, False, True),   # data up to Nov 14: the month is not finished
+    ]
+
+
+def test_a_satellite_flying_alone_is_compared_with_its_own_usual_day():
+    """One satellite, three years. A ten-day silence in a quiet month is a gap; a quiet two days is not."""
+    con = duckdb.connect()
+    con.execute(
+        """
+        CREATE TABLE daily AS
+        SELECT 'T' AS satellite, d::DATE AS date_local, 8 AS n_all
+        FROM generate_series(DATE '2000-01-01', DATE '2002-12-31', INTERVAL 1 DAY) t(d)
+        WHERE NOT d BETWEEN DATE '2001-03-10' AND DATE '2001-03-19'   -- outage: 10 days x 8 expected = 80
+          AND NOT d BETWEEN DATE '2002-06-05' AND DATE '2002-06-06'   -- two days: too short
+        """
+    )
+    coverage.flag_days(con, "daily")
+    assert coverage.gap_runs(con, "coverage_daily") == [
+        {"satellite": "T", "first_day": "2001-03-10", "last_day": "2001-03-19", "days": 10,
+         "detections": 0, "expected": pytest.approx(73, abs=3)}
+    ]
+    # Three silent days at 8 a day expect only 24 detections: not enough evidence to call it a gap.
+    con.execute("DELETE FROM daily WHERE date_local BETWEEN DATE '2002-09-01' AND DATE '2002-09-03'")
+    coverage.flag_days(con, "daily")
+    assert len(coverage.gap_runs(con, "coverage_daily")) == 1

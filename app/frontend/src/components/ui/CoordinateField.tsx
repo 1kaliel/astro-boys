@@ -20,6 +20,8 @@ export function CoordinateField({ label, value, min, max, onChange }: Coordinate
       max={max}
       step={0.25}
       smallStep={0.01}
+      // Fixed to en-US: decimal point always. Under pt-BR a typed "-41.5" parsed as -415 and was clamped to -180.
+      locale="en-US"
       format={{ maximumFractionDigits: 2 }}
       onValueChange={(next) => {
         if (next !== null) onChange(next);

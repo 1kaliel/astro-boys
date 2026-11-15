@@ -49,10 +49,10 @@ One row per L2 cell × local year-month × period. Partitioned by `year`.
 | `ci_low`, `ci_high` | double | 90% interval from measured out-of-year error ([how](methodology.md#uncertainty-of-the-estimates)). Equal to the value for observed months; null when the estimate is null |
 | `var_harmonized` | double | Prediction variance of the estimate (0 if observed). For a sum of `n` cells use `Σ var × n^0.32`: errors of nearby cells are correlated (measured 2.4× for 16 cells, 13.7× for the whole extent) |
 | `origin` | string | `VIIRS_OBSERVED` or `VIIRS_EQUIVALENT_FROM_MODIS` |
-| `source_satellite` | string | `SNPP`, `N20`, `Aqua`, `Terra` |
+| `source_satellite` | string | `Aqua` (estimated months), `SNPP` (observed), `N20` (observed × continuity ratio: from 2026-11 and in S-NPP outage months) |
 | `is_estimated` | bool | True when `origin` is an estimate. The UI must mark these months |
 | `is_nrt` | bool | Built from near-real-time data (recent months) |
-| `is_partial` | bool | Month not complete yet |
+| `is_partial` | bool | The source satellite observed fewer than 90% of the days (outage, or the month is not over). For the unfinished current month, `median_hist` and the anomalies use the same days of earlier years |
 | `days_observed` | int | Days of the month covered by the data |
 | `raw_aqua`, `raw_terra`, `raw_snpp`, `raw_n20` | int, nullable | Native filtered counts per satellite; null when the satellite had no data yet |
 | `frp_sum_mw_native` | double | FRP sum of the `source_satellite`, native scale (not harmonized) |
@@ -150,7 +150,17 @@ Which days and months each satellite was observing, from `uv run astro-fire cove
 | monthly | `satellite`, `year`, `month` | string, int, int | |
 | monthly | `days_in_month`, `days_missing`, `days_not_operating`, `days_observed` | int | `days_observed` feeds `calendar.days_observed` |
 | monthly | `coverage_fraction` | double | `days_observed / days_in_month` |
-| monthly | `is_complete` | bool | At least 90% of the days observed. Incomplete months must not be read as low activity |
+| monthly | `is_complete` | bool | At least 90% of the days observed. Days after the end of the data count as not observed. Incomplete months must not be read as low activity |
+| monthly | `is_nrt` | bool | The month contains near-real-time detections |
+
+## 5b. `processed/continuity/v1/` and `processed/month_to_date/v1/`
+
+- `continuity`: `month`, `period`, `ratio` = S-NPP / NOAA-20 detections over months complete for both, 2018–2025.
+  A NOAA-20 count times `ratio` is on the S-NPP scale.
+- `month_to_date`: for the unfinished last month of the data, `cell_l2`, `year`, `month`, `period`, `days`,
+  `n_hotspots` = filtered S-NPP detections on days 1..`days` of that month in each earlier year with full
+  S-NPP coverage of those days; `n_years` = number of such years (a cell with no row in a year counts as 0).
+  `harmonize` uses it so the partial month's `median_hist` and anomalies compare the same days.
 
 ## 6. Sample for app development
 
