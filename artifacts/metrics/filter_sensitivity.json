@@ -1,0 +1,74 @@
+[
+  {
+    "filter": "nominal_high",
+    "definition": "passes_main_filter",
+    "viirs_over_aqua": 6.521470384251283,
+    "cells": 3108,
+    "pool": "l1",
+    "k": 50.0,
+    "m": 5.0,
+    "witness": true,
+    "reconcile_lambda": 0.75,
+    "final_cell_mae": 3.066874596043009,
+    "best_baseline_cell_mae": 3.661254650070021,
+    "final_cell_rmse": 10.147199033542142,
+    "best_baseline_cell_rmse": 12.850971897447023,
+    "final_bias": 0.008434088089868053,
+    "final_region_mae": 2283.4093777921253,
+    "best_baseline_region_mae": 2370.7742320177053,
+    "regional_difference_ci90": [
+      -253.61462883626626,
+      68.02534539433309
+    ],
+    "passes_rule": true,
+    "interval_coverage_90pct": 0.9418541212019473
+  },
+  {
+    "filter": "all",
+    "definition": "type = 0",
+    "viirs_over_aqua": 7.130034231477399,
+    "cells": 3109,
+    "pool": "l1",
+    "k": 50.0,
+    "m": 5.0,
+    "witness": true,
+    "reconcile_lambda": 0.75,
+    "final_cell_mae": 3.319253203061843,
+    "best_baseline_cell_mae": 4.0005779034202105,
+    "final_cell_rmse": 10.86474741238601,
+    "best_baseline_cell_rmse": 13.38095893650635,
+    "final_bias": 0.026102818915955554,
+    "final_region_mae": 2866.8569033423896,
+    "best_baseline_region_mae": 2880.1062219399782,
+    "regional_difference_ci90": [
+      -222.14730895450077,
+      181.49590061080482
+    ],
+    "passes_rule": true,
+    "interval_coverage_90pct": 0.94278881787797
+  },
+  {
+    "filter": "high",
+    "definition": "type = 0 AND confidence_class = 'h'",
+    "viirs_over_aqua": 1.4314828202546692,
+    "cells": 3065,
+    "pool": "l1",
+    "k": 100.0,
+    "m": 20.0,
+    "witness": true,
+    "reconcile_lambda": 1.0,
+    "final_cell_mae": 0.36951120888448435,
+    "best_baseline_cell_mae": 0.37189142087014465,
+    "final_cell_rmse": 1.746923047364912,
+    "best_baseline_cell_rmse": 1.8867112392622782,
+    "final_bias": -0.04387897634203671,
+    "final_region_mae": 361.7344312595051,
+    "best_baseline_region_mae": 361.4463519489735,
+    "regional_difference_ci90": [
+      -0.5734448062400951,
+      1.242274297544466
+    ],
+    "passes_rule": true,
+    "interval_coverage_90pct": 0.9776014071820187
+  }
+]

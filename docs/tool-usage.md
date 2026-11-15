@@ -133,7 +133,8 @@ Stages that exist:
 uv run astro-fire --data-root data ingest --years 2012-2021 --satellites Aqua SNPP   # FIRMS files → hotspots/v1
 uv run astro-fire --data-root data aggregate                                       # → cell_month_counts/v1
 uv run astro-fire mock-calendar     # SYNTHETIC calendar table for building the app (data-dictionary.md, section 5)
-uv run astro-fire coverage          # processed/hotspots/v1 → coverage_daily, coverage_monthly + gap report
+uv run astro-fire ingest-api        # raw/firms/api/* (current year) → hotspots and counts partitions of that year
+uv run astro-fire coverage          # processed/hotspots/v1 → coverage_daily, coverage_monthly, month_to_date + gap report
 uv run astro-fire coverage --hotspots gs://<bucket>/astro/processed/hotspots/v1   # read it from the bucket
 uv run astro-fire calibrate         # processed/cell_month_counts/v1 → processed/factors/v1 + report + manifest
 uv run astro-fire calibrate --counts path/to/cell_month_counts --years 2012-2019 --k 20 --m 2   # overrides

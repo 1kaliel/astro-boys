@@ -29,6 +29,8 @@ DEV_YEARS = (2020, 2021)         # development set: scored while the method was 
 FINAL_TEST_YEARS = (2022, 2023)  # final test: scored once (`validate --final`), after the method is frozen
 LATE_YEARS = (2024, 2025)        # reported with the final test, separately: MODIS orbits drift in these years
 HELD_OUT_YEARS = DEV_YEARS + FINAL_TEST_YEARS + LATE_YEARS
+# The S-NPP / NOAA-20 ratio is measured up to this year: in 2026 S-NPP was failing before it ended.
+CONTINUITY_LAST_YEAR = 2025
 MODEL_FAMILY = "fb"  # factor F + background B; the model version adds the pooling level, e.g. fb-l1-2
 MODEL_REVISION = 4
 REQUIRED_COLUMNS = ("cell_l2", "year", "month", "daynight", "satellite", "n_hotspots")
@@ -192,7 +194,8 @@ def continuity(con: duckdb.DuckDBPyConnection, settings: Settings, counts: str =
             f"""
             CREATE OR REPLACE TEMP TABLE _both_complete AS
             SELECT year, month FROM read_parquet('{storage.parquet_glob(location)}')
-            WHERE satellite IN ('SNPP', 'N20') GROUP BY ALL HAVING bool_and(is_complete) AND count(*) = 2
+            WHERE satellite IN ('SNPP', 'N20') AND year <= {CONTINUITY_LAST_YEAR}
+            GROUP BY ALL HAVING bool_and(is_complete) AND count(*) = 2
             """
         )
     except duckdb.Error:
@@ -334,6 +337,16 @@ def run(
             f"TO '{staging / 'uncertainty' / 'part-0.parquet'}' (FORMAT parquet, COMPRESSION zstd)"
         )
         storage.publish_dir(settings, str(staging / "uncertainty"), uncertainty_target, replace=True)
+        if report["continuity_snpp_over_noaa20"]:
+            (staging / "continuity").mkdir()
+            rows = report["continuity_snpp_over_noaa20"]["by_month_period"]
+            values = ", ".join(f"({r['month']}, '{r['period']}', {r['ratio']})" for r in rows)
+            con.execute(
+                f"COPY (SELECT * FROM (VALUES {values}) t(month, period, ratio) ORDER BY period, month) "
+                f"TO '{staging / 'continuity' / 'part-0.parquet'}' (FORMAT parquet, COMPRESSION zstd)"
+            )
+            storage.publish_dir(settings, str(staging / "continuity"),
+                                storage.uri(settings, "processed", "continuity", version), replace=True)
         (staging / "artifacts" / "metrics").mkdir(parents=True)
         (staging / "artifacts" / "metrics" / "calibration.json").write_text(
             json.dumps(report, indent=2, default=float) + "\n"
