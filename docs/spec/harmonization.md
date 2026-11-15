@@ -149,10 +149,14 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
   estimate (nothing is invented over ocean or land that never showed activity); if Aqua detects there in the
   past, the regional ratio `R` is used.
 - **January 2012 is left out** of calibration: S-NPP data starts on 2012-01-20, so that month is partial.
-- **Pooling region:** the whole pilot extent, per month of year and day/night. Pooling to the parent L1 cell
-  first is a candidate compared in validation, because the extent mixes Cerrado and Caatinga fire regimes.
+- **Pooling level:** a cell leans on its 1° parent cell (L1), whose own ratio leans on the whole extent with
+  the same weight. Pooling straight to the whole extent is the alternative; the level is chosen with the
+  weights. On the Northeast, 2012–2019, the parent level wins on every leave-one-year-out score.
 - **`K` and `M` are chosen separately** (`K` only acts on months with Aqua > 0, `M` on months with Aqua = 0),
-  each by the lowest leave-one-year-out mean absolute error at cell-month level; ties go to more pooling.
+  each by the lowest leave-one-year-out **mean Poisson deviance** at cell-month level, from
+  {0, 2, 5, 10, 20, 50, 100, 200}; ties go to more pooling. Absolute error is reported but not used to
+  choose: for counts that are mostly zero it is minimized by predicting zero, so it picks `M = 0` and
+  biases regional totals low. Without pooling (weight 0) the deviance is infinite.
 - When the region has no Aqua detections at all for a month and period, there is no factor and the estimate
   is null, never zero.
 

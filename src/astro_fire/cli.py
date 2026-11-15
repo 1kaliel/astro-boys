@@ -24,6 +24,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="calibration years, e.g. 2012-2019 (default) or 2012,2013")
     c.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
     c.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
+    c.add_argument("--pool", choices=("region", "l1"), help="fix the pooling level instead of choosing it")
     c.add_argument("--counts", help="folder with cell_month_counts Parquet "
                                     "(default: processed/cell_month_counts/<dataset version>)")
     v = sub.add_parser("validate", help="score every method on the held-out years against S-NPP")
@@ -33,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="held-out years (default 2020,2021)")
     v.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
     v.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
+    v.add_argument("--pool", choices=("region", "l1"), help="fix the pooling level instead of choosing it")
     v.add_argument("--counts", help="folder with cell_month_counts Parquet")
     m = sub.add_parser("mock-calendar", help="write a SYNTHETIC calendar table for dashboard development")
     m.add_argument("--bbox", default=",".join(str(v) for v in mock.DEFAULT_BBOX),
@@ -57,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "calibrate":
         try:
             result = calibrate.run(settings, years=calibrate.parse_years(args.years), k=args.k, m=args.m,
-                                   counts_location=args.counts)
+                                   pool=args.pool, counts_location=args.counts)
         except calibrate.CalibrationError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1
@@ -67,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = validate.run(settings, years=calibrate.parse_years(args.years),
                                   test_years=calibrate.parse_years(args.test_years), k=args.k, m=args.m,
-                                  counts_location=args.counts)
+                                  pool=args.pool, counts_location=args.counts)
         except calibrate.CalibrationError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1

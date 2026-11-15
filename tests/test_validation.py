@@ -112,13 +112,16 @@ def _scores(maes_cell, maes_region):
 
 
 def test_verdict_accepts_only_when_every_baseline_is_beaten_at_both_levels():
-    base = {"raw_aqua": 9, "global_ratio": 3, "ols": 2.5, "month_period_ratio": 2.8, "f_pooled": 2.2}
+    base = {"raw_aqua": 9, "global_ratio": 3, "ols": 2.5, "month_period_ratio": 2.8, "f_pooled": 1.0}
     good = val.verdict(_scores({**base, val.FINAL: 2.0}, {**base, val.FINAL: 2.0}))
     assert good["accepted"] and good["ship"] == val.FINAL
+    # Loses on regional totals: the best regional baseline ships, never the F-only ablation.
     bad = val.verdict(_scores({**base, val.FINAL: 2.0}, {**base, val.FINAL: 2.6}))
-    assert not bad["accepted"] and bad["beats_baselines_cell_month_mae"]
-    worse = val.verdict(_scores({**base, val.FINAL: 2.7}, {**base, val.FINAL: 2.0}))
-    assert not worse["accepted"] and worse["ship"] == "f_pooled"
+    assert not bad["accepted"] and bad["beats_baselines_cell_month_mae"] and bad["ship"] == "ols"
+    region = {**base, "month_period_ratio": 2.1, val.FINAL: 2.0}
+    worse = val.verdict(_scores({**base, val.FINAL: 2.7}, region))
+    assert not worse["accepted"] and worse["beats_baselines_region_month_mae"] and worse["ship"] == "ols"
+    assert worse["best_baseline_region_month_mae"] == "month_period_ratio"
 
 
 def test_validate_command_end_to_end(tmp_path, capsys):
