@@ -54,7 +54,7 @@ written after seeing 2020–2021, passing it there is not evidence. The strict c
 FIRMS files list detections only, so an outage looks like a quiet period. A day counts as missing for a
 satellite when it recorded at most 10% of the detections the other satellites imply, at least 30 were
 expected, and this lasted three or more days in a row. A month is complete with at least 90% of its days
-observed. Found in 2003–2025 (expected = detections implied by the other satellites):
+observed. Found in 2003–2026 (expected = detections implied by the other satellites):
 
 | Satellite | First day | Last day | Days | Detections | Expected |
 |---|---|---|---:|---:|---:|
@@ -66,15 +66,18 @@ observed. Found in 2003–2025 (expected = detections implied by the other satel
 | Aqua | 2020-08-27 | 2020-08-30 | 4 | 19 | 1,886 |
 | Aqua | 2022-03-31 | 2022-04-02 | 3 | 5 | 190 |
 | Aqua | 2022-04-04 | 2022-04-11 | 8 | 0 | 557 |
-| SNPP | 2022-07-27 | 2022-08-10 | 15 | 0 | 40,062 |
+| SNPP | 2022-07-27 | 2022-08-10 | 15 | 0 | 40,063 |
 | Terra | 2022-10-10 | 2022-10-22 | 13 | 33 | 9,159 |
-| N20 | 2023-07-19 | 2023-07-22 | 4 | 0 | 9,429 |
-| SNPP | 2024-05-30 | 2024-06-03 | 5 | 0 | 3,690 |
-| SNPP | 2024-07-10 | 2024-07-16 | 7 | 0 | 10,167 |
-| SNPP | 2024-07-25 | 2024-07-28 | 4 | 0 | 5,586 |
-| SNPP | 2024-11-03 | 2024-11-06 | 4 | 0 | 13,719 |
+| N20 | 2023-07-19 | 2023-07-22 | 4 | 0 | 9,447 |
+| SNPP | 2024-05-30 | 2024-06-03 | 5 | 0 | 3,688 |
+| SNPP | 2024-07-10 | 2024-07-16 | 7 | 0 | 10,162 |
+| SNPP | 2024-07-25 | 2024-07-28 | 4 | 0 | 5,570 |
+| SNPP | 2024-11-03 | 2024-11-06 | 4 | 0 | 13,717 |
+| SNPP | 2026-03-10 | 2026-03-12 | 3 | 0 | 430 |
+| SNPP | 2026-04-28 | 2026-04-30 | 3 | 0 | 580 |
+| SNPP | 2026-07-11 | 2026-07-16 | 6 | 0 | 1,813 |
 
-Incomplete months: Terra 2003-12, SNPP 2012-01, Terra 2016-02, Aqua 2020-08, Aqua 2022-04, SNPP 2022-07, SNPP 2022-08, Terra 2022-10, N20 2023-07, SNPP 2024-07, SNPP 2024-11. Months in which Aqua or S-NPP is incomplete are left out of calibration and out
+Incomplete months: Terra 2003-12, SNPP 2012-01, Terra 2016-02, Aqua 2020-08, Aqua 2022-04, SNPP 2022-07, SNPP 2022-08, Terra 2022-10, N20 2023-07, SNPP 2024-07, SNPP 2024-11, SNPP 2026-07, N20 2026-11, SNPP 2026-11. Months in which Aqua or S-NPP is incomplete are left out of calibration and out
 of the main validation scores (scores on all months are kept in the JSON). Single low days are not gaps:
 MODIS swaths leave uncovered strips at low latitudes on some days and VIIRS does not. Dates are derived
 from the data and still need to be checked against the instrument notices.
@@ -294,20 +297,43 @@ detection counts as zero in the history, although it has no row in the table. Pa
 anomaly. In sparse cells the MAD is small and z is extreme (19% of cell-months have |z| ≥ 2), so per-cell z
 is a rough indicator; for an area, sum the cells first and compute the anomaly on the sum.
 
-### Continuity after S-NPP
+### Continuity after S-NPP, and the current year
 
 S-NPP stopped observing on 2026-11-02; NOAA-20 carries the series on. Over the 88 months in which both were
 fully observing (2018–2025), S-NPP recorded 1.041 times as many detections as NOAA-20 (1.052 by day, 1.015
-by night; 1.03 to 1.06 by year), inside the 0.9–1.1 range set in the spec. The factor is in
-`artifacts/metrics/calibration_2012-2019.json`. It is not applied yet: the 2026 detections are downloaded
-but not ingested into the counts table.
+by night; 0.97 to 1.08 by month and period; 1.03 to 1.06 by year), inside the 0.9–1.1 range set in the spec.
+2026 is left out of the ratio because S-NPP was already failing.
+
+How the observed series is assembled from February 2012:
+
+- A month in which S-NPP was fully observing uses S-NPP as recorded (172 months).
+- Otherwise it uses the VIIRS satellite with more days observed, which is NOAA-20, multiplied by the ratio
+  for that month and period (`processed/continuity/v1`): the S-NPP outage months 2022-07, 2022-08, 2024-07,
+  2024-11 and 2026-07, and 2026-11 onward. These are still labeled `VIIRS_OBSERVED`, with
+  `source_satellite = N20`.
+
+2026 comes from the FIRMS area API (`astro-fire ingest-api`): standard-processing files to July,
+near-real-time files from August (`is_nrt`). **Near-real-time files have no `type` field, so every NRT
+detection is treated as type 0**; in the standard files of January–July 2026, 1.4% to 4.5% of detections per
+month had another type and were removed, so the NRT months are slightly high by that order.
+
+**The current month.** The data ends on 2026-11-14. November 2026 is marked partial (14 of 30 days) and is
+compared like for like: its history is the S-NPP detections on days 1–14 of November in each earlier year
+in which S-NPP observed all 14 days (2012–2023 and 2025; 2024 had an outage on Nov 3–6), from
+`processed/month_to_date/v1`. For the whole extent, Nov 1–14 2026 has 20,380 VIIRS-equivalent detections
+against a median of 22,785 for the same days (range 12,602 to 47,748). Other partial months get no anomaly.
+
+**To check:** August–October 2026 has 163 thousand S-NPP detections, the lowest fire season in the record
+(previous minimum 203 thousand in 2018), and NOAA-20 agrees (159 thousand). Both satellites showing it makes
+an instrument artifact unlikely, but the 2026 files come from the API and the earlier years from the archive,
+and we have not compared the two sources on the same dates.
 
 ### Still to fill in
 
 | Item | Status |
 |------|--------|
 | Sensitivity to the confidence filter; Terra-only 2000-11 → 2002-06 | Not done (H12) |
-| 2026 detections ingested; NOAA-20 continuity applied; current month marked partial | Not done (data downloaded) |
+| API files compared with archive files on the same dates (2026 looks unusually low) | Not done |
 | Uncertainty band on the before/after chart (regional annual totals) | Not done |
 | Gap dates checked against instrument notices | Not done |
 

@@ -179,8 +179,8 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
 
 | Period | Value | `origin` |
 |--------|-------|----------|
-| 2012-02 → 2026-10 | S-NPP observed | `VIIRS_OBSERVED` (`source_satellite = SNPP`) |
-| 2026-11 → | NOAA-20 observed × continuity factor `C` | `VIIRS_OBSERVED` (`source_satellite = N20`) |
+| 2012-02 → 2026-10, months with S-NPP fully observing | S-NPP observed | `VIIRS_OBSERVED` (`source_satellite = SNPP`) |
+| 2026-11 →, and S-NPP outage months | NOAA-20 observed × continuity factor `C` | `VIIRS_OBSERVED` (`source_satellite = N20`) |
 | 2002-07 → 2012-01 | `F × Aqua` or `B` | `VIIRS_EQUIVALENT_FROM_MODIS` (`source_satellite = Aqua`) |
 | 2000-11 → 2002-06 ❓ Q7 | Terra → Aqua-equivalent (factor fitted 2003–2011) → VIIRS-equivalent | `VIIRS_EQUIVALENT_FROM_MODIS` (`source_satellite = Terra`), wider interval |
 
@@ -249,7 +249,8 @@ Schemas are the data contract in [../data-dictionary.md](../data-dictionary.md).
 ```bash
 uv run astro-fire ingest     # zips → country CSVs → normalized hotspots Parquet + QA report
 uv run astro-fire aggregate  # → cell_month_counts
-uv run astro-fire coverage   # → coverage_daily, coverage_monthly: satellite outages (exists)
+uv run astro-fire ingest-api # FIRMS area-API files of the current year → hotspots and counts partitions (exists)
+uv run astro-fire coverage   # → coverage_daily, coverage_monthly, month_to_date: outages, unfinished month (exists)
 uv run astro-fire calibrate  # → factors (K, M by cross-validation), continuity factor
 uv run astro-fire harmonize  # → calendar (+ bootstrap intervals, anomalies)
 uv run astro-fire validate   # → validation table and charts

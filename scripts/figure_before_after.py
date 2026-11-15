@@ -34,7 +34,7 @@ def yearly(calendar: str, counts: str) -> list[dict]:
                    sum(count_harmonized) FILTER (WHERE is_estimated) AS estimated_part,
                    sum(raw_snpp) AS snpp, bool_and(is_estimated) AS all_estimated,
                    count(DISTINCT month) FILTER (WHERE is_partial) AS partial_months,
-                   any_value(model_version) AS model_version
+                   count(DISTINCT month) AS months, any_value(model_version) AS model_version
             FROM read_parquet('{calendar}/**/*.parquet', hive_partitioning = true)
             WHERE period = 'ALL' GROUP BY year
         ),
@@ -44,7 +44,9 @@ def yearly(calendar: str, counts: str) -> list[dict]:
             WHERE satellite = 'Aqua' GROUP BY year
         )
         SELECT year, aqua, snpp, harmonized, estimated_part, all_estimated, partial_months, model_version
-        FROM cal JOIN aqua USING (year) ORDER BY year
+        FROM cal JOIN aqua USING (year)
+        WHERE months = 12 AND partial_months = 0   -- only years that are complete in the calendar
+        ORDER BY year
         """
     ).fetchall()
     names = ("year", "modis_aqua_raw", "viirs_snpp_observed", "harmonized", "estimated_part",
@@ -63,7 +65,7 @@ def draw(data: list[dict], out: Path) -> None:
                          "axes.edgecolor": GRID, "axes.labelcolor": INK_2, "xtick.color": INK_2,
                          "ytick.color": INK_2, "svg.fonttype": "none"})
     fig, axes = plt.subplots(1, 2, figsize=(13, 6.6), sharey=True, facecolor=SURFACE)
-    fig.subplots_adjust(left=0.07, right=0.975, top=0.80, bottom=0.25, wspace=0.07)
+    fig.subplots_adjust(left=0.07, right=0.975, top=0.80, bottom=0.275, wspace=0.07)
     line = {"linewidth": 2, "solid_capstyle": "round", "solid_joinstyle": "round"}
     dot = {"marker": "o", "markersize": 8, "markeredgecolor": SURFACE, "markeredgewidth": 2}
 
@@ -132,16 +134,16 @@ def draw(data: list[dict], out: Path) -> None:
                    markerfacecolor=SURFACE, markeredgecolor=VIIRS, markeredgewidth=2,
                    label="VIIRS-equivalent, estimated from MODIS Aqua (and Terra as witness)"),
     ]
-    fig.legend(handles=handles, loc="lower left", bbox_to_anchor=(0.065, 0.125), ncol=3, frameon=False,
+    fig.legend(handles=handles, loc="lower left", bbox_to_anchor=(0.065, 0.15), ncol=3, frameon=False,
                fontsize=10, labelcolor=INK_2, handlelength=2.6, columnspacing=2.2)
-    partial = [str(d["year"]) for d in data if d["partial_months"]]
     fig.text(0.07, 0.035,
              "Source: NASA FIRMS active fire detections (MODIS Aqua and Terra; VIIRS S-NPP 375 m), presumed "
              "vegetation fires, nominal and high confidence, pilot bounding box.\n"
              f"Estimates: model {data[0]['model_version']}, calibrated on 2012–2019; uncertainty intervals "
              "exist per cell and month and are not drawn here. January 2012 is estimated.\n"
-             f"{' and '.join(partial)} include months with S-NPP outages. "
-             "A detection is not a fire and not burned area. Chart code written with AI assistance.",
+             "Right panel: months with S-NPP outages use NOAA-20 scaled to the S-NPP record. Only complete "
+             "years are shown.\nA detection is not a fire and not burned area. Chart code written with AI "
+             "assistance.",
              fontsize=8.6, color=INK_2, ha="left", va="bottom", linespacing=1.45)
 
     out.parent.mkdir(parents=True, exist_ok=True)
