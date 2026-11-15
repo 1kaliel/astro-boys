@@ -421,7 +421,10 @@ function LandingHeader() {
   const label = `Switch to ${next} theme`;
   return (
     <header className="landing-header">
-      <span className="landing-logo">FIREWATCHER</span>
+      {/* The header sits over the dark scene in both themes: always the light-on-dark (negative) logo. */}
+      <a className="landing-logo" href="#home">
+        <img src="/brand/firewatcher-logo-horizontal-compacto-negativo.svg" alt="FIREWATCHER" />
+      </a>
       <nav className="landing-nav" aria-label="Landing">
         <button type="button" className="landing-icon-button" onClick={() => applyTheme(next)} aria-label={label} title={label}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">

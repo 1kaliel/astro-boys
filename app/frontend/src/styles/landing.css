@@ -60,9 +60,14 @@
 }
 
 .landing-logo {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.22em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-logo img {
+  display: block;
+  width: clamp(8.5rem, 22vw, 12.5rem);
+  height: auto;
 }
 
 .landing-nav {
