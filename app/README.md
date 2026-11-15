@@ -34,6 +34,9 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
 - Dashboard layout: app bar, filter bar, KPI row (reads the same calendar answer as the heatmap), calendar and map.
 - D6 CSV download: `GET /api/hotspots.csv` streams the native hotspots of the same cells and years, read from the
   bucket on Cloud Run (see [Hotspots CSV API](#hotspots-csv-api)); "CSV" in the filter bar.
+- D9 should-haves: "Raw by sensor" and "Anomaly" views of the calendar, the trend chart (harmonized next to the raw
+  counts of Aqua MODIS and S-NPP VIIRS) and the seasonal profile (p10 to p90 band, median, one year with the 90%
+  interval of its estimated months). The charts are plain SVG (`features/charts/`), no chart library added.
 - Not done: "this month vs median" card with date picker (D5).
 
 ## Calendar API
@@ -62,6 +65,9 @@ Rules (docs/data-dictionary.md, and the diary `DECISION`s of D2):
   unfinished month is compared with the **same days of earlier years**: `median_hist` and the anomalies come from
   `month_to_date/v1` (days 1..N summed over the area per year, a year without a row counts as 0), with
   `median_days` = N and `median_n_years`. Any other partial month, or a server without that table, has no median.
+- **Raw counts stay per satellite:** `raw_aqua`, `raw_terra`, `raw_snpp`, `raw_n20` are each summed over the area and
+  never added together (MODIS and VIIRS are different instruments); `null` means the satellite had no data in that
+  month. `raw_source` is the native count of the month's `source_satellite`: what a chart of raw counts shows.
 - **No estimate is `null`:** `count_harmonized` is `null` (not 0, the UI says "No estimate") when a cell of the area,
   or the whole extent, has no estimate in the month, as in the estimated partial months of July and August 2002.
 
