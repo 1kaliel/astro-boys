@@ -33,12 +33,13 @@ coverage `20261115T010717Z_coverage_fa7b98`, calibrate `20261115T013659Z_calibra
 |-------|------|--------|
 | 2012–2019 | Calibration: factors, pooling level, weights, background type | Used |
 | 2020–2021 | Development set: scored four times while the method was built | Used; **not a blind test** |
-| 2022–2023 | **Final test**: scored once with `validate --final`, after the method is frozen | **Not opened yet** |
-| 2024–2025 | Reported with the final test, separately (MODIS orbits drift in these years) | Not opened yet |
+| 2022–2023 | **Final test**: scored once with `validate --final`, after the method is frozen | **Opened once**, Sun Nov 15, 01:40 UTC |
+| 2024–2025 | Reported with the final test, separately (MODIS orbits drift in these years) | Opened in the same run |
 
 The code refuses to calibrate on any held-out year and refuses to score 2022–2025 without `--final`.
 Yearly raw totals per satellite for 2003–2025 and daily region-wide counts were seen during data checks;
-no prediction has been compared with 2022–2025.
+no prediction was compared with 2022–2025 before the final run. The freeze (commit, settings, pass rule) was
+pushed to GitHub as commit `9a66a68` one minute before that run.
 
 **Pass rule, fixed before the final test is opened** (`validation.RULE`): the final method passes when
 (1) it has a lower MAE and a lower RMSE than every baseline at cell-month level, and (2) on regional monthly
@@ -164,11 +165,95 @@ What this shows, and what it does not:
 Every change was chosen on 2012–2019 evidence, by a rule stated before the run, but each was prompted by
 what 2020–2021 showed. That is why 2020–2021 is a development set and the claim rests on 2022–2023.
 
+### Final test (2022–2023): the result the claim rests on
+
+One run, `20261115T014038Z_validate-final_1f4753`, after the method was frozen at commit `e832477` (model `fb-l1-terra-rec-4`: pooling to the
+1° parent, `K = 50`, `M = 5`, Terra-aware background, λ = 0.75). Left out as satellite gaps: 2022-04 (Aqua),
+2022-07 and 2022-08 (S-NPP). 130,536 cell × month × day/night rows, 3,108 cells, 21 months. Tables:
+`artifacts/metrics/validation_final_2022-2023.md` and `.json`.
+
+| Method | Role | MAE, cell-month | RMSE, cell-month | Bias | Correlation | MAE, regional month | Bias, regional |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Raw Aqua counts (no harmonization) | reference | 5.33 | 18.28 | -83.7% | 0.838 | 32873.1 | -83.7% |
+| One global ratio | baseline | 4.60 | 14.71 | +6.2% | 0.838 | 3636.4 | +6.2% |
+| OLS line V = a·A + b, global | baseline | 4.51 | 11.55 | +5.5% | 0.838 | 9912.8 | +5.5% |
+| Ratio by month × day/night, no cell term | baseline | 4.22 | 13.92 | +6.3% | 0.854 | 2753.4 | +6.3% |
+| F with pooling, no background | ablation | 3.52 | 10.83 | -10.4% | 0.888 | 4102.3 | -10.4% |
+| F + static background B | ablation | 3.54 | 10.59 | +4.6% | 0.891 | 2836.2 | +4.6% |
+| F + Terra-aware background B, not reconciled | ablation | 3.47 | 10.53 | +6.4% | 0.893 | 3072.6 | +6.4% |
+| Final: F + background B, as fitted (Terra-aware, reconciled) | candidate | 3.46 | 10.43 | +6.3% | 0.896 | 2700.2 | +6.3% |
+
+**The method passes the rule fixed in advance.**
+
+- Per cell: MAE 18% lower than the best baseline on MAE (ratio by month × day/night, 4.22) and RMSE 10% lower
+  than the best baseline on RMSE (OLS, 11.55).
+- Regional monthly totals: MAE 2,700 against 2,753 for the best baseline. The paired difference averages −53
+  detections per month, 90% interval −231 to +124: level with the baseline, not distinguishably better.
+- With the three gap months included, the picture is the same (cell MAE 3.44 against 4.19).
+
+**What the final test also shows, against us:**
+
+- **Every method is about 6% too high in 2022–2023** (+4% in 2022, +8% in 2023). The relation between Aqua
+  and S-NPP fitted on 2012–2019 no longer holds exactly: Aqua records relatively more than it did. The
+  cell model does not correct this, and neither do the baselines.
+- **In 2024–2025 the shift is large: every method is about 20% too high, 30% by day and unbiased by night.**
+  The final method is still more accurate per cell than every baseline (MAE 3.88 against 4.61) and level on
+  regional totals (7,040 against 6,924; interval of the difference −69 to +300), but a 20% bias means the
+  2012–2019 factors should not be used to convert Aqua counts of those years. This is consistent with the
+  drift of the MODIS orbits to later overpass times; it needs to be confirmed against the mission notices.
+- Consequences for the product: (1) for 2012 onward the series uses observed VIIRS, so this bias does not
+  enter it; (2) for 2003–2011 the factors are applied backward, where no test is possible. The ratio was
+  stable from 2012 to 2021 (table above), which is the only evidence for the backward assumption, and the
+  drift after 2021 shows the relation is not guaranteed to be stable.
+- Each added step helped per cell, but on this test the static background has a smaller bias (+4.6%) than
+  the final method (+6.3%), and the reconciliation is what brings the regional error back down (3,073 →
+  2,700). Nothing was changed after seeing this.
+
+**Why the bias appears after 2021: Aqua's overpass time drifted.** Median local solar time of the daytime
+detections in the pilot extent, by year (`uv run python scripts/overpass_time.py`; full table in
+`artifacts/metrics/overpass_time_by_year.json`):
+
+| Satellite | 2003–2011 | 2012–2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| Aqua, day | 13:35–13:40 | 13:37–13:39 | 13:38 | 13:38 | 13:43 | 13:56 | 14:19 | 14:56 |
+| Terra, day | 10:26–10:30 | 10:27–10:29 | 10:28 | 10:25 | 10:15 | 10:01 | 09:42 | 09:13 |
+| S-NPP, day | | 13:33–13:43 | 13:37 | 13:37 | 13:37 | 13:38 | 13:36 | 13:39 |
+| NOAA-20, day | | 13:36 (2018–19) | 13:35 | 13:36 | 13:37 | 13:37 | 13:34 | 13:35 |
+
+- Aqua crossed at the same local time, within five minutes, in every year from 2003 to 2021, and then moved
+  later each year: 5 minutes in 2022, 18 in 2023, 41 in 2024, 78 in 2025. The VIIRS satellites did not move.
+  A later afternoon overpass sees more of the daily fire cycle, so Aqua records more relative to VIIRS and
+  factors fitted on 2012–2019 over-predict: by 4% in 2022, 8% in 2023 and about 20% in 2024–2025, by day only.
+  The night bias is near zero, as expected if the cause is the afternoon fire cycle.
+- **The years we reconstruct (2003–2011) have the same Aqua overpass time as the calibration years.** The one
+  identified cause of the shift is absent there. This does not prove the relation was identical before 2012,
+  but it removes the known reason for it to differ.
+- The final test (2022–2023) was therefore run under conditions that had already started to drift, which is
+  harder than the reconstruction task. We report its bias as measured.
+- Terra, the witness, was stable until 2020 and drifted earlier from 2021; it is used as a witness only for
+  2003–2011 in the product.
+- Still to do: confirm the dates on which orbit maintenance ended in the mission notices.
+
+Late years, 2024–2025 (22 months; 2024-07 and 2024-11 left out as S-NPP gaps):
+
+| Method | Role | MAE, cell-month | RMSE, cell-month | Bias | Correlation | MAE, regional month | Bias, regional |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Raw Aqua counts (no harmonization) | reference | 4.77 | 18.26 | -81.5% | 0.760 | 28981.2 | -81.5% |
+| One global ratio | baseline | 5.27 | 17.71 | +20.5% | 0.760 | 7499.0 | +20.5% |
+| OLS line V = a·A + b, global | baseline | 5.06 | 14.09 | +18.9% | 0.760 | 11453.7 | +18.9% |
+| Ratio by month × day/night, no cell term | baseline | 4.61 | 15.29 | +19.4% | 0.822 | 6923.7 | +19.4% |
+| F with pooling, no background | ablation | 3.84 | 12.41 | +0.6% | 0.852 | 4859.5 | +0.6% |
+| F + static background B | ablation | 3.89 | 12.22 | +16.7% | 0.856 | 6234.3 | +16.7% |
+| F + Terra-aware background B, not reconciled | ablation | 3.85 | 12.16 | +20.1% | 0.858 | 7285.8 | +20.1% |
+| Final: F + background B, as fitted (Terra-aware, reconciled) | candidate | 3.88 | 12.26 | +19.7% | 0.853 | 7039.9 | +19.7% |
+
+(The near-zero bias of "F, no background" in these years is two errors cancelling: it leaves out the
+zero-Aqua months, and the drift inflates the rest.)
+
 ### Still to fill in
 
 | Item | Status |
 |------|--------|
-| Final test on 2022–2023, late years 2024–2025 | Not opened (one run, after the freeze) |
 | Bootstrap intervals for the estimates | Not done (H11) |
 | NOAA-20 continuity factor after S-NPP ended | Not done (H11) |
 | Before/after-2012 chart, raw vs harmonized | Not done (H8) |
