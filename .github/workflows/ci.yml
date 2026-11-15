@@ -48,3 +48,38 @@ jobs:
         run: uv run python scripts/firms_download.py --help
       - name: Shell scripts parse
         run: for f in scripts/*.sh infra/gcp/*.sh infra/gcp/vm/*.sh deploy/cloudrun/*.sh; do bash -n "$f"; done
+
+  app-backend:
+    name: App backend (lint, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.12"
+          enable-cache: true
+          cache-dependency-glob: app/uv.lock
+      - run: uv sync --frozen --group dev
+      - run: uv run ruff check backend
+      - run: uv run pytest
+
+  app-frontend:
+    name: App frontend (typecheck, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24   # same major version as app/Dockerfile
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
