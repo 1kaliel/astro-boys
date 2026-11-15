@@ -64,8 +64,8 @@ APPLY=1 ./deploy/cloudrun/deploy.sh                                  # build, pu
 
 No Docker with BuildKit on your machine? Build on Cloud Build instead (same Dockerfile and build contexts, see
 [cloudbuild.yaml](cloudbuild.yaml)): `BUILDER=cloudbuild ./deploy/cloudrun/deploy.sh`. It builds the **committed**
-app (`git archive HEAD`) with the two local data folders, as the Cloud Build service account
-(`<project number>@cloudbuild.gserviceaccount.com`, or `CLOUDBUILD_SA`). The first build creates the source bucket
+app (`git archive HEAD`) with the two local data folders, as the build service account `astro-build` (created once
+by Kali with `infra/gcp/45-build-service-account.sh`; or set `CLOUDBUILD_SA`). The first build creates the source bucket
 `gs://<project>_cloudbuild` (set `CLOUDBUILD_STAGING=gs://...` to use another place) and build minutes are billed.
 
 The image is tagged with the git commit, so every deploy is traceable. Defaults: 1 vCPU, 1 GiB,

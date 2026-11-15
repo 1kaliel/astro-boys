@@ -47,7 +47,9 @@ confirm "build $IMAGE (calendar model $MODEL_VERSION) and deploy Cloud Run servi
 if [[ "$BUILDER" == cloudbuild ]]; then
   # Cloud Build builds what is committed (the image tag is the commit), plus the two local data folders.
   # The first build creates the source bucket gs://${GCP_PROJECT_ID}_cloudbuild unless CLOUDBUILD_STAGING is set.
-  CLOUDBUILD_SA="${CLOUDBUILD_SA:-$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')@cloudbuild.gserviceaccount.com}"
+  # The build runs as a dedicated account (infra/gcp/45-build-service-account.sh): Cloud Build refuses its
+  # legacy account here, and the project default (Compute Engine) has no role.
+  CLOUDBUILD_SA="${CLOUDBUILD_SA:-${BUILD_SA_NAME:-astro-build}@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
   if [[ -n "$(git -C "$REPO_DIR" status --porcelain -- "$APP_DIR")" ]]; then
     echo "Uncommitted changes under $APP_DIR are NOT in the build: Cloud Build gets commit $TAG." >&2
   fi
