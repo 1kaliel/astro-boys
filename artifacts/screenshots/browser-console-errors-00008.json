@@ -1,0 +1,193 @@
+{
+  "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+  "revision": "astro-dashboard-00008-m2v",
+  "recorded": "console messages of type error and warning, uncaught page errors (pageerror) and failed requests (requestfailed), per browser context",
+  "console_errors": 0,
+  "page_errors": 0,
+  "summary": "No console errors and no page errors in any capture. Two MapLibre warnings: 'Image circle-11 could not be loaded' (dark basemap style, a sprite icon missing from the OpenFreeMap style) and 'Unknown projection name: undefined. Falling back to mercator projection.' (Globe switch). In the globe retake MapLibre cancelled five zoom-3 tile requests (net::ERR_ABORTED) while the view moved to the whole globe; the image shows the tiles loaded.",
+  "contexts": [
+    {
+      "shot": "09-final-overview-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "first run"
+    },
+    {
+      "shot": "10-final-overview-dark-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "dark",
+      "mobile_emulation": false,
+      "entries": [
+        {
+          "type": "warning",
+          "text": "Image \"circle-11\" could not be loaded. Please make sure you have added the image before it is needed with map.addImage(), resolved it with map.setMissingStyleImageResolver(), or included it in a \"sprite\" property in your style.",
+          "url": "https://astro-dashboard-301238386836.us-central1.run.app/assets/MapPanel-DhH1Oh4w.js"
+        }
+      ],
+      "run": "first run"
+    },
+    {
+      "shot": "14-raw-by-sensor-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "first run"
+    },
+    {
+      "shot": "15-anomaly-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "first run"
+    },
+    {
+      "shot": "16-17-18-phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "color_scheme": "light",
+      "mobile_emulation": true,
+      "entries": [],
+      "run": "first run (16, 17; 18 was retaken)"
+    },
+    {
+      "shot": "19-how-to-read-phone.jpg",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "color_scheme": "light",
+      "mobile_emulation": true,
+      "entries": [],
+      "run": "first run"
+    },
+    {
+      "shot": "11-drilldown-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "retake run"
+    },
+    {
+      "shot": "12-zoom-focus-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "retake run"
+    },
+    {
+      "shot": "13-globe-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [
+        {
+          "type": "warning",
+          "text": "Unknown projection name: undefined. Falling back to mercator projection.",
+          "url": "https://astro-dashboard-301238386836.us-central1.run.app/assets/MapPanel-DhH1Oh4w.js"
+        },
+        {
+          "type": "requestfailed",
+          "text": "net::ERR_ABORTED https://tiles.openfreemap.org/planet/20261101_080013_pt/3/2/5.pbf"
+        },
+        {
+          "type": "requestfailed",
+          "text": "net::ERR_ABORTED https://tiles.openfreemap.org/planet/20261101_080013_pt/3/3/4.pbf"
+        },
+        {
+          "type": "requestfailed",
+          "text": "net::ERR_ABORTED https://tiles.openfreemap.org/planet/20261101_080013_pt/3/2/4.pbf"
+        },
+        {
+          "type": "requestfailed",
+          "text": "net::ERR_ABORTED https://tiles.openfreemap.org/planet/20261101_080013_pt/3/3/3.pbf"
+        },
+        {
+          "type": "requestfailed",
+          "text": "net::ERR_ABORTED https://tiles.openfreemap.org/planet/20261101_080013_pt/3/2/3.pbf"
+        }
+      ],
+      "run": "retake run"
+    },
+    {
+      "shot": "16-17-18-phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "color_scheme": "light",
+      "mobile_emulation": true,
+      "entries": [],
+      "run": "retake run (18 only)"
+    }
+  ],
+  "discarded_first_attempts": [
+    {
+      "shot": "11-drilldown-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "first run, image discarded (sticky app bar over the card)"
+    },
+    {
+      "shot": "12-zoom-focus-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [],
+      "run": "first run, image discarded (sticky app bar over the card)"
+    },
+    {
+      "shot": "13-globe-desktop.jpg",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "color_scheme": "light",
+      "mobile_emulation": false,
+      "entries": [
+        {
+          "type": "warning",
+          "text": "Unknown projection name: undefined. Falling back to mercator projection.",
+          "url": "https://astro-dashboard-301238386836.us-central1.run.app/assets/MapPanel-DhH1Oh4w.js"
+        }
+      ],
+      "run": "first run, image discarded (sticky app bar over the card)"
+    }
+  ]
+}

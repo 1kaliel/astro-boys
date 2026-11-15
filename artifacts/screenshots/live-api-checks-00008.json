@@ -1,0 +1,405 @@
+{
+  "url": "https://astro-dashboard-301238386836.us-central1.run.app/",
+  "revision": "astro-dashboard-00008-m2v",
+  "revision_note": "The API does not report the Cloud Run revision; it is taken from the deploy record (diary, 2026-11-15 16:51 UTC). /api/version build.built_at 2026-11-15T16:49:00Z matches that deploy.",
+  "before_capture": [
+    {
+      "endpoint": "/api/healthz",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      },
+      "checked_utc": "2026-11-15T16:53:02.511Z",
+      "ms": 480
+    },
+    {
+      "endpoint": "/api/version",
+      "status": 200,
+      "body": {
+        "model_version": "fb-l1-terra-rec-4",
+        "image_model_version": "fb-l1-terra-rec-4",
+        "build": {
+          "dataset": "calendar/v1",
+          "built_at": "2026-11-15T16:49:00Z",
+          "model_version": "fb-l1-terra-rec-4",
+          "rows": 1838338,
+          "first_year": 2002,
+          "last_year": 2026,
+          "files": 25,
+          "bytes": 73065028,
+          "month_to_date": {
+            "rows": 36079,
+            "windows": [
+              {
+                "month": 11,
+                "days": 14,
+                "n_years": 13,
+                "last_year": 2025
+              }
+            ]
+          }
+        }
+      },
+      "checked_utc": "2026-11-15T16:53:02.991Z",
+      "ms": 342
+    },
+    {
+      "endpoint": "/api/hotspots/count?west=-41&south=-10&east=-40&north=-9&start=2013-01-01&end=2013-12-31&period=ALL",
+      "status": 200,
+      "body": {
+        "rows": 2064,
+        "over_limit": false,
+        "max_rows": 500000,
+        "cells": 16,
+        "start": "2013-01-01",
+        "end": "2013-12-31",
+        "period": "ALL",
+        "include_all": false
+      },
+      "checked_utc": "2026-11-15T16:53:03.333Z",
+      "ms": 1217
+    },
+    {
+      "endpoint": "/api/drilldown?cell=G083135.16&year=2013&month=9&period=ALL",
+      "status": 200,
+      "body": {
+        "cell": "G083135.16",
+        "year": 2013,
+        "month": 9,
+        "period": "ALL",
+        "satellite": "SNPP",
+        "instrument": "VIIRS",
+        "min_detections": 5,
+        "subdivided": true,
+        "neighbors": [
+          {
+            "id": "G083135.11",
+            "count": 245
+          },
+          {
+            "id": "G083135.12",
+            "count": 348
+          },
+          {
+            "id": "G083136.09",
+            "count": 250
+          },
+          {
+            "id": "G083135.15",
+            "count": 547
+          },
+          {
+            "id": "G083135.16",
+            "count": 639
+          },
+          {
+            "id": "G083136.13",
+            "count": 612
+          },
+          {
+            "id": "G084135.03",
+            "count": 213
+          },
+          {
+            "id": "G084135.04",
+            "count": 389
+          },
+          {
+            "id": "G084136.01",
+            "count": 580
+          }
+        ],
+        "l3": [
+          {
+            "id": "G083135.16.01",
+            "count": 59
+          },
+          {
+            "id": "G083135.16.02",
+            "count": 40
+          },
+          {
+            "id": "G083135.16.03",
+            "count": 104
+          },
+          {
+            "id": "G083135.16.04",
+            "count": 34
+          },
+          {
+            "id": "G083135.16.05",
+            "count": 33
+          },
+          {
+            "id": "G083135.16.06",
+            "count": 110
+          },
+          {
+            "id": "G083135.16.07",
+            "count": 28
+          },
+          {
+            "id": "G083135.16.08",
+            "count": 64
+          },
+          {
+            "id": "G083135.16.09",
+            "count": 2
+          },
+          {
+            "id": "G083135.16.10",
+            "count": 53
+          },
+          {
+            "id": "G083135.16.11",
+            "count": 41
+          },
+          {
+            "id": "G083135.16.12",
+            "count": 25
+          },
+          {
+            "id": "G083135.16.13",
+            "count": 5
+          },
+          {
+            "id": "G083135.16.14",
+            "count": 18
+          },
+          {
+            "id": "G083135.16.15",
+            "count": 13
+          },
+          {
+            "id": "G083135.16.16",
+            "count": 10
+          }
+        ],
+        "total": 639,
+        "l3_sum": 639,
+        "l3_cells": 16
+      },
+      "checked_utc": "2026-11-15T16:53:04.550Z",
+      "ms": 1052
+    },
+    {
+      "endpoint": "/",
+      "status": 200,
+      "body": {
+        "title": "FIREWATCHER: hotspot calendar for Northeast Brazil"
+      },
+      "checked_utc": "2026-11-15T16:53:05.602Z",
+      "ms": 210
+    },
+    {
+      "endpoint": "/favicon.svg",
+      "status": 200,
+      "body": {
+        "bytes": 429,
+        "content_type": "image/svg+xml"
+      },
+      "checked_utc": "2026-11-15T16:53:05.812Z",
+      "ms": 194
+    }
+  ],
+  "after_capture": [
+    {
+      "endpoint": "/api/healthz",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      },
+      "checked_utc": "2026-11-15T17:01:22.007Z",
+      "ms": 529
+    },
+    {
+      "endpoint": "/api/version",
+      "status": 200,
+      "body": {
+        "model_version": "fb-l1-terra-rec-4",
+        "image_model_version": "fb-l1-terra-rec-4",
+        "build": {
+          "dataset": "calendar/v1",
+          "built_at": "2026-11-15T16:49:00Z",
+          "model_version": "fb-l1-terra-rec-4",
+          "rows": 1838338,
+          "first_year": 2002,
+          "last_year": 2026,
+          "files": 25,
+          "bytes": 73065028,
+          "month_to_date": {
+            "rows": 36079,
+            "windows": [
+              {
+                "month": 11,
+                "days": 14,
+                "n_years": 13,
+                "last_year": 2025
+              }
+            ]
+          }
+        }
+      },
+      "checked_utc": "2026-11-15T17:01:22.536Z",
+      "ms": 342
+    },
+    {
+      "endpoint": "/api/hotspots/count?west=-41&south=-10&east=-40&north=-9&start=2013-01-01&end=2013-12-31&period=ALL",
+      "status": 200,
+      "body": {
+        "rows": 2064,
+        "over_limit": false,
+        "max_rows": 500000,
+        "cells": 16,
+        "start": "2013-01-01",
+        "end": "2013-12-31",
+        "period": "ALL",
+        "include_all": false
+      },
+      "checked_utc": "2026-11-15T17:01:22.878Z",
+      "ms": 1214
+    },
+    {
+      "endpoint": "/api/drilldown?cell=G083135.16&year=2013&month=9&period=ALL",
+      "status": 200,
+      "body": {
+        "cell": "G083135.16",
+        "year": 2013,
+        "month": 9,
+        "period": "ALL",
+        "satellite": "SNPP",
+        "instrument": "VIIRS",
+        "min_detections": 5,
+        "subdivided": true,
+        "neighbors": [
+          {
+            "id": "G083135.11",
+            "count": 245
+          },
+          {
+            "id": "G083135.12",
+            "count": 348
+          },
+          {
+            "id": "G083136.09",
+            "count": 250
+          },
+          {
+            "id": "G083135.15",
+            "count": 547
+          },
+          {
+            "id": "G083135.16",
+            "count": 639
+          },
+          {
+            "id": "G083136.13",
+            "count": 612
+          },
+          {
+            "id": "G084135.03",
+            "count": 213
+          },
+          {
+            "id": "G084135.04",
+            "count": 389
+          },
+          {
+            "id": "G084136.01",
+            "count": 580
+          }
+        ],
+        "l3": [
+          {
+            "id": "G083135.16.01",
+            "count": 59
+          },
+          {
+            "id": "G083135.16.02",
+            "count": 40
+          },
+          {
+            "id": "G083135.16.03",
+            "count": 104
+          },
+          {
+            "id": "G083135.16.04",
+            "count": 34
+          },
+          {
+            "id": "G083135.16.05",
+            "count": 33
+          },
+          {
+            "id": "G083135.16.06",
+            "count": 110
+          },
+          {
+            "id": "G083135.16.07",
+            "count": 28
+          },
+          {
+            "id": "G083135.16.08",
+            "count": 64
+          },
+          {
+            "id": "G083135.16.09",
+            "count": 2
+          },
+          {
+            "id": "G083135.16.10",
+            "count": 53
+          },
+          {
+            "id": "G083135.16.11",
+            "count": 41
+          },
+          {
+            "id": "G083135.16.12",
+            "count": 25
+          },
+          {
+            "id": "G083135.16.13",
+            "count": 5
+          },
+          {
+            "id": "G083135.16.14",
+            "count": 18
+          },
+          {
+            "id": "G083135.16.15",
+            "count": 13
+          },
+          {
+            "id": "G083135.16.16",
+            "count": 10
+          }
+        ],
+        "total": 639,
+        "l3_sum": 639,
+        "l3_cells": 16
+      },
+      "checked_utc": "2026-11-15T17:01:24.092Z",
+      "ms": 1084
+    },
+    {
+      "endpoint": "/",
+      "status": 200,
+      "body": {
+        "title": "FIREWATCHER: hotspot calendar for Northeast Brazil"
+      },
+      "checked_utc": "2026-11-15T17:01:25.176Z",
+      "ms": 213
+    },
+    {
+      "endpoint": "/favicon.svg",
+      "status": 200,
+      "body": {
+        "bytes": 429,
+        "content_type": "image/svg+xml"
+      },
+      "checked_utc": "2026-11-15T17:01:25.389Z",
+      "ms": 211
+    }
+  ]
+}
