@@ -120,7 +120,8 @@ def daily(
     last = date(year, month, _calendar.monthrange(year, month)[1])
     source = _partition_source(root, instrument, year)
     # One read of the partition for the month and satellite (the slow part on gs://), kept in memory; every
-    # count and the passes come from it. Only the archive's last date needs a second, two-column read of the year.
+    # count and the passes come from it. Only the archive's last date needs a second, two-column read of the
+    # year.
     month_filter = ["satellite = ?", "date_local BETWEEN ? AND ?"]
     month_params: list = [satellite, first, last]
     clauses = ["passes_main_filter", "list_contains(?, cell_l2)"]
