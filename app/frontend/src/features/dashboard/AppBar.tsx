@@ -20,13 +20,15 @@ type AppBarProps = {
 export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
   const scheme = useColorScheme();
   const next = scheme === "dark" ? "light" : "dark";
+  const logo = scheme === "dark"
+    ? "/brand/firewatcher-logo-horizontal-compacto-negativo.svg"
+    : "/brand/firewatcher-logo-horizontal-compacto.svg";
 
   return (
     <header className="app-bar">
       <div className="app-brand">
-        <span className="app-logo" aria-hidden="true" />
         <div>
-          <h1 className="app-title">FIREWATCHER</h1>
+          <h1 className="app-title"><img src={logo} alt="FIREWATCHER" /></h1>
           {/* The name alone could read as live fire alerts: the subtitle always says what the app is. */}
           <p className="app-subtitle">
             <span className="app-subtitle-full">
