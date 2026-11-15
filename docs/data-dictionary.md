@@ -63,11 +63,20 @@ One row per L2 cell × local year-month × period. Partitioned by `year`.
 
 Rules for consumers:
 
-- The historical H7 release leaves estimated intervals, estimated variance, and anomalies null.
-  Months with incomplete Aqua coverage keep their partial flag and a null estimate.
+- Months with incomplete Aqua coverage keep their partial flag and a null estimate.
   Incomplete S-NPP months show the observed subset with `is_partial=true`.
+  (The first H7 release left estimated intervals, variance and anomalies null; later releases fill them.)
 - To get a region, **sum `count_harmonized` over its cells first**, then compute medians and anomalies on the sum.
-  Do not average per-cell anomalies. Variances add (independence approximation; note it in the UI).
+  Do not average per-cell anomalies.
+- **Variance and interval of a sum of cells.** The errors of nearby cells are correlated, so adding the variances as if
+  the cells were independent makes the interval far too narrow (for the whole Northeast the real variance is about
+  13.7 times the independent sum). Use `var_area = Σ var × n^0.32` and `spread = 1.645 × √var_area`, with `n` the
+  number of cells that have an estimate in that month. With one cell `n^0.32 = 1`, so its own variance is used. The
+  exponent 0.32 is empirical (see `var_harmonized` above). The UI must say that the interval of an area is approximate.
+  Observed months have variance 0, so their interval equals the count.
+- **A null estimate is not zero.** If `count_harmonized` is null in any cell of the month, the sum for that month has
+  no value (`None`/null): a sum of the cells that have one would understate the month. Show it as "No estimate",
+  never as 0 and never as a low value.
 - Never add `raw_*` columns of different satellites together.
 - An absent row means no detection in that cell-month by the source satellite, **not** a confirmed absence of fire.
 

@@ -5,13 +5,14 @@ import {
   buildScale,
   buildSeries,
   cellAriaLabel,
-  legendStops,
+  legendRanges,
   monthSpan,
   peakSeason,
   provenanceText,
   scaleStep,
   valueRange,
 } from "./calendarModel";
+import { MONTH_LOCALE, monthLong, monthShort } from "./calendarText";
 
 function month(overrides: Partial<CalendarMonth>): CalendarMonth {
   return {
@@ -37,7 +38,7 @@ describe("buildSeries", () => {
     const series = buildSeries([month({})], "ALL", 2009, 2011);
     expect(series.map((row) => row.id)).toEqual(["2009", "2010", "2011"]);
     expect(series.every((row) => row.data.length === 12)).toBe(true);
-    expect(series[0].data.map((cell) => cell.x)[0]).toBe("Jan");
+    expect(series[0].data.map((cell) => cell.x)[0]).toBe(monthShort(1));
   });
 
   it("puts the count in the right cell and leaves missing months as no data, never zero", () => {
@@ -87,7 +88,7 @@ describe("buildSeries with a month filter", () => {
 
   it("keeps only the picked months, in calendar order", () => {
     const [row] = buildSeries(rows, "ALL", 2010, 2010, [11, 9, 10]);
-    expect(row.data.map((cell) => cell.x)).toEqual(["Sep", "Oct", "Nov"]);
+    expect(row.data.map((cell) => cell.x)).toEqual([monthShort(9), monthShort(10), monthShort(11)]);
     expect(row.data.map((cell) => cell.y)).toEqual([90, 100, 110]);
   });
 
@@ -143,13 +144,19 @@ describe("color scale", () => {
     expect(buildScale([])).toBeNull();
   });
 
-  it("prints where each color starts, with the limits in the legend", () => {
+  it("gives each color a range of detections for the legend, ending at the maximum", () => {
     const scale = buildScale(skewed)!;
-    const stops = legendStops(scale);
-    expect(stops).toHaveLength(scale.breaks.length + 1);
-    expect(stops[0].label).toBe("1");
-    expect(stops[1].label.startsWith("≥ ")).toBe(true);
-    expect(stops.map((stop) => stop.step)).toEqual([...stops.map((stop) => stop.step)].sort((a, b) => a - b));
+    const ranges = legendRanges(scale);
+    expect(ranges).toHaveLength(scale.breaks.length + 1);
+    expect(ranges[0].from).toBe(1);
+    expect(ranges[ranges.length - 1].to).toBe(5000);
+    expect(ranges[ranges.length - 1].includesTo).toBe(true);
+    expect(ranges.slice(0, -1).every((range) => !range.includesTo)).toBe(true);
+    // ranges touch: each one starts where the previous one stops
+    expect(ranges.slice(1).map((range) => range.from)).toEqual(ranges.slice(0, -1).map((range) => range.to));
+    expect(ranges.map((range) => range.step)).toEqual([...ranges.map((range) => range.step)].sort((a, b) => a - b));
+    expect(ranges[0].label).toBe("1–3");
+    expect(ranges[ranges.length - 1].label).toBe("40–5K");
   });
 });
 
@@ -187,13 +194,13 @@ describe("peakSeason", () => {
 
 describe("monthSpan", () => {
   it("writes runs as a range, including over the year end", () => {
-    expect(monthSpan([9, 10, 11])).toBe("Sep–Nov");
-    expect(monthSpan([11, 12, 1])).toBe("Nov–Jan");
-    expect(monthSpan([3])).toBe("Mar");
+    expect(monthSpan([9, 10, 11])).toBe(`${monthShort(9)}–${monthShort(11)}`);
+    expect(monthSpan([11, 12, 1])).toBe(`${monthShort(11)}–${monthShort(1)}`);
+    expect(monthSpan([3])).toBe(monthShort(3));
   });
 
   it("lists months that are not consecutive instead of implying a range", () => {
-    expect(monthSpan([1, 3])).toBe("Jan, Mar");
+    expect(monthSpan([1, 3])).toBe(`${monthShort(1)}, ${monthShort(3)}`);
     expect(monthSpan([])).toBe("");
   });
 });
@@ -210,9 +217,16 @@ describe("labels", () => {
   it("describes a cell for screen readers, with 'no data' for a missing month", () => {
     const [row] = buildSeries([month({ month: 3, count: 1240 })], "ALL", 2010, 2010);
     expect(cellAriaLabel(row.data[2])).toBe(
-      "March 2010: 1,240 hotspot detections. Estimated from MODIS",
+      `${monthLong(3)} 2010: 1,240 hotspot detections. Estimated from MODIS`,
     );
-    expect(cellAriaLabel(row.data[0])).toBe("January 2010: no data");
+    expect(cellAriaLabel(row.data[0])).toBe(`${monthLong(1)} 2010: no data`);
+  });
+
+  it("describes a month without an estimate, not as zero and not as no data", () => {
+    const [row] = buildSeries([month({ month: 3, count: null, isEstimated: true, isPartial: true, daysObserved: 20 })], "ALL", 2010, 2010);
+    expect(cellAriaLabel(row.data[2])).toBe(
+      `${monthLong(3)} 2010: no estimate. Estimated from MODIS. Partial month (20 days observed)`,
+    );
   });
 
   it("never calls detections fires", () => {
@@ -285,6 +299,7 @@ describe("parseApiResponse", () => {
     area: { cells: 3112 },
     period: "N",
     model_version: "fb-l1-terra-3",
+    interval_is_approximate: true,
     baseline_years: [2003, 2025],
     first_year: 2003,
     last_year: 2025,
@@ -308,6 +323,25 @@ describe("parseApiResponse", () => {
     expect([month.medianHist, month.anomalyAbs, month.anomalyPct, month.anomalyZ]).toEqual([58825.7, 74986.7, 127.5, 4.5]);
   });
 
+  it("says whether the interval of the area is approximate", () => {
+    expect(parseApiResponse(doc).intervalApproximate).toBe(true);
+    expect(parseApiResponse({ ...doc, interval_is_approximate: false }).intervalApproximate).toBe(false);
+  });
+
+  it("keeps a month without an estimate as null, not zero", () => {
+    const dataset = parseApiResponse({
+      ...doc,
+      months: [{ ...apiMonth, count_harmonized: null, ci_low: null, ci_high: null, is_partial: true }],
+    });
+    const [month] = dataset.months;
+    expect(month.count).toBeNull();
+    expect(month.isPartial).toBe(true);
+    // it is still a month of the calendar, shown as "no estimate" and never as a low value
+    const [row] = buildSeries(dataset.months, "N", 2010, 2010);
+    expect(row.data[7].y).toBeNull();
+    expect(row.data[7].entry).not.toBeNull();
+  });
+
   it("rejects an answer that is not a calendar", () => {
     expect(() => parseApiResponse({ detail: "nope" } as unknown as ApiCalendar)).toThrow(/unexpected format/);
   });
@@ -319,6 +353,7 @@ describe("a dataset read with its own period", () => {
       area: { cells: 1 },
       period: "D",
       model_version: "m",
+      interval_is_approximate: false,
       baseline_years: null,
       first_year: 2010,
       last_year: 2010,
@@ -342,5 +377,55 @@ describe("a dataset read with its own period", () => {
     const series = buildSeries(dataset.months, dataset.period ?? "ALL", 2010, 2010);
 
     expect(valueRange(series)).toEqual({ min: 5, max: 5 });
+  });
+});
+
+describe("zero, estimated and no data stay apart", () => {
+  const zeroMonth = month({ month: 1, count: 0, isEstimated: false, ciLow: 0, ciHigh: 0 });
+  const positive = [5, 10, 20, 40, 80, 160, 320].map((count, index) => month({ month: index + 2, count }));
+
+  it("keeps a valid zero as 0 and a missing month as null", () => {
+    const [row] = buildSeries([zeroMonth, ...positive], "ALL", 2010, 2010);
+    expect(row.data[0].y).toBe(0);
+    expect(row.data[0].entry).not.toBeNull();
+    // month 9 has no row: no data
+    expect(row.data[8].y).toBeNull();
+    expect(row.data[8].entry).toBeNull();
+  });
+
+  it("sets zeros aside so they do not take a color step", () => {
+    const values = [0, 0, 0, 0, 0, 0, 0, 5, 10, 20, 40, 80, 160, 320];
+    const withZeros = buildScale(values)!;
+    const withoutZeros = buildScale(values.filter((v) => v > 0))!;
+    expect(withZeros).toEqual(withoutZeros);
+    expect(withZeros.min).toBe(5);
+  });
+
+  it("has a scale with no colors when every value is zero", () => {
+    const scale = buildScale([0, 0, 0])!;
+    expect(scale.max).toBe(0);
+    expect(legendRanges(scale)).toEqual([]);
+  });
+
+  it("describes a zero as a count and a missing month as no data", () => {
+    const [row] = buildSeries([zeroMonth], "ALL", 2010, 2010);
+    expect(cellAriaLabel(row.data[0])).toBe(`${monthLong(1)} 2010: 0 hotspot detections. Observed by VIIRS`);
+    expect(cellAriaLabel(row.data[1])).toBe(`${monthLong(2)} 2010: no data`);
+  });
+});
+
+describe("month names", () => {
+  it("are 12 short names and 12 long names", () => {
+    const short = Array.from({ length: 12 }, (_, i) => monthShort(i + 1));
+    const long = Array.from({ length: 12 }, (_, i) => monthLong(i + 1));
+    expect(new Set(short).size).toBe(12);
+    expect(new Set(long).size).toBe(12);
+  });
+
+  it("are English (the project language, required by the challenge)", () => {
+    expect(MONTH_LOCALE).toBe("en");
+    expect(Array.from({ length: 12 }, (_, i) => monthShort(i + 1))).toEqual([
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]);
   });
 });

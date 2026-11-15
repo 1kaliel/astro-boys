@@ -43,7 +43,9 @@ export function KpiRow({ months, startYear, endYear, baselineYears }: KpiRowProp
         value={formatCompact(latest?.count)}
         detail={
           latest
-            ? latest.isPartial
+            ? latest.count == null
+              ? "No estimate for this month"
+              : latest.isPartial
               ? // A partial month is never compared with full months: it would read as "little activity".
                 `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
               : latest.count == null

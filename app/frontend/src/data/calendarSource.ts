@@ -34,6 +34,8 @@ export type CalendarDataset = {
   period: Period | null;
   /** Number of 0.25 degree cells in the area, when known. */
   cells: number | null;
+  /** True when the interval of a sum over several cells is the area approximation (errors of nearby cells are correlated). */
+  intervalApproximate: boolean;
   /** Years the median is computed over. Null when there is no complete month. */
   baselineYears: readonly [number, number] | null;
   firstYear: number;
@@ -65,6 +67,7 @@ export type ApiCalendar = {
   area: { cells: number };
   period: Period;
   model_version: string;
+  interval_is_approximate: boolean;
   baseline_years: readonly [number, number] | null;
   first_year: number;
   last_year: number;
@@ -82,6 +85,7 @@ export function parseApiResponse(doc: ApiCalendar): CalendarDataset {
     note: "",
     period: doc.period,
     cells: doc.area?.cells ?? null,
+    intervalApproximate: doc.interval_is_approximate === true,
     baselineYears: doc.baseline_years ?? null,
     firstYear: doc.first_year,
     lastYear: doc.last_year,
@@ -176,6 +180,7 @@ export function parseFixture(doc: FixtureDoc): CalendarDataset {
     note: doc.note,
     period: null,
     cells: doc.cells ?? null,
+    intervalApproximate: true, // the fixture is synthetic and its intervals add variances as if cells were independent
     baselineYears: null,
     firstYear: Math.min(...years),
     lastYear: Math.max(...years),

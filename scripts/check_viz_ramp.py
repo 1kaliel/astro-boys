@@ -1,21 +1,24 @@
-"""Check the sequential color ramp of the dashboard against the design-system rules (docs/design-system.md).
+"""Check the sequential color ramps of the dashboard against the design-system rules (docs/design-system.md).
 
 Reads the ramp and the surfaces from `app/frontend/src/styles/primitives.css` and checks, in CIELAB:
 
   1. lightness is strictly ordered along the ramp (more activity is always darker on light, lighter on dark);
   2. neighbouring steps stay apart (delta E), also as seen with protanopia, deuteranopia and tritanopia;
-  3. the least-activity step is distinct from the "no data" color, in both themes, also under those
-     deficiencies;
-  4. the most-activity step stands out from the chart surface.
+  3. the least-activity step is distinct from the "no data" color, also under those deficiencies;
+  4. the most-activity step stands out from the chart surface;
+  5. with `--theme calendar`: the ink, secondary ink and active-control colors of the calendar theme have the
+     contrast their job needs.
 
-    uv run python scripts/check_viz_ramp.py  # exits 1 if a rule fails
+    uv run python scripts/check_viz_ramp.py                    # the global magma ramp, light and dark
+    uv run python scripts/check_viz_ramp.py --theme calendar   # the calendar's ember ramp and petrol ink
 
-Standard library only. Color vision deficiency is simulated with Machado et al. (2009), severity 1.0,
-in linear RGB.
+Exits 1 if a rule fails. Standard library only. Color vision deficiency is simulated with Machado et al.
+(2009), severity 1.0, in linear RGB.
 """
 
 from __future__ import annotations
 
+import argparse
 import math
 import re
 import sys
@@ -23,12 +26,36 @@ from pathlib import Path
 
 PRIMITIVES = Path(__file__).resolve().parent.parent / "app" / "frontend" / "src" / "styles" / "primitives.css"
 
-RAMP_PREFIX = "magma"  # --magma-100 (palest) .. --magma-700 (darkest)
 MIN_STEP_DE = 15.0  # neighbouring steps, normal vision
 MIN_STEP_DE_CVD = 8.0  # neighbouring steps, color vision deficiencies
 MIN_NULL_DE = 20.0  # least step against "no data", normal vision
 MIN_NULL_DE_CVD = 8.0  # the same, color vision deficiencies
 MIN_PEAK_CONTRAST = 4.5  # most-activity step against the chart surface
+
+# prefix of the ramp tokens (--<prefix>-100 palest .. --<prefix>-700 darkest) and, per theme mode, the tokens
+# of the chart surface and of the "no data" color. The calendar island is light in both OS themes: one mode.
+THEMES = {
+    "global": {
+        "prefix": "magma",
+        "modes": {"light": ("neutral-25", "neutral-200"), "dark": ("neutral-900", "neutral-850")},
+        "null_de": MIN_NULL_DE,
+        "text": [],
+    },
+    "calendar": {
+        "prefix": "ember",
+        "modes": {"light": ("ash-100", "ash-200")},
+        # "No data" is hatched here: the pattern is a second channel, so the color gap can be smaller.
+        "null_de": 10.0,
+        # (foreground, background, minimum contrast, what it is for)
+        "text": [
+            ("petrol-700", "ash-100", 7.0, "ink on the calendar plane"),
+            ("petrol-500", "ash-100", 4.5, "secondary ink on the calendar plane"),
+            ("neutral-0", "petrol-600", 4.5, "white text on an active control"),
+            ("petrol-700", "ash-100", 3.0, "selection outline and focus ring on the plane"),
+            ("ash-300", "ash-100", 1.3, "hatching of no-data months on the plane"),
+        ],
+    },
+}
 
 CVD = {
     "protanopia": (
@@ -101,17 +128,21 @@ def contrast(a: Vec, b: Vec) -> float:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--theme", choices=sorted(THEMES), default="global")
+    theme = THEMES[parser.parse_args().theme]
+    prefix = theme["prefix"]
+
     t = tokens(PRIMITIVES.read_text())
-    steps = [t.get(f"{RAMP_PREFIX}-{n}00") for n in range(1, 8)]
+    steps = [t.get(f"{prefix}-{n}00") for n in range(1, 8)]
     if any(s is None for s in steps):
-        print(f"FAIL: --{RAMP_PREFIX}-100 .. --{RAMP_PREFIX}-700 are not all defined in {PRIMITIVES.name}")
+        print(f"FAIL: --{prefix}-100 .. --{prefix}-700 are not all defined in {PRIMITIVES.name}")
         return 1
     ramp = [to_rgb(s) for s in steps if s]  # palest first
-    surfaces = {"light": (t["neutral-25"], t["neutral-200"]), "dark": (t["neutral-900"], t["neutral-850"])}
     failures: list[str] = []
 
     lightness = [lab(c)[0] for c in ramp]
-    print("lightness L* (palest to darkest):", " ".join(f"{x:5.1f}" for x in lightness))
+    print(f"ramp --{prefix}: lightness L* (palest to darkest):", " ".join(f"{x:5.1f}" for x in lightness))
     if not all(a > b for a, b in zip(lightness, lightness[1:], strict=False)):
         failures.append("lightness is not strictly ordered along the ramp")
 
@@ -123,12 +154,13 @@ def main() -> int:
         if worst < limit:
             failures.append(f"neighbouring steps too close under {view}: {worst:.1f} < {limit}")
 
-    for mode, (surface_hex, null_hex) in surfaces.items():
+    for mode, (surface_name, null_name) in theme["modes"].items():
+        surface_hex, null_hex = t[surface_name], t[null_name]
         least = ramp[0] if mode == "light" else ramp[-1]  # dark theme flips the ramp: more activity = lighter
         most = ramp[-1] if mode == "light" else ramp[0]
         null = to_rgb(null_hex)
         for view, see in views.items():
-            limit = MIN_NULL_DE if view == "normal vision" else MIN_NULL_DE_CVD
+            limit = theme["null_de"] if view == "normal vision" else MIN_NULL_DE_CVD
             de = delta_e(see(least), see(null))
             print(f"  {mode}: least step vs no-data, {view:13s}: dE {de:5.1f} (need {limit})")
             if de < limit:
@@ -138,11 +170,17 @@ def main() -> int:
         if peak < MIN_PEAK_CONTRAST:
             failures.append(f"{mode}: most step does not stand out from the surface: {peak:.2f}:1")
 
+    for foreground, background, minimum, job in theme["text"]:
+        ratio = contrast(to_rgb(t[foreground]), to_rgb(t[background]))
+        print(f"  {job}: --{foreground} on --{background}: {ratio:.2f}:1 (need {minimum}:1)")
+        if ratio < minimum:
+            failures.append(f"{job}: {ratio:.2f}:1 < {minimum}:1")
+
     print()
     if failures:
         print("FAIL:\n  " + "\n  ".join(failures))
         return 1
-    print("OK: the sequential ramp passes every check")
+    print(f"OK: the {prefix} ramp passes every check")
     return 0
 
 

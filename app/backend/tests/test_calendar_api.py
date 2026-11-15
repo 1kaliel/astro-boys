@@ -21,11 +21,19 @@ JAN_B = [1, 2, 3, 4, 5]
 FULL_BOX = {"west": -40.5, "south": -10.5, "east": -39.0, "north": -9.5}  # A and B, not C
 
 
-def _write_calendar(root: Path, estimated_var: float | None = None) -> None:
+def _write_calendar(
+    root: Path,
+    estimated_var: float | None = None,
+    null_month: tuple[int, int] | None = None,
+    null_cells: tuple[str, ...] = ("A", "B", "C"),
+) -> None:
     """2003-2004 estimated (from MODIS), 2005-2007 observed. February 2007 is partial.
 
     February of 2005 only has a row for cell C, and February of 2006 has no row anywhere: the first is
     "zero in the area", the second is "no data".
+
+    `null_month` adds an estimated month whose cells in `null_cells` have a null count (no estimate), like a
+    month with incomplete MODIS coverage in the real calendar; the other cells keep a value.
     """
     con = duckdb.connect()
     con.execute(
@@ -36,7 +44,9 @@ def _write_calendar(root: Path, estimated_var: float | None = None) -> None:
     )
     rows = []
 
-    def add(cell: str, year: int, month: int, period: str, count: float, partial: bool = False) -> None:
+    def add(
+        cell: str, year: int, month: int, period: str, count: float | None, partial: bool = False
+    ) -> None:
         lat, lon = CELLS[cell]
         est = year <= 2004
         var = (estimated_var if est else 0.0)
@@ -50,6 +60,9 @@ def _write_calendar(root: Path, estimated_var: float | None = None) -> None:
         add("B", year, 1, "ALL", JAN_B[i])
         add("C", year, 1, "ALL", 100)
         add("A", year, 1, "D", JAN_A[i] / 2)  # day is half of the total, for the period filter
+    if null_month is not None:
+        for cell in CELLS:
+            add(cell, null_month[0], null_month[1], "ALL", None if cell in null_cells else 3)
     add("C", 2005, 2, "ALL", 7)  # February 2005: rows exist in the extent, none in the area
     add("A", 2007, 2, "ALL", 5, partial=True)
     add("B", 2007, 2, "ALL", 1, partial=True)
@@ -139,7 +152,7 @@ def test_observed_months_have_an_interval_equal_to_the_count(client: TestClient)
     assert observed["ci_low"] == observed["ci_high"] == observed["count_harmonized"]
 
 
-def test_the_interval_of_a_sum_widens_the_summed_variance_for_correlated_cells(
+def test_the_interval_of_an_area_uses_the_summed_variance_times_n_to_the_0_32(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _write_calendar(tmp_path, estimated_var=4.0)
@@ -147,24 +160,11 @@ def test_the_interval_of_a_sum_widens_the_summed_variance_for_correlated_cells(
     with TestClient(app) as client:
         estimated = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2003, 1)
 
-    # Errors of neighboring cells move together: var_area = (4 + 4) * 2 cells ** 0.32, not just 4 + 4.
+    # the variances of A and B added, times n^0.32 with n = 2 cells
     spread = 1.645 * math.sqrt((4.0 + 4.0) * 2**0.32)
     assert estimated["count_harmonized"] == 11
     assert estimated["ci_low"] == pytest.approx(11 - spread, abs=0.001)
     assert estimated["ci_high"] == pytest.approx(11 + spread, abs=0.001)
-
-
-def test_the_interval_of_one_cell_is_not_widened(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write_calendar(tmp_path, estimated_var=4.0)
-    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
-    box = {"west": -39.95, "south": -9.95, "east": -39.8, "north": -9.8}  # cell A only
-    with TestClient(app) as client:
-        estimated = _month(client.get("/api/calendar", params=box).json(), 2003, 1)
-
-    spread = 1.645 * math.sqrt(4.0)  # 1 ** 0.32 = 1
-    assert estimated["count_harmonized"] == 10
-    assert estimated["ci_low"] == pytest.approx(max(0.0, 10 - spread), abs=0.001)
-    assert estimated["ci_high"] == pytest.approx(10 + spread, abs=0.001)
 
 
 def test_a_partial_month_is_flagged_and_gets_no_anomaly(client: TestClient) -> None:
@@ -243,6 +243,79 @@ def test_the_app_starts_without_data_and_says_so(tmp_path: Path, monkeypatch: py
 
     assert response.status_code == 503
     assert "ASTRO_DATA_ROOT" in response.json()["detail"]
+
+
+def test_one_cell_has_its_own_variance_and_is_not_marked_approximate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path, estimated_var=4.0)
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    box = {"west": -39.95, "south": -9.95, "east": -39.8, "north": -9.8}  # cell A only
+    with TestClient(app) as client:
+        body = client.get("/api/calendar", params=box).json()
+
+    estimated = _month(body, 2003, 1)
+    assert body["area"]["cells"] == 1
+    assert body["interval_is_approximate"] is False
+    assert estimated["ci_low"] == pytest.approx(10 - 1.645 * 2, abs=0.001)  # n = 1: n^0.32 = 1
+    assert estimated["ci_high"] == pytest.approx(10 + 1.645 * 2, abs=0.001)
+
+
+def test_an_area_of_several_cells_says_its_interval_is_approximate(client: TestClient) -> None:
+    assert client.get("/api/calendar", params=FULL_BOX).json()["interval_is_approximate"] is True
+
+
+def test_the_interval_is_wider_than_with_independent_cells(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path, estimated_var=4.0)
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    with TestClient(app) as client:
+        estimated = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2003, 1)
+
+    independent = 1.645 * math.sqrt(4.0 + 4.0)
+    assert estimated["ci_high"] - estimated["count_harmonized"] > independent
+
+
+def test_a_month_where_every_cell_has_no_estimate_has_no_count_not_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path, null_month=(2004, 3))
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    with TestClient(app) as client:
+        body = client.get("/api/calendar", params=FULL_BOX).json()
+
+    march = _month(body, 2004, 3)
+    assert march is not None  # the month exists: it is flagged, not dropped
+    assert march["count_harmonized"] is None
+    assert march["ci_low"] is None and march["ci_high"] is None
+    assert march["is_estimated"] is True
+    assert march["anomaly_abs"] is None and march["anomaly_z"] is None
+
+
+def test_a_month_where_only_some_cells_have_no_estimate_also_has_no_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Cell A has no estimate, cell B has 3: summing only B would understate the month.
+    _write_calendar(tmp_path, null_month=(2004, 3), null_cells=("A",))
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    with TestClient(app) as client:
+        body = client.get("/api/calendar", params=FULL_BOX).json()
+
+    assert _month(body, 2004, 3)["count_harmonized"] is None
+
+
+def test_a_month_without_an_estimate_does_not_change_the_median_of_the_others(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path, null_month=(2004, 1))  # January 2004 has no estimate in any cell
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    with TestClient(app) as client:
+        body = client.get("/api/calendar", params=FULL_BOX).json()
+
+    # January sums over the area for 2003, 2005, 2006, 2007: 11, 33, 44, 55 (2004 is left out, not zero)
+    assert _month(body, 2004, 1)["count_harmonized"] is None
+    assert _month(body, 2007, 1)["median_hist"] == 38.5  # median of 11, 33, 44, 55
 
 
 # ---------------------------------------------------------------------------------------------------------

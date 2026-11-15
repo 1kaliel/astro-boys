@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { formatCompact } from "../../lib/format";
+import { formatLegendCount } from "../../lib/format";
 import { rampStep } from "../../lib/scale";
 
 type LegendProps = {
@@ -44,7 +44,7 @@ export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = t
                   aria-hidden="true"
                   style={{ background: `var(--viz-seq-${rampStep(i + 1, breaks.length + 1)})` }}
                 />
-                {edge !== null && <span className="legend-break">{formatCompact(edge)}</span>}
+                {edge !== null && <span className="legend-break">{formatLegendCount(edge)}</span>}
               </Fragment>
             ))}
           </span>

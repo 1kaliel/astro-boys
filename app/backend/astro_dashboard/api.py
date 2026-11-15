@@ -106,6 +106,8 @@ class CalendarResponse(BaseModel):
     area: AreaOut
     period: Literal["ALL", "D", "N"]
     model_version: str
+    # True when the interval of the sum is the area approximation (sum(var) x n^0.32, more than one cell).
+    interval_is_approximate: bool
     # Years the median is computed over (complete months only). None if there is no complete month.
     baseline_years: tuple[int, int] | None
     first_year: int
@@ -144,6 +146,7 @@ def calendar(
         area=AreaOut(west=west, south=south, east=east, north=north, cells=result.cells),
         period=period,
         model_version=result.model_version,
+        interval_is_approximate=result.cells > 1,
         baseline_years=result.baseline_years,
         first_year=result.first_year,
         last_year=result.last_year,

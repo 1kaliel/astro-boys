@@ -51,14 +51,17 @@ Rules (docs/data-dictionary.md, and the diary `DECISION`s of D2):
 - **No data is not zero:** a month with no row anywhere in the extent is absent from the answer. A month with rows
   elsewhere counts as 0 detections for area cells without a row (an absent row means no detection by the source
   satellite; it does not prove there was no fire).
-- **Pending intervals stay `null`:** `ci_low` and `ci_high` of estimated months are `null` until the pipeline delivers
-  them (H11). Observed months have an interval equal to the count. The interval of a sum uses the summed variance.
+- **Pending intervals stay `null`:** if the pipeline has not delivered `ci_low` and `ci_high` for estimated months they
+  are `null` ("pending"), never zero. Observed months have an interval equal to the count.
+- **The interval of an area is approximate:** the variance of a sum of `n` cells is `Σ var × n^0.32`, because nearby
+  cells have correlated errors (the data contract has the numbers). `interval_is_approximate` is true for more than one
+  cell, and the UI says so.
 - **Partial months** (`is_partial`, `days_observed`) are flagged and never compared with full months. The
   unfinished month is compared with the **same days of earlier years**: `median_hist` and the anomalies come from
   `month_to_date/v1` (days 1..N summed over the area per year, a year without a row counts as 0), with
   `median_days` = N and `median_n_years`. Any other partial month, or a server without that table, has no median.
-- **No estimate is `null`:** `count_harmonized` is `null` (not 0) when a cell of the area, or the whole extent, has
-  no estimate in the month, as in the estimated partial months of July and August 2002.
+- **No estimate is `null`:** `count_harmonized` is `null` (not 0, the UI says "No estimate") when a cell of the area,
+  or the whole extent, has no estimate in the month, as in the estimated partial months of July and August 2002.
 
 Data: `$ASTRO_DATA_ROOT/processed/calendar/$ASTRO_DATASET_VERSION` (defaults `data` and `v1`), loaded once at startup
 (about 3 s, 290 MiB for 1.7 M rows). If it is missing the app still starts, `/healthz` answers and the calendar says 503.
