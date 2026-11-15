@@ -1,3 +1,4 @@
+import "../../styles/legend-direction.css";
 import type { DrilldownResponse } from "../../data/api";
 import { formatCount, MONTHS_LONG } from "../../lib/format";
 import { drillStops } from "../../lib/scale";
@@ -20,7 +21,8 @@ export function DrillLegend({ data, breaks }: DrillLegendProps) {
       </p>
       {stops.length > 0 && (
         <div className="legend-row">
-          <ol className="drill-legend-stops" aria-label="Color scale: native detections per sub-cell">
+          <span className="legend-end legend-dir" aria-hidden="true">Fewer</span>
+          <ol className="drill-legend-stops" aria-label="Color scale: native detections per sub-cell, fewer to more">
             {stops.map((stop) => (
               <li key={stop.from} className="drill-legend-stop">
                 <span className="legend-step" aria-hidden="true" style={{ background: `var(--viz-seq-${stop.step})` }} />
@@ -30,6 +32,7 @@ export function DrillLegend({ data, breaks }: DrillLegendProps) {
               </li>
             ))}
           </ol>
+          <span className="legend-end legend-dir" aria-hidden="true">More</span>
           <span className="legend-unit">per 0.0625° sub-cell (about 7 km) · sub-cells with no detection are not filled · zoomed in, the colors turn translucent (same classes) and the sub-cell at the center is outlined and described</span>
         </div>
       )}

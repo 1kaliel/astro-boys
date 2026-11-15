@@ -1,14 +1,14 @@
-import type { Sensor } from "../../state/dashboard";
+import { DATA_SERIES, DATA_SERIES_LABEL, dataSeriesActions, dataSeriesOf, satelliteActions, type DataSeries } from "../../lib/dataSeries";
+import { useDashboard, type Sensor } from "../../state/dashboard";
 import { InfoTip } from "../ui/InfoTip";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 
-type Family = "harmonized" | "modis" | "viirs";
+type Family = DataSeries;
 
-const FAMILIES: ReadonlyArray<SegmentOption<Family>> = [
-  { value: "harmonized", label: "VIIRS-equivalent" },
-  { value: "modis", label: "MODIS" },
-  { value: "viirs", label: "VIIRS" },
-];
+const FAMILIES: ReadonlyArray<SegmentOption<Family>> = DATA_SERIES.map((value) => ({
+  value,
+  label: DATA_SERIES_LABEL[value].short,
+}));
 const MODIS_SATELLITES: ReadonlyArray<SegmentOption<Sensor>> = [
   { value: "aqua", label: "Aqua" },
   { value: "terra", label: "Terra" },
@@ -17,9 +17,6 @@ const VIIRS_SATELLITES: ReadonlyArray<SegmentOption<Sensor>> = [
   { value: "snpp", label: "S-NPP" },
   { value: "n20", label: "NOAA-20" },
 ];
-
-const familyOf = (sensor: Sensor): Family =>
-  sensor === "harmonized" ? "harmonized" : sensor === "aqua" || sensor === "terra" ? "modis" : "viirs";
 
 /** What a count of this layer is, for the legend. */
 export function layerUnit(sensor: Sensor): string {
@@ -54,25 +51,30 @@ export function layerCountLabel(sensor: Sensor): string {
 }
 
 const NOTE: Record<Family, string> = {
-  harmonized: "Harmonized series of the calendar, comparable across 2002 to today.",
+  harmonized: "Harmonized (VIIRS-equivalent): the series of the calendar, comparable from 2002 to today.",
   modis: "Native MODIS detections, 1 km pixels, Aqua and Terra apart. Not comparable with VIIRS counts.",
   viirs: "Native VIIRS detections, 375 m pixels, S-NPP and NOAA-20 apart. Months a satellite has no data for stay empty. Not comparable with MODIS counts.",
 };
 
 /**
- * The layer of the map: the harmonized VIIRS-equivalent series, or the native detections of one instrument and
- * satellite. Instruments are never added together, and a satellite is never mixed into another's layer.
+ * The data switch of the explorer, on the map (the primary control): the harmonized VIIRS-equivalent series, or the
+ * native detections of one instrument and satellite. It is the same choice as the sidebar's "Data" step: both set the
+ * calendar scale and the map layer together (lib/dataSeries). Instruments are never added together, and a satellite
+ * is never mixed into another's layer. `sensor`/`onSensor` are accepted for compatibility; the state is the source.
  */
-export function MapLayerControl({ sensor, onSensor }: { sensor: Sensor; onSensor: (sensor: Sensor) => void }) {
-  const family = familyOf(sensor);
+export function MapLayerControl(_props: { sensor?: Sensor; onSensor?: (sensor: Sensor) => void }) {
+  const [state, dispatch] = useDashboard();
+  const sensor = state.sensor;
+  const family = dataSeriesOf(state);
+  const run = (actions: ReturnType<typeof satelliteActions>) => actions.forEach((action) => dispatch(action));
   return (
-    <div className="map-layers" role="group" aria-label="Map layer">
+    <div className="map-layers" role="group" aria-label="Data">
       <SegmentedControl
-        label="Map layer"
+        label="Data"
         hideLabel
         options={FAMILIES}
         value={family}
-        onChange={(next) => onSensor(next === "harmonized" ? "harmonized" : next === "modis" ? "aqua" : "snpp")}
+        onChange={(next) => run(dataSeriesActions(next, sensor))}
       />
       {family !== "harmonized" && (
         <SegmentedControl
@@ -80,10 +82,10 @@ export function MapLayerControl({ sensor, onSensor }: { sensor: Sensor; onSensor
           hideLabel
           options={family === "modis" ? MODIS_SATELLITES : VIIRS_SATELLITES}
           value={sensor}
-          onChange={onSensor}
+          onChange={(next) => run(satelliteActions(next))}
         />
       )}
-      <InfoTip label="About this map layer">{NOTE[family]}</InfoTip>
+      <InfoTip label="About the data">{NOTE[family]}</InfoTip>
     </div>
   );
 }

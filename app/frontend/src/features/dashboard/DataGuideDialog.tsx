@@ -86,6 +86,8 @@ export function DataGuideDialog({ open, onOpenChange, modelVersion, simulated, f
                 The dashboard counts hotspots per month, from July 2002 to the current month, for Northeast Brazil. Counts
                 are per 0.25° grid cell and are summed over the area you select. Months are local solar months.
               </p>
+              <p>Colors are reversed in the dark theme so that the busiest cells always stand out from the basemap; the legend's &ldquo;more&rdquo; end is the busiest.
+              </p>
             </section>
 
             <section id="dg-indicators" tabIndex={-1} aria-labelledby="dg-indicators-h">
@@ -97,7 +99,11 @@ export function DataGuideDialog({ open, onOpenChange, modelVersion, simulated, f
                 </div>
                 <div>
                   <dt>Peak month</dt>
-                  <dd>The month of the year with the most hotspots in a typical year (the highest monthly median).</dd>
+                  <dd>
+                    The single month with the most hotspots in the years you selected (for example September 2024). Next
+                    to it, the <strong>usual peak</strong> is the month of the year with the highest median count in the
+                    baseline years.
+                  </dd>
                 </div>
                 <div>
                   <dt>Months above usual</dt>

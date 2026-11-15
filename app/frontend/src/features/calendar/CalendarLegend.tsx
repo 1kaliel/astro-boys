@@ -1,6 +1,7 @@
 import { anomalyColor, anomalyLegend } from "../../lib/charts";
 import { formatCount } from "../../lib/format";
 import type { LegendRange } from "./calendarModel";
+import "../../styles/legend-direction.css";
 
 /** The legend doubles as the color filter: a segment is a toggle, pressed = the color is shown. */
 type LegendFilter = {
@@ -41,7 +42,10 @@ export function CalendarLegend({ ranges, unit, showUnit, hidden, onToggle, onRes
       <p className={showUnit ? "calendar-legend-title" : "sr-only"}>{unit}</p>
       <div className="calendar-legend-row">
       {ranges.length > 0 && (
-        <ol className="calendar-legend-scale" aria-label="Detections per month, by color">
+        <ol className="calendar-legend-scale" aria-label="Detections per month, by color, fewer to more">
+          <li className="calendar-legend-dir" aria-hidden="true">
+            Fewer
+          </li>
           {ranges.map((range) => (
             <li key={`${range.step}-${range.from}`} className="calendar-legend-segment">
               <button
@@ -57,6 +61,9 @@ export function CalendarLegend({ ranges, unit, showUnit, hidden, onToggle, onRes
               </button>
             </li>
           ))}
+          <li className="calendar-legend-dir" aria-hidden="true">
+            More
+          </li>
         </ol>
       )}
       <ul className="calendar-legend-states">

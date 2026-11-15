@@ -8,6 +8,7 @@ import { cx } from "../../lib/cx";
 import { formatCompact, formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
 import "../../styles/calendar-month.css";
+import "../../styles/legend-direction.css";
 import { legendRanges, type ColorScale } from "./calendarModel";
 import { monthLong } from "./calendarText";
 import { DayDetails } from "./DayDetails";
@@ -37,6 +38,24 @@ import {
 } from "./monthModel";
 
 const MAX_KEY_STEPS = 31;
+
+/**
+ * One line next to the two totals that says why they differ, naming the satellites the data actually come from: the
+ * days' satellite (the daily answer) and the month total's source (`sourceSatellite` of the harmonized month).
+ */
+function totalsDifferText(
+  data: { satellite: string; instrument?: string } | null,
+  harmonized: { sourceSatellite?: string | null; isEstimated: boolean } | null,
+): string {
+  const days = data ? `native detections of ${satelliteText(data.satellite, data.instrument)}` : "native detections of one satellite";
+  const source = harmonized?.sourceSatellite ? satelliteText(harmonized.sourceSatellite) : null;
+  let month: string;
+  if (harmonized?.isEstimated) month = `estimated on the VIIRS scale from ${source ?? "Aqua MODIS"} counts`;
+  else if (source) month = `harmonized and comes from ${source}${source.includes("VIIRS") ? "-equivalent" : ""} counts`;
+  else month = "harmonized (VIIRS-equivalent)";
+  const same = Boolean(data && source && !harmonized?.isEstimated && satelliteText(data.satellite, data.instrument) === source);
+  return `Days count ${days}; the month total is ${month}, so the two ${same ? "can differ slightly" : "differ"}.`;
+}
 
 /**
  * The days of one month, native detections of one satellite (GET /api/daily). `compact` (the explorer sidebar):
@@ -210,11 +229,7 @@ export function MonthView({ dataset, compact }: { dataset: CalendarDataset; comp
           </dd>
         </div>
       </dl>
-      <p className="calendar-notice">
-        Daily numbers are native detections of one satellite and are not harmonized: they do not add up to the
-        harmonized month total.
-        {estimatedEra && data && ` ${estimatedEraText(data.satellite, data.instrument)}`}
-      </p>
+      <p className="calendar-notice month-view-why">{totalsDifferText(data, harmonized)}</p>
 
       <div className={cx("month-view-body", selectedCell && "has-details")}>
         <div className="month-view-main">{body}</div>
@@ -356,13 +371,19 @@ function MonthLegend({ scale }: { scale: ColorScale | null }) {
     <div className="calendar-legend month-legend" aria-label="Legend">
       <p className="calendar-legend-title">Native detections per day, not harmonized. Colors are for this month only.</p>
       {ranges.length > 0 && (
-        <ol className="calendar-legend-scale" aria-label="Native detections per day, by color">
+        <ol className="calendar-legend-scale" aria-label="Native detections per day, by color, fewer to more">
+          <li className="calendar-legend-dir" aria-hidden="true">
+            Fewer
+          </li>
           {ranges.map((range) => (
             <li key={`${range.step}-${range.from}`} className="calendar-legend-segment month-legend-segment">
               <span className="calendar-legend-bar" style={{ background: `var(--viz-seq-${range.step})` }} />
               <span className="calendar-legend-label">{range.label}</span>
             </li>
           ))}
+          <li className="calendar-legend-dir" aria-hidden="true">
+            More
+          </li>
         </ol>
       )}
       <ul className="calendar-legend-states">

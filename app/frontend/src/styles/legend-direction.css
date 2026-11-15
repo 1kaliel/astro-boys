@@ -1,0 +1,17 @@
+/*
+ * Direction words of the color ramps ("Fewer" … "More"). The ramp flips between themes on purpose (the busiest cells
+ * always contrast with the basemap), so the words, not the hue, say which end is the busiest.
+ */
+.legend-dir,
+.calendar-legend-dir {
+  align-self: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  list-style: none;
+}
+
+.calendar-legend-dir {
+  padding-inline: var(--space-1);
+}

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
-import { formatLegendCount } from "../../lib/format";
+import { formatCount, formatLegendCount } from "../../lib/format";
+import "../../styles/legend-direction.css";
 import { rampStep } from "../../lib/scale";
 
 type LegendProps = {
@@ -20,6 +21,16 @@ type LegendProps = {
 };
 
 const SEQ_STEPS = [1, 2, 3, 4, 5, 6, 7];
+
+/**
+ * A class limit of counts, as a whole number: hotspots are counted, so "2.6" reads wrong. Only the label is rounded;
+ * the breaks themselves (and so the colors) are untouched. The last limit gets "+" (its color is "that many or more").
+ */
+export function legendBreakLabel(edge: number, last: boolean): string {
+  const whole = Math.round(edge);
+  const text = Math.abs(whole) >= 10_000 ? formatLegendCount(whole) : formatCount(whole);
+  return last ? `${text}+` : text;
+}
 const DIV_STEPS = ["neg-4", "neg-3", "neg-2", "neg-1", "mid", "pos-1", "pos-2", "pos-3", "pos-4"];
 
 export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = true, stops, note }: LegendProps) {
@@ -36,7 +47,8 @@ export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = t
             ))}
           </ol>
         ) : mode === "sequential" && breaks && breaks.length > 0 ? (
-          <span className="legend-classes">
+          <span className="legend-classes" aria-label="Color scale, fewer to more">
+            <span className="legend-end legend-dir">Fewer</span>
             {[...breaks, null].map((edge, i) => (
               <Fragment key={i}>
                 <span
@@ -44,9 +56,10 @@ export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = t
                   aria-hidden="true"
                   style={{ background: `var(--viz-seq-${rampStep(i + 1, breaks.length + 1)})` }}
                 />
-                {edge !== null && <span className="legend-break">{formatLegendCount(edge)}</span>}
+                {edge !== null && <span className="legend-break">{legendBreakLabel(edge, i === breaks.length - 1)}</span>}
               </Fragment>
             ))}
+            <span className="legend-end legend-dir">More</span>
           </span>
         ) : mode === "sequential" ? (
           <>
