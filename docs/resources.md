@@ -167,3 +167,8 @@ AI assistance helped prepare the L4 role/format record and align the task board 
 AI assistance was used to revise docs/submission.md against the team's existing methodology: project name,
 sensor-transition wording, inferred coverage gaps, NRT type limitations and reproduction scope. No new method,
 data or scientific result was generated. Final team approval and the demo link remain pending.
+
+
+## Jean's diary checkpoint assistance (15 November 2026)
+
+AI assistance was used to check repository task/PR metadata and prepare the append-only English status entry in [the diary](diary/2026-11-15.md) at Jean Gustavo's explicit request. The separate Portuguese diary remains outside the repository. No private conversation export, new scientific result, task-owner acceptance, deployment or project submission is included.
