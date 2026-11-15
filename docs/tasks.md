@@ -34,7 +34,7 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 | H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ✅ | Real counts: 74,592 factor rows, pooling to L1, K = 50, M = 5, Terra-aware background, reconciled with λ = 0.75 ([results](methodology.md)). Published to the bucket (`fb-l1-terra-rec-4`) |
 | H7 | `harmonize` → `calendar/v1` (no estimated intervals yet) pushed to the bucket | Mateus | Sun 02:00 | ✅ | **Checkpoint B data**: 23 historical year partitions, model `fb-l1-terra-rec-4` |
 | H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ⬜ | `artifacts/figures/` |
-| H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ⬜ | `raw/firms/api/…` |
+| H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ✅ | `raw/firms/api/<SOURCE>/-48.8_-18.4_-34.7_-1.0/`: 127 chunk files, SP to 2026-07-31, NRT to 2026-11-14 (S-NPP to 11-02); on the VM, bucket upload pending |
 | H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | ✅ | Final test on 2022–2023, opened once: passes the pre-set rule (cell MAE 3.46 vs 4.22 for the best baseline; regional totals level). All methods are 6% high there and 20% high in 2024–2025 ([methodology.md](methodology.md)) |
 | H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | ⬜ | **Checkpoint C** |
 | H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Kali | Sun 15:00 | ⬜ | Only if H10–H11 are done |
@@ -46,10 +46,10 @@ Spec: [spec/dashboard.md](spec/dashboard.md). Build on the mock first; switch to
 
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
-| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ⬜ | Runs with `docker run` |
+| D1 | App skeleton in `app/` with a `Dockerfile` serving on `$PORT`, `/healthz` | Guilherme + Cleber | Sat 21:00 | ✅ | On `main` (FastAPI + React/Vite, design system, shared state) |
 | D2 | Data access: read `calendar` (mock → bucket); sum cells for an area; median and anomalies on the sum | Guilherme + Cleber | Sat 23:00 | ⬜ | Function or endpoint + test |
 | D3 | Map with L2 cells; rectangle draw and lat/lon bounds → list of cells | Guilherme | Sat 23:00 | ⬜ | **Checkpoint A** |
-| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ⬜ | **Checkpoint A** |
+| D4 | Calendar heatmap (year × month), color-blind-safe ramp, estimated months marked, legend | Cleber | Sat 23:00 | ✅ | **Checkpoint A**: on `main`, running on a synthetic fixture; real `calendar/v1` comes with D2 |
 | D5 | This month vs historical median card; date-range selector | Cleber | Sun 02:00 | ⬜ | |
 | D6 | CSV download of native hotspots for area + dates | Guilherme + Cleber | Sun 02:00 | ⬜ | **Checkpoint B** |
 | D7 | Map ↔ calendar linked by one shared state | Guilherme | Sun 02:00 | ⬜ | |

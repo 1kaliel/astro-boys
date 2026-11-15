@@ -1,0 +1,128 @@
+/*
+ * Burning calendar (task D4). Tokens only: no raw values here (docs/design-system.md).
+ * Provenance marks follow the same rules as the legend: estimated = dashed outline, partial = corner mark,
+ * no data = the null color.
+ */
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.calendar-notice,
+.calendar-status {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.calendar-status {
+  display: grid;
+  gap: var(--space-3);
+  place-items: center;
+  min-height: var(--panel-min-height);
+  padding: var(--card-padding);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.calendar-chart {
+  width: 100%;
+  min-width: var(--heatmap-cell-min);
+}
+
+/* The cell is one SVG group: fill from the ramp, then optional marks drawn on top. */
+.calendar-cell:focus {
+  outline: none;
+}
+
+.calendar-cell-interactive {
+  cursor: pointer;
+}
+
+.calendar-cell-rect {
+  stroke: var(--viz-cell-outline);
+  stroke-width: 1px;
+}
+
+.calendar-cell-interactive:hover .calendar-cell-rect {
+  stroke: var(--viz-selection);
+}
+
+.calendar-cell-estimated {
+  fill: none;
+  stroke: var(--viz-estimated-outline);
+  stroke-width: var(--size-px-2);
+  stroke-dasharray: var(--space-1) var(--space-1);
+  pointer-events: none;
+}
+
+.calendar-cell-partial {
+  fill: var(--viz-partial-mark);
+  pointer-events: none;
+}
+
+.calendar-cell-selected {
+  fill: none;
+  stroke: var(--viz-selection);
+  stroke-width: calc(2 * var(--size-px-2));
+  pointer-events: none;
+}
+
+.calendar-cell:focus-visible .calendar-cell-rect {
+  stroke: var(--color-ring);
+  stroke-width: calc(2 * var(--size-px-2));
+}
+
+.calendar-tooltip p {
+  margin: 0;
+}
+
+.calendar-tooltip-title {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Table view */
+.calendar-table-wrap {
+  overflow: auto;
+  max-height: calc(2 * var(--panel-min-height));
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-table-caption {
+  padding-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+.calendar-table th,
+.calendar-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.calendar-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+}
+
+.calendar-table th[scope="row"],
+.calendar-table thead th:first-child {
+  text-align: left;
+}
+
+.calendar-table-note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
