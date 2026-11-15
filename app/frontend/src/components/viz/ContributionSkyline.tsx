@@ -6,8 +6,8 @@
  * week first. Hover or tap a day for its count; the arrow keys walk the grid. Only the detections it is given are drawn:
  * there is no sample data. Colours are the hotspot ramp (magma) of the project.
  *
- * Adapted from "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (21st.dev), MIT License. See lib/skyline.ts
- * and docs/resources.md.
+ * Adapted from "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (21st.dev), MIT License: copyright and
+ * permission notice in ContributionSkyline.LICENSE.txt (next to this file). See lib/skyline.ts and docs/resources.md.
  */
 import * as React from "react";
 import {
