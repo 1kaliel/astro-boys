@@ -9,7 +9,7 @@ import {
 // MapLibre looks for its worker next to its own file, which does not exist after bundling: point it at the asset.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Map, { Layer, Source, type MapRef } from "react-map-gl/maplibre";
+import Map, { Layer, Marker, Source, type MapRef } from "react-map-gl/maplibre";
 import type { CellValue } from "../../data/api";
 import { boundsToGeoJSON, cellBounds, cellsToGeoJSON } from "../../lib/grid";
 import { prefersReducedMotion, readTokens } from "../../lib/hooks";
@@ -27,9 +27,9 @@ setWorkerUrl(workerUrl);
 const BASE_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
 const STYLE_TIMEOUT_MS = 5000;
 const STUDY = boundsToGeoJSON(PILOT_BOUNDS);
-const [STUDY_LON, STUDY_LAT] = boundsCenter(PILOT_BOUNDS);
-/** The camera opens already facing the Americas, a little west and north of the study area. */
-const OPEN_FROM = { lon: STUDY_LON - 28, lat: STUDY_LAT + 10, zoomOut: 0.5 } as const;
+const [PILOT_LON] = boundsCenter(PILOT_BOUNDS);
+/** The camera opens already facing the Americas, a little west and north of where it settles. */
+const OPEN_FROM = { dLon: -28, dLat: 10, zoomOut: 0.5 } as const;
 const EASE_MS = 2500;
 
 /**
@@ -119,6 +119,10 @@ class GlobeBoundary extends Component<{ children: ReactNode }, { failed: boolean
 
 type HeroGlobeProps = {
   cells: readonly CellValue[];
+  /** Where the camera settles, centred in the globe's visible face: [lon, lat]. */
+  focus: readonly [number, number];
+  /** Label the dashed Northeast box as the validated pilot (when the cells cover more than the pilot). */
+  labelPilot: boolean;
   /** Fixed class limits from the API (the same for every month). */
   breaks: readonly number[];
   /** False stops the drift for good (user interaction, pause button, reduced motion). */
@@ -133,7 +137,8 @@ export function HeroGlobe(props: HeroGlobeProps) {
   );
 }
 
-function GlobeMap({ cells, breaks, moving }: HeroGlobeProps) {
+function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) {
+  const [focusLon, focusLat] = focus;
   const colors = useMemo(() => readTokens(TOKENS), []);
   const style = useGlobeStyle(colors);
   const mapRef = useRef<MapRef | null>(null);
@@ -144,11 +149,12 @@ function GlobeMap({ cells, breaks, moving }: HeroGlobeProps) {
   const opening = useMemo(() => {
     const framing = globeFraming(window.innerWidth, window.innerHeight);
     return {
-      longitude: OPEN_FROM.lon,
-      latitude: OPEN_FROM.lat,
+      longitude: focusLon + OPEN_FROM.dLon,
+      latitude: focusLat + OPEN_FROM.dLat,
       zoom: framing.zoom - OPEN_FROM.zoomOut,
       padding: framing.padding,
     };
+    // The opening frame only: later focus changes ease the camera (see the effect below).
   }, []);
 
   const shown = useMemo(() => cells.filter((cell) => cell.value > 0), [cells]);
@@ -191,7 +197,7 @@ function GlobeMap({ cells, breaks, moving }: HeroGlobeProps) {
     const map = mapRef.current;
     const framing = frame();
     if (!map || !framing) return;
-    const target = { center: [STUDY_LON, STUDY_LAT] as [number, number], zoom: framing.zoom, padding: framing.padding };
+    const target = { center: [focusLon, focusLat] as [number, number], zoom: framing.zoom, padding: framing.padding };
     if (prefersReducedMotion() || !movingRef.current || document.hidden) {
       map.jumpTo(target);
       setArrived(true);
@@ -231,7 +237,7 @@ function GlobeMap({ cells, breaks, moving }: HeroGlobeProps) {
       last = now;
       if (visible) {
         elapsed += dt;
-        map.jumpTo({ center: [STUDY_LON + driftOffset(elapsed), STUDY_LAT] });
+        map.jumpTo({ center: [focusLon + driftOffset(elapsed), focusLat] });
       }
       raf = requestAnimationFrame(tick);
     };
@@ -240,7 +246,17 @@ function GlobeMap({ cells, breaks, moving }: HeroGlobeProps) {
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [arrived, moving]);
+  }, [arrived, moving, focusLon, focusLat]);
+
+  // A new focus after the opening (the Brazil file failed and the pilot cells took over): move there.
+  const placed = useRef(`${focusLon},${focusLat}`);
+  useEffect(() => {
+    const map = mapRef.current;
+    const key = `${focusLon},${focusLat}`;
+    if (!map || !arrived || placed.current === key) return;
+    placed.current = key;
+    map.easeTo({ center: [focusLon, focusLat], duration: prefersReducedMotion() ? 0 : 1200 });
+  }, [arrived, focusLon, focusLat]);
 
   if (!style) return null;
 
@@ -292,6 +308,13 @@ function GlobeMap({ cells, breaks, moving }: HeroGlobeProps) {
           paint={{ "line-color": colors["--neutral-100"], "line-width": 1.5, "line-opacity": 0.9, "line-dasharray": [3, 2] }}
         />
       </Source>
+      {labelPilot && (
+        <Marker longitude={PILOT_LON} latitude={PILOT_BOUNDS.north} anchor="bottom" offset={[0, -4]} style={{ pointerEvents: "none" }}>
+          <span className="hero-pilot-label" aria-hidden="true">
+            Validated pilot
+          </span>
+        </Marker>
+      )}
     </Map>
   );
 }

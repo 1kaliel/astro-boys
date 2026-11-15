@@ -6,8 +6,15 @@ import { formatCompact, formatLegendCount, MONTHS_SHORT } from "../../lib/format
 import { useColorScheme, useMediaQuery } from "../../lib/hooks";
 import { applyTheme } from "../../lib/theme";
 import { PILOT_BOUNDS } from "../../state/dashboard";
-import { JumpChart, JumpTable } from "./JumpChart";
+import { JumpChart, JumpTable, TotalsChart } from "./JumpChart";
+import { boundsCenter } from "../../components/map/view";
 import {
+  BRAZIL_BOUNDS,
+  BRAZIL_PREVIEW_URL,
+  errorReductionPct,
+  parseBrazilPreview,
+  yearSpan,
+  type BrazilPreview,
   foldWord,
   heroMonth,
   monthLabel,
@@ -22,6 +29,8 @@ import {
 const HeroGlobe = lazy(() => import("./HeroGlobe").then((module) => ({ default: module.HeroGlobe })));
 
 const STORY_ID = "how-it-works";
+const BRAZIL_CENTER = boundsCenter(BRAZIL_BOUNDS);
+const PILOT_CENTER = boundsCenter(PILOT_BOUNDS);
 const EMBER_STEPS = [7, 6, 5, 4, 3, 2, 1];
 
 export function LandingPage() {
@@ -29,8 +38,22 @@ export function LandingPage() {
   const dataset = load.status === "ready" ? load.dataset : null;
   const months = dataset?.months;
 
-  const shown = useMemo(() => (months ? heroMonth(months) : null), [months]);
-  const cells = useRemote<CellsResponse>(shown ? cellsUrl("ALL", shown) : null);
+  // The globe: the Brazil-wide experimental month from a static file; if it cannot be read, the pilot's busiest
+  // month of the latest complete year from the API.
+  const previewLoad = useRemote<unknown>(BRAZIL_PREVIEW_URL);
+  const preview = useMemo((): BrazilPreview | null => {
+    if (!previewLoad.data) return null;
+    try {
+      return parseBrazilPreview(previewLoad.data);
+    } catch {
+      return null;
+    }
+  }, [previewLoad.data]);
+  const previewFailed = !previewLoad.loading && !preview;
+  const pilotMonth = useMemo(() => (months ? heroMonth(months) : null), [months]);
+  const cells = useRemote<CellsResponse>(previewFailed && pilotMonth ? cellsUrl("ALL", pilotMonth) : null);
+  const globeCells = preview ? preview.cells : (cells.data?.cells ?? []);
+  const globeBreaks = preview ? preview.breaks : (cells.data?.breaks ?? []);
   const figures = useMemo(
     () => (dataset ? recordFigures(dataset.months, dataset.firstYear, dataset.lastYear) : null),
     [dataset],
@@ -61,10 +84,13 @@ export function LandingPage() {
     target.focus({ preventScroll: true });
   };
 
-  const monthText = shown ? monthLabel(shown) : null;
-  const globeLabel = monthText
-    ? `Globe turned toward Northeast Brazil, showing VIIRS-equivalent hotspots per 0.25 degree cell in ${monthText}. Lighter cells had more detections. A dashed outline marks the study area.`
-    : "Globe turned toward Northeast Brazil. A dashed outline marks the study area.";
+  const shownMonth = preview ? { year: preview.year, month: preview.month } : previewFailed ? pilotMonth : null;
+  const monthText = shownMonth ? monthLabel(shownMonth) : null;
+  const globeLabel = preview
+    ? `Globe turned toward Brazil, showing VIIRS-equivalent hotspots per 0.25 degree cell in ${monthText} from an experimental, not validated, run over all of Brazil. Lighter cells had more detections. A dashed box marks the validated Northeast pilot.`
+    : monthText
+      ? `Globe turned toward Northeast Brazil, showing VIIRS-equivalent hotspots per 0.25 degree cell in ${monthText}. Lighter cells had more detections. A dashed outline marks the validated pilot area.`
+      : "Globe turned toward Brazil. A dashed box marks the validated Northeast pilot.";
 
   return (
     <div className="landing">
@@ -77,7 +103,13 @@ export function LandingPage() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-globe" role="img" aria-label={globeLabel}>
             <Suspense fallback={null}>
-              <HeroGlobe cells={cells.data?.cells ?? []} breaks={cells.data?.breaks ?? []} moving={moving} />
+              <HeroGlobe
+                cells={globeCells}
+                breaks={globeBreaks}
+                moving={moving}
+                focus={previewFailed ? PILOT_CENTER : BRAZIL_CENTER}
+                labelPilot={!previewFailed}
+              />
             </Suspense>
           </div>
           <div className="hero-scrim" aria-hidden="true" />
@@ -85,9 +117,11 @@ export function LandingPage() {
           <div className="hero-content">
             <p className="hero-eyebrow">NASA Space Apps 2026 · MODIS + VIIRS hotspots</p>
             <h1 id="hero-title" className="hero-title">
-              24 years of fire activity in Northeast Brazil, on one scale.
+              24 years of fire activity in Brazil, on one scale.
             </h1>
-            <p className="hero-sub">Two generations of NASA satellites, made comparable month by month.</p>
+            <p className="hero-sub">
+              Validated for the Northeast pilot; all of Brazil is a first experimental run.
+            </p>
             <HeroFigures figures={figures} failed={load.status === "error"} />
             <div className="hero-actions">
               <a className="landing-button landing-button-primary" href="#explore">
@@ -101,9 +135,14 @@ export function LandingPage() {
 
           <div className="hero-caption">
             <p className="hero-caption-text" aria-live="polite">
-              {monthText ? (
+              {preview ? (
                 <>
-                  Globe: <strong>{monthText}</strong>, VIIRS-equivalent hotspots per 0.25° cell
+                  Globe: <strong>{monthText}</strong>, all of Brazil — experimental run, not validated. Dashed box: the
+                  validated Northeast pilot.
+                </>
+              ) : monthText ? (
+                <>
+                  Globe: <strong>{monthText}</strong>, Northeast pilot, VIIRS-equivalent hotspots per 0.25° cell
                   {cells.loading && !cells.data ? " (loading)" : ""}
                 </>
               ) : (
@@ -172,7 +211,7 @@ export function LandingPage() {
                 </div>
               )}
               <figcaption>
-                Hotspot detections per year, whole study area, complete years only. Raw: the count of the satellite in
+                Hotspot detections per year, Northeast pilot, complete years only. Raw: the count of the satellite in
                 use that year. Harmonized: every year on the VIIRS scale.
               </figcaption>
             </figure>
@@ -224,11 +263,10 @@ export function LandingPage() {
           </div>
         </section>
 
+        <BrazilSection preview={preview} failed={previewFailed} compact={compactChart} />
+
         <section className="story story-end" aria-labelledby="end-title">
           <div className="story-inner">
-            <p className="next-line">
-              <span>Next:</span> all of Brazil, same method.
-            </p>
             <h2 id="end-title" className="end-title">
               Pick a month. Pick an area. See it on one scale.
             </h2>
@@ -315,12 +353,12 @@ function HeroFigures({ figures, failed }: { figures: RecordFigures | null; faile
   return (
     <dl className="hero-figures" aria-busy={!figures && !failed}>
       <div>
-        <dt>VIIRS-equivalent hotspots, {span}</dt>
+        <dt>VIIRS-equivalent hotspots, Northeast {span}</dt>
         <dd>{figures ? formatCompact(figures.total) : pending}</dd>
       </div>
       <div>
         <dt>
-          Peak month
+          Peak month, Northeast
           {figures?.peak
             ? `, ${formatLegendCount(figures.peak.count)} hotspots${figures.peak.estimated ? " (estimated from MODIS)" : ""}`
             : ""}
@@ -328,7 +366,11 @@ function HeroFigures({ figures, failed }: { figures: RecordFigures | null; faile
         <dd>{figures?.peak ? `${MONTHS_SHORT[figures.peak.month - 1]} ${figures.peak.year}` : pending}</dd>
       </div>
       <div>
-        <dt>{figures ? `of ${figures.judged} complete months above their usual level` : "Months above their usual level"}</dt>
+        <dt>
+          {figures
+            ? `of ${figures.judged} complete Northeast months above their usual level`
+            : "Northeast months above their usual level"}
+        </dt>
         <dd>{figures ? figures.above : pending}</dd>
       </div>
       {failed && <p className="hero-figures-note">Figures unavailable right now. The explorer may still load.</p>}
@@ -359,5 +401,83 @@ function JumpText({ years }: { years: ReturnType<typeof yearlyTotals> }) {
         ? `, inside the range of the years before it (${formatLegendCount(low)} to ${formatLegendCount(high)}).`
         : ` against ${formatLegendCount(jump.before.harmonized)} in ${jump.before.year}.`}
     </p>
+  );
+}
+
+function BrazilSection({ preview, failed, compact }: { preview: BrazilPreview | null; failed: boolean; compact: boolean }) {
+  const gain = preview ? errorReductionPct(preview.devValidation.mae, preview.devValidation.bestBaselineMae) : null;
+  const rows = preview?.yearlyTotals ?? [];
+  return (
+    <section className="story story-brazil" aria-labelledby="brazil-title">
+      <div className="story-inner">
+        <p className="brazil-badge">Experimental</p>
+        <h2 id="brazil-title" className="story-title">
+          First look: all of Brazil
+        </h2>
+        <p className="story-lede">
+          The same frozen method, run over every 0.25° cell of Brazil. It has not been checked on a blind test yet, so
+          read it as a preview, not a result.
+        </p>
+        {preview ? (
+          <>
+            <dl className="brazil-facts">
+              <div>
+                <dt>0.25° cells</dt>
+                <dd>{preview.cellsTotal.toLocaleString("en-US")}</dd>
+              </div>
+              <div>
+                <dt>Record</dt>
+                <dd>
+                  {MONTHS_SHORT[preview.firstMonth.month - 1]} {preview.firstMonth.year} –{" "}
+                  {MONTHS_SHORT[preview.lastMonth.month - 1]} {preview.lastMonth.year}
+                </dd>
+              </div>
+              {gain != null && gain > 0 && (
+                <div>
+                  <dt>
+                    lower per-cell error than the best simple conversion, on the {yearSpan(preview.devValidation.years)}{" "}
+                    development years, not the blind test
+                  </dt>
+                  <dd>{gain}%</dd>
+                </div>
+              )}
+            </dl>
+            {rows.length > 1 && (
+              <figure className="jump-figure">
+                <TotalsChart rows={rows} compact={compact} label="Brazil" />
+                <div className="sr-only">
+                  <table>
+                    <caption>VIIRS-equivalent hotspots per year, all of Brazil, experimental run</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Year</th>
+                        <th scope="col">Hotspots</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.year}>
+                          <th scope="row">{r.year}</th>
+                          <td>{r.total.toLocaleString("en-US")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <figcaption>
+                  VIIRS-equivalent hotspot detections per year, all of Brazil, {rows[0].year}–{rows[rows.length - 1].year}.
+                  Experimental run, not validated.
+                </figcaption>
+              </figure>
+            )}
+          </>
+        ) : (
+          <p className="jump-placeholder brazil-placeholder" role="status">
+            {failed ? "The Brazil-wide preview could not be loaded right now." : "Loading the Brazil-wide preview…"}
+          </p>
+        )}
+        <p className="brazil-next">The explorer shows the validated Northeast; Brazil-wide in the explorer is the next step.</p>
+      </div>
+    </section>
   );
 }

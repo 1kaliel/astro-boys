@@ -1,5 +1,5 @@
 import { axisTicks, niceCeil } from "../../lib/charts";
-import { formatCount, formatLegendCount } from "../../lib/format";
+import { formatCompact, formatCount, formatLegendCount } from "../../lib/format";
 import { SENSOR_CHANGE_YEAR, type YearTotals } from "./landingData";
 
 /** Two drawings of the same chart: a wide one, and a compact one for phones, so the type stays readable. */
@@ -50,7 +50,7 @@ export function JumpChart({ rows, compact = false }: { rows: readonly YearTotals
         <g key={tick}>
           <line className="jump-grid" x1={M.left} x2={M.left + IW} y1={y(tick)} y2={y(tick)} />
           <text className="jump-axis" x={M.left - 8} y={y(tick)} dy="0.32em" textAnchor="end">
-            {tick === 0 ? "0" : formatLegendCount(tick)}
+            {tick === 0 ? "0" : formatCompact(tick)}
           </text>
         </g>
       ))}
@@ -126,5 +126,53 @@ export function JumpTable({ rows }: { rows: readonly YearTotals[] }) {
       </tbody>
     </table>
     </div>
+  );
+}
+
+/**
+ * Yearly totals of one harmonized series (the Brazil-wide experimental run), drawn like the jump chart: same axes,
+ * same harmonized blue, the highest and the latest year labeled directly.
+ */
+export function TotalsChart({ rows, compact = false, label }: { rows: readonly { year: number; total: number }[]; compact?: boolean; label: string }) {
+  if (rows.length < 2) return null;
+  const { W, M, years } = LAYOUTS[compact ? "compact" : "wide"];
+  const H = compact ? 240 : 280;
+  const IW = W - M.left - M.right;
+  const IH = H - M.top - M.bottom;
+  const first = rows[0].year;
+  const last = rows[rows.length - 1].year;
+  const max = niceCeil(Math.max(...rows.map((r) => r.total)));
+  const x = (year: number) => M.left + ((year - first) / Math.max(1, last - first)) * IW;
+  const y = (value: number) => M.top + IH - (value / max) * IH;
+  const d = rows.map((r, i) => `${i === 0 ? "M" : "L"}${x(r.year).toFixed(1)},${y(r.total).toFixed(1)}`).join("");
+  const peak = rows.reduce((best, r) => (r.total > best.total ? r : best), rows[0]);
+  const end = rows[rows.length - 1];
+  const labelEvery = Math.ceil(rows.length / years);
+  return (
+    <svg className={compact ? "jump-chart is-compact" : "jump-chart"} viewBox={`0 0 ${W} ${H}`} aria-hidden="true" focusable="false">
+      {axisTicks(max, 4).map((tick) => (
+        <g key={tick}>
+          <line className="jump-grid" x1={M.left} x2={M.left + IW} y1={y(tick)} y2={y(tick)} />
+          <text className="jump-axis" x={M.left - 8} y={y(tick)} dy="0.32em" textAnchor="end">
+            {tick === 0 ? "0" : formatCompact(tick)}
+          </text>
+        </g>
+      ))}
+      {rows.map((r, i) =>
+        (i % labelEvery === 0 && last - r.year >= labelEvery) || r.year === last ? (
+          <text key={r.year} className="jump-axis" x={x(r.year)} y={H - 10} textAnchor="middle">
+            {r.year}
+          </text>
+        ) : null,
+      )}
+      <path className="jump-line jump-harmonized" d={d} />
+      <circle className="jump-dot jump-dot-harmonized" cx={x(peak.year)} cy={y(peak.total)} r={4} />
+      <text className="jump-value" x={x(peak.year)} y={y(peak.total) - 10} textAnchor="middle">
+        {formatCompact(peak.total)}
+      </text>
+      <text className="jump-label jump-label-harmonized" x={M.left + IW + 10} y={y(end.total)} dy="0.32em">
+        {label}
+      </text>
+    </svg>
   );
 }

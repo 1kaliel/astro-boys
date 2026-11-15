@@ -149,3 +149,86 @@ export function globeFraming(width: number, height: number, header: number = 64)
 export function driftOffset(ms: number, amplitude = 6, periodMs = 120_000): number {
   return amplitude * Math.sin((2 * Math.PI * ms) / periodMs);
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// The Brazil-wide preview: an experimental run of the same method over all of Brazil, one month, as a static file.
+
+/** The one place the preview file is named (served from public/landing/). */
+export const BRAZIL_PREVIEW_URL = "/landing/brazil-2024-09.json";
+
+/** What the globe and the "First look" section show at the scale of Brazil. */
+export const BRAZIL_BOUNDS = { west: -74, south: -34, east: -34.7, north: 5.3 } as const;
+
+export type BrazilPreview = {
+  experimental: boolean;
+  note: string;
+  region: string;
+  year: number;
+  month: number;
+  modelVersion: string;
+  cellsTotal: number;
+  /** "2002-07" style months of the record. */
+  firstMonth: YearMonth;
+  lastMonth: YearMonth;
+  devValidation: { years: string; mae: number; bestBaselineMae: number };
+  yearlyTotals: { year: number; total: number }[];
+  breaks: number[];
+  cells: { id: string; value: number; estimated: boolean; partial: boolean }[];
+};
+
+function yearMonthOf(text: unknown): YearMonth {
+  const match = typeof text === "string" ? /^(\d{4})-(\d{2})$/.exec(text) : null;
+  if (!match) throw new Error(`Unexpected month "${String(text)}" in the Brazil preview.`);
+  return { year: Number(match[1]), month: Number(match[2]) };
+}
+
+const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+/** Reads the preview file. Throws if it is not the shape the landing expects (the caller falls back to the pilot). */
+export function parseBrazilPreview(doc: unknown): BrazilPreview {
+  const d = doc as Record<string, unknown> | null;
+  const dev = d?.dev_validation as Record<string, unknown> | undefined;
+  if (
+    !d ||
+    !Array.isArray(d.cells) ||
+    !Array.isArray(d.breaks) ||
+    !Array.isArray(d.yearly_totals) ||
+    !isNumber(d.year) ||
+    !isNumber(d.month) ||
+    !dev ||
+    !isNumber(dev.mae) ||
+    !isNumber(dev.best_baseline_mae)
+  ) {
+    throw new Error("The Brazil preview has an unexpected format.");
+  }
+  const breaks = (d.breaks as unknown[]).filter(isNumber);
+  return {
+    experimental: d.experimental !== false,
+    note: typeof d.note === "string" ? d.note : "",
+    region: typeof d.region === "string" ? d.region : "Brazil",
+    year: d.year,
+    month: d.month,
+    modelVersion: typeof d.model_version === "string" ? d.model_version : "",
+    cellsTotal: isNumber(d.cells_total) ? d.cells_total : (d.cells as unknown[]).length,
+    firstMonth: yearMonthOf(d.first_month),
+    lastMonth: yearMonthOf(d.last_month),
+    devValidation: { years: String(dev.years ?? ""), mae: dev.mae, bestBaselineMae: dev.best_baseline_mae },
+    yearlyTotals: (d.yearly_totals as unknown[])
+      .filter((row): row is [number, number] => Array.isArray(row) && isNumber(row[0]) && isNumber(row[1]))
+      .map(([year, total]) => ({ year, total })),
+    breaks,
+    cells: (d.cells as unknown[])
+      .filter((row): row is [string, number] => Array.isArray(row) && typeof row[0] === "string" && isNumber(row[1]))
+      .map(([id, value]) => ({ id, value, estimated: false, partial: false })),
+  };
+}
+
+/** Per-cell error against the best simple conversion, as a whole percent lower (positive = better). */
+export function errorReductionPct(mae: number, baseline: number): number | null {
+  return baseline > 0 ? Math.round(100 * (1 - mae / baseline)) : null;
+}
+
+/** "2020-2021" -> "2020–2021". */
+export function yearSpan(text: string): string {
+  return text.replace(/(\d{4})\s*-\s*(\d{4})/, "$1–$2");
+}
