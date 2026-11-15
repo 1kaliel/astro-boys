@@ -24,7 +24,7 @@ export function YearSelect({ label, value, years, onChange }: YearSelectProps) {
           </Select.Icon>
         </Select.Trigger>
         <Select.Portal>
-          <Select.Positioner sideOffset={4}>
+          <Select.Positioner sideOffset={4} className="popup-positioner">
             <Select.Popup className="select-popup">
               {years.map((year) => (
                 <Select.Item key={year} value={year} className="select-item">
