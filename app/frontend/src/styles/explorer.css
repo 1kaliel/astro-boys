@@ -14,7 +14,7 @@
   display: grid;
   flex: 1;
   grid-template-columns: 22.5rem minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(320px, 1fr) auto;
   grid-template-areas:
     "side map"
     "side panel";
@@ -432,7 +432,7 @@
 }
 
 .is-wide .xp-panel {
-  height: max(32vh, 240px);
+  height: max(38vh, 300px);
 }
 
 .is-wide .xp-panel.is-collapsed {
@@ -525,7 +525,7 @@
   }
 
   .xp-panel .dash-charts .line-chart {
-    max-height: calc(max(32vh, 240px) - 9rem);
+    max-height: calc(max(38vh, 300px) - 9rem);
   }
 
   .xp-panel .dash-charts .chart-block {
@@ -632,7 +632,7 @@
   position: fixed;
   top: auto;
   right: var(--space-4);
-  bottom: calc(max(32vh, 240px) + var(--space-12));
+  bottom: calc(max(38vh, 300px) + var(--space-12));
 }
 
 .xp-app.is-narrow .hh-prompt {
@@ -783,8 +783,6 @@
 /* Timeline: readable rows; with all years the grid scrolls inside its own box, the selected year in view. */
 @media (min-width: 64rem) {
   .xp-panel .calendar-scroll {
-    max-height: calc(max(32vh, 240px) - 10rem);
-    min-height: calc(5 * var(--space-8));
     overflow-y: auto;
   }
 }
@@ -881,9 +879,92 @@
   gap: var(--space-1);
 }
 
-@media (min-width: 64rem) {
-  .xp-panel .calendar-scroll {
-    max-height: calc(max(32vh, 240px) - 8.5rem);
-    min-height: calc(3 * var(--space-8) + var(--space-8));
-  }
+
+/* ---- 720p: the panel header carries the period figures; small controls; the grid keeps 6+ rows ------------ */
+.kpi-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.kpi-inline-item + .kpi-inline-item::before {
+  content: "·";
+  margin-inline-end: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.kpi-inline-open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.kpi-inline-open:hover {
+  text-decoration-style: solid;
+}
+
+.is-wide .xp-panel-head {
+  padding-block: var(--space-1);
+}
+
+.is-wide .xp-panel-head .card-tab {
+  font-size: var(--font-size-sm);
+}
+
+.is-wide .xp-panel-scroll {
+  padding-top: var(--space-1);
+}
+
+/* Small toolbar controls in the panel: one compact row. */
+.is-wide .xp-panel .tabs-bar {
+  --control-size: 22px;
+  gap: var(--space-1) var(--space-2);
+}
+
+.is-wide .xp-panel .tabs-bar .segmented-item,
+.is-wide .xp-panel .tabs-bar .tabs-tab,
+.is-wide .xp-panel .tabs-bar .button {
+  padding-block: 0;
+  font-size: var(--font-size-xs);
+}
+
+.is-wide .xp-panel .calendar .tabs-panel {
+  padding-top: var(--space-1);
+}
+
+.is-wide .xp-panel .calendar-scroll {
+  padding-bottom: 0;
+}
+
+.kpi-inline {
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.kpi-inline-item {
+  flex: none;
+}
+
+.is-wide .xp-panel-head {
+  flex-wrap: nowrap;
+}
+
+.is-wide .xp-panel-head .card-tabs {
+  flex-wrap: nowrap;
+  flex: none;
 }

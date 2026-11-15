@@ -1,10 +1,21 @@
+import { useState } from "react";
 import { Badge } from "../../components/ui/Badge";
+import { EvidenceDialog } from "../../components/ui/EvidenceDialog";
 import { KpiTile } from "../../components/viz/KpiTile";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { formatCompact, formatCount, MONTHS_LONG } from "../../lib/format";
-import { aboveUsual, busiestMonth, deltaText, latestKpiText, peakMonth, totalActivity, UNUSUAL_Z } from "../../lib/metrics";
+import {
+  aboveUsual,
+  busiestMonth,
+  deltaText,
+  latestKpiText,
+  peakMonth,
+  percentChange,
+  totalActivity,
+  UNUSUAL_Z,
+} from "../../lib/metrics";
 import type { Bounds, Period } from "../../state/dashboard";
-import { aboveEvidence, peakEvidence, totalEvidence } from "./kpiEvidence";
+import { aboveEvidence, peakEvidence, totalEvidence, type Evidence } from "./kpiEvidence";
 
 type KpiRowProps = {
   /** The whole series of the area; each card cuts it to the selected years itself. */
@@ -118,5 +129,58 @@ export function KpiRow({ months, startYear, endYear, baselineYears, area, period
         }
       />
     </section>
+  );
+}
+
+/** One figure of the inline line: a short text that opens the same evidence panel as its card. */
+function InlineFigure({ text, label, title, evidence }: { text: string; label: string; title: string; evidence: Evidence | null }) {
+  const [open, setOpen] = useState(false);
+  if (!evidence) return <li className="kpi-inline-item">{text}</li>;
+  return (
+    <li className="kpi-inline-item">
+      <button type="button" className="kpi-inline-open" aria-haspopup="dialog" aria-label={label} onClick={() => setOpen(true)}>
+        {text}
+      </button>
+      <EvidenceDialog title={title} evidence={evidence} open={open} onOpenChange={setOpen} />
+    </li>
+  );
+}
+
+/**
+ * The three period figures as one line ("4.2M hotspots ▼11% · Peak Sep 2017 · 62/118 above usual"), for the
+ * explorer's panel header. Each item opens the evidence panel of its card (records and source).
+ */
+export function KpiInline({ months, startYear, endYear, area, period, modelVersion }: Omit<KpiRowProps, "baselineYears" | "onPickMonth">) {
+  const context = { area, period, modelVersion, startYear, endYear };
+  const years = startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
+  const total = totalActivity(months, startYear, endYear);
+  const peak = peakMonth(months, startYear, endYear);
+  const above = aboveUsual(months, startYear, endYear);
+  const change = total?.complete ? percentChange(total.complete.value, total.complete.median) : null;
+  const changeText = change === null ? "" : ` ${change >= 0 ? "▲" : "▼"}${Math.abs(Math.round(change))}%`;
+  const peakName = peak ? `${MONTHS_LONG[peak.month - 1].slice(0, 3)} ${peak.year}` : null;
+  return (
+    <ul className="kpi-inline" aria-label={`The period in figures, ${years}`}>
+      <InlineFigure
+        text={total ? `${formatCompact(total.value)} hotspots${changeText}` : "No data"}
+        label={`Total activity, ${years}: ${formatCompact(total?.value)} VIIRS-equivalent hotspots${
+          change === null ? "" : `, ${Math.abs(Math.round(change))}% ${change >= 0 ? "above" : "below"} the usual level`
+        }. Show the records and the source`}
+        title={`Total activity, ${years}`}
+        evidence={total ? totalEvidence(months, context) : null}
+      />
+      <InlineFigure
+        text={peakName ? `Peak ${peakName}` : "No peak"}
+        label={`Peak month, ${years}: ${peak ? `${MONTHS_LONG[peak.month - 1]} ${peak.year}` : "no data"}. Show the records and the source`}
+        title={`Peak month, ${years}`}
+        evidence={peak ? peakEvidence(months, context) : null}
+      />
+      <InlineFigure
+        text={above.judged > 0 ? `${above.above}/${above.judged} above usual` : "No complete month"}
+        label={`Months above usual: ${above.above} of ${above.judged} complete months. Show the records and the source`}
+        title="Months above usual"
+        evidence={above.judged > 0 ? aboveEvidence(months, context) : null}
+      />
+    </ul>
   );
 }

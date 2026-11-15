@@ -15,7 +15,7 @@ import { AppBar } from "./AppBar";
 import { DownloadCsv } from "./DownloadCsv";
 import { currentMonth, LookingAt, monthEntry, MonthStepper, ThisMonth } from "./ExplorerParts";
 import { FilterBar } from "./FilterBar";
-import { KpiRow } from "./KpiRow";
+import { KpiInline, KpiRow } from "./KpiRow";
 import "../../styles/redesign-layout.css";
 import "../../styles/explorer.css";
 
@@ -129,8 +129,11 @@ export function DashboardPage() {
 
   const timeline = (
     <div className="xp-panel-body calendar-theme" data-tour="calendar">
-      <BurningCalendar load={load} reload={reload} />
-      <p className="card-caption">Source: NASA FIRMS · {CALENDAR_UNIT}. Click a month to show it on the map.</p>
+      <BurningCalendar
+        load={load}
+        reload={reload}
+        caption={`Source: NASA FIRMS · ${CALENDAR_UNIT}. Click a month to show it on the map.`}
+      />
     </div>
   );
   const season =
@@ -224,7 +227,17 @@ export function DashboardPage() {
               </Tabs.Tab>
             ))}
           </Tabs.List>
-          <span className="card-meta">{years}</span>
+          {!narrow && panelOpen && dataset && (
+            <KpiInline
+              months={dataset.months}
+              startYear={state.startYear}
+              endYear={state.endYear}
+              area={state.area}
+              period={dataset.period ?? state.period}
+              modelVersion={dataset.modelVersion}
+            />
+          )}
+          {narrow && <span className="card-meta">{years}</span>}
           {!narrow && (
             <button
               type="button"
@@ -232,11 +245,10 @@ export function DashboardPage() {
               aria-expanded={panelOpen}
               onClick={() => setPanelOpen((open) => !open)}
             >
-              {panelOpen ? "Hide panel ▾" : "Show panel ▴"}
+              {panelOpen ? "Hide ▾" : "Show panel ▴"}
             </button>
           )}
         </div>
-        {panelOpen && !narrow && kpis}
         {panelOpen &&
           tabs.map((t) => (
             <Tabs.Panel key={t.value} value={t.value} className="xp-panel-scroll">
