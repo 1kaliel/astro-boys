@@ -47,7 +47,7 @@ jobs:
       - name: Download script loads (no network)
         run: uv run python scripts/firms_download.py --help
       - name: Shell scripts parse
-        run: for f in scripts/*.sh infra/gcp/*.sh infra/gcp/vm/*.sh deploy/cloudrun/*.sh; do bash -n "$f"; done
+        run: for f in scripts/*.sh infra/gcp/*.sh infra/gcp/vm/*.sh deploy/cloudrun/*.sh deploy/local/*.sh; do bash -n "$f"; done
 
   app-backend:
     name: App backend (lint, tests)
