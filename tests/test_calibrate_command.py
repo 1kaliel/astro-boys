@@ -56,7 +56,7 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
     assert result["excluded_months"] == [[2012, 1]] and result["data_gaps"] == 0
     assert result["k"] in calibrate.cal.WEIGHT_GRID and result["m"] in calibrate.cal.WEIGHT_GRID
     assert result["pool"] in calibrate.cal.POOL_LEVELS
-    assert result["model_version"] == f"fb-{result['pool']}-{calibrate.MODEL_REVISION}"
+    assert result["model_version"] == calibrate.model_version(result["pool"], result["witness"])
     assert result["cells"] == 16 and result["panel_rows"] == 16 * (8 * 12 - 1) * 2
 
     con = duckdb.connect()
@@ -75,7 +75,9 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
     assert report["held_out_years_untouched"] == [2020, 2021, 2022, 2023, 2024, 2025]
     assert report["coverage_table_used"] is False
     tried = len(calibrate.cal.WEIGHT_GRID) * len(calibrate.cal.POOL_LEVELS)
-    assert len(report["leave_one_year_out"]) == tried and len(report["region_by_month_period"]) == 24
+    static = [s for s in report["leave_one_year_out"] if s["background"] == "static"]
+    assert len(static) == tried and len(report["region_by_month_period"]) == 24
+    assert report["weights"]["background"] in ("static", "witness")
     assert "Poisson deviance" in report["weights"]["chosen_by"]
     assert 3 < report["panel"]["overall_ratio"] < 6
     manifest = json.loads(open(result["manifest"]).read())
@@ -85,10 +87,13 @@ def test_calibrate_writes_factors_report_and_manifest(tmp_path):
 
 def test_fixed_weights_are_used_as_given(tmp_path):
     write_counts(tmp_path)
-    result = calibrate.run(settings_for(tmp_path), k=20, m=2, pool="region")
-    assert (result["k"], result["m"], result["pool"]) == (20, 2, "region")
-    assert result["weights_chosen_by"].endswith("fixed on the command line: k, m, pool")
-    assert result["model_version"] == "fb-region-2"
+    result = calibrate.run(settings_for(tmp_path), k=20, m=2, pool="region", witness=False)
+    assert (result["k"], result["m"], result["pool"], result["witness"]) == (20, 2, "region", False)
+    assert result["weights_chosen_by"].endswith("fixed on the command line: k, m, pool, witness")
+    assert result["model_version"] == "fb-region-3"
+    with_terra = calibrate.run(settings_for(tmp_path), pool="l1", witness=True)
+    assert with_terra["witness"] is True and with_terra["model_version"] == "fb-l1-terra-3"
+    assert with_terra["m_witness"] in calibrate.cal.WEIGHT_GRID
 
 
 def test_test_years_are_refused(tmp_path):

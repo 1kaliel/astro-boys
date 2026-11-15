@@ -30,24 +30,35 @@ FINAL_TEST_YEARS = (2022, 2023)  # final test: scored once (`validate --final`),
 LATE_YEARS = (2024, 2025)        # reported with the final test, separately: MODIS orbits drift in these years
 HELD_OUT_YEARS = DEV_YEARS + FINAL_TEST_YEARS + LATE_YEARS
 MODEL_FAMILY = "fb"  # factor F + background B; the model version adds the pooling level, e.g. fb-l1-2
-MODEL_REVISION = 2
+MODEL_REVISION = 3
 REQUIRED_COLUMNS = ("cell_l2", "year", "month", "daynight", "satellite", "n_hotspots")
 FACTOR_COLUMNS = (  # processed/factors/v1 in docs/data-dictionary.md
     "cell_l2", "month", "period", "f", "b", "sum_aqua_pos", "sum_viirs_pos", "n_zero", "sum_viirs_zero",
     "r_region", "b_region", "k", "m", "weight_cell", "calibration_years", "model_version",
-    "r_parent", "b_parent", "pool_level",
+    "r_parent", "b_parent", "pool_level", *cal.WITNESS_COLUMNS,
 )
 
 
-def model_version(pool: str) -> str:
-    return f"{MODEL_FAMILY}-{pool}-{MODEL_REVISION}"
+def model_version(pool: str, witness: bool = False) -> str:
+    return f"{MODEL_FAMILY}-{pool}{'-terra' if witness else ''}-{MODEL_REVISION}"
 
 
-def choose_model(con, panel: str, *, k: float | None, m: float | None, pool: str | None) -> dict:
-    """Pooling level and weights: fixed where given, otherwise by leave-one-year-out Poisson deviance."""
+def witness_gap_months(con, settings: Settings, years: Sequence[int]) -> list[tuple[int, int]]:
+    """Months in which the witness satellite was not fully observing (from the coverage table, if any)."""
+    location = storage.uri(settings, "processed", "coverage_monthly", settings.dataset_version)
+    incomplete = coverage.incomplete_months(con, location, (cal.WITNESS,), tuple(years)) or []
+    return sorted({(y, mo) for y, mo, _ in incomplete})
+
+
+def choose_model(
+    con, panel: str, *, k: float | None, m: float | None, pool: str | None, witness: bool | None = None
+) -> dict:
+    """Pooling level, weights and background type: fixed where given, otherwise by leave-one-year-out
+    Poisson deviance on the calibration years."""
     pools = (pool,) if pool else cal.POOL_LEVELS
-    choice = cal.choose_pooling(con, panel, pools=pools)
-    fixed = [name for name, value in (("k", k), ("m", m), ("pool", pool)) if value is not None]
+    choice = cal.choose_pooling(con, panel, pools=pools, witness=witness)
+    given = (("k", k), ("m", m), ("pool", pool), ("witness", witness))
+    fixed = [name for name, value in given if value is not None]
     choice["k"] = choice["k"] if k is None else float(k)
     choice["m"] = choice["m"] if m is None else float(m)
     choice["chosen_by"] = "leave-one-year-out Poisson deviance, calibration years only"
@@ -173,6 +184,7 @@ def run(
     k: float | None = None,
     m: float | None = None,
     pool: str | None = None,
+    witness: bool | None = None,
     counts_location: str | None = None,
 ) -> dict:
     """Fit the factors and write them, the calibration report and the manifest."""
@@ -191,11 +203,14 @@ def run(
     manifest.inputs.append({"path": location, "sha256": None, "rows": rows_in})
     excluded, gaps, coverage_checked = months_to_exclude(con, settings, years)
 
-    cal.build_panel(con, "counts", years, exclude_months=excluded)
-    choice = choose_model(con, "panel", k=k, m=m, pool=pool)
+    cal.build_panel(con, "counts", years, exclude_months=excluded,
+                    witness_gap_months=witness_gap_months(con, settings, years))
+    choice = choose_model(con, "panel", k=k, m=m, pool=pool, witness=witness)
     k, m, pool, scores, chosen_by = (choice[key] for key in ("k", "m", "pool", "scores", "chosen_by"))
-    version_name = model_version(pool)
-    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name)
+    witness, m_witness = choice["witness"], choice["m_witness"]
+    version_name = model_version(pool, witness)
+    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name,
+                    witness=witness, m_witness=m_witness)
 
     panel = _records(con, """
         SELECT count(*) AS rows, count(DISTINCT cell_l2) AS cells, sum(a) AS sum_aqua, sum(v) AS sum_viirs,
@@ -226,6 +241,10 @@ def run(
         "data_gaps": [{"year": y, "month": mo, "satellite": sat} for y, mo, sat in gaps],
         "coverage_table_used": coverage_checked,
         "weights": {"k": k, "m": m, "pool": pool, "chosen_by": chosen_by,
+                    "background": "witness" if witness else "static", "m_witness": m_witness,
+                    "witness_satellite": cal.WITNESS if witness else None,
+                    "deviance_zero_static_same_months": choice.get("deviance_zero_static_same_months"),
+                    "deviance_zero_witness": choice.get("deviance_zero_witness"),
                     "candidates": list(cal.WEIGHT_GRID), "pool_candidates": list(cal.POOL_LEVELS)},
         "leave_one_year_out": scores,
         "panel": panel,
@@ -257,7 +276,8 @@ def run(
         "calibration_years": list(years),
         "excluded_months": [list(ym) for ym in excluded],
         "data_gaps": len(gaps), "coverage_table_used": coverage_checked,
-        "k": k, "m": m, "pool": pool, "weights_chosen_by": chosen_by,
+        "k": k, "m": m, "pool": pool, "witness": witness, "m_witness": m_witness,
+        "weights_chosen_by": chosen_by,
         "model_version": version_name,
         "panel_rows": panel["rows"], "cells": panel["cells"],
         "overall_ratio": panel["overall_ratio"],

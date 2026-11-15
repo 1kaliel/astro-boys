@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
     c.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
     c.add_argument("--pool", choices=("region", "l1"), help="fix the pooling level instead of choosing it")
+    c.add_argument("--witness", choices=("on", "off"), help="fix whether the background uses Terra")
     c.add_argument("--counts", help="folder with cell_month_counts Parquet "
                                     "(default: processed/cell_month_counts/<dataset version>)")
     g = sub.add_parser("coverage", help="find satellite outages: days and months without data")
@@ -39,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("--k", type=float, help="fix the pooling weight of F instead of choosing it")
     v.add_argument("--m", type=float, help="fix the pooling weight of B instead of choosing it")
     v.add_argument("--pool", choices=("region", "l1"), help="fix the pooling level instead of choosing it")
+    v.add_argument("--witness", choices=("on", "off"), help="fix whether the background uses Terra")
     v.add_argument("--counts", help="folder with cell_month_counts Parquet")
     m = sub.add_parser("mock-calendar", help="write a SYNTHETIC calendar table for dashboard development")
     m.add_argument("--bbox", default=",".join(str(v) for v in mock.DEFAULT_BBOX),
@@ -49,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("aggregate", help="aggregate hotspots into monthly counts by satellite")
 
     args = p.parse_args(argv)
+    witness = {"on": True, "off": False}.get(getattr(args, "witness", None))
     settings = get_settings(astro_data_root=args.data_root)
 
     if args.cmd == "info":
@@ -63,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "calibrate":
         try:
             result = calibrate.run(settings, years=calibrate.parse_years(args.years), k=args.k, m=args.m,
-                                   pool=args.pool, counts_location=args.counts)
+                                   pool=args.pool, witness=witness, counts_location=args.counts)
         except calibrate.CalibrationError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1
@@ -82,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
             test_years = calibrate.parse_years(args.test_years) if args.test_years else None
             result = validate.run(settings, years=calibrate.parse_years(args.years),
                                   test_years=test_years, final=args.final, k=args.k, m=args.m, pool=args.pool,
+                                  witness=witness,
                                   counts_location=args.counts)
         except calibrate.CalibrationError as e:
             print(f"error: {e}", file=sys.stderr)

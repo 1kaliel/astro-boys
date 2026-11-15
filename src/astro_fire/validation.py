@@ -9,8 +9,11 @@ test years from Aqua alone, and is scored against what S-NPP observed.
 | global_ratio         | Aqua × one ratio (ΣV / ΣA over everything)      | baseline  |
 | ols                  | a·Aqua + b, one line for everything             | baseline  |
 | month_period_ratio   | Aqua × ratio of that month and day/night        | baseline  |
-| f_pooled             | F(cell, month, period) × Aqua                   | candidate |
-| f_pooled_background  | F × Aqua, or background B where Aqua = 0        | candidate |
+| f_pooled             | F(cell, month, period) × Aqua                   | ablation  |
+| f_pooled_static_background | F × Aqua, or the static B where Aqua = 0  | ablation  |
+| f_pooled_background  | F × Aqua, or B where Aqua = 0 (final method)    | candidate |
+
+The final method uses the Terra-aware background when the factors carry one, otherwise the static one.
 """
 
 from __future__ import annotations
@@ -20,13 +23,16 @@ from collections.abc import Sequence
 
 import duckdb
 
+from astro_fire import calibration as cal
+
 METHODS = (
     ("raw_aqua", "Raw Aqua counts (no harmonization)", "reference"),
     ("global_ratio", "One global ratio", "baseline"),
     ("ols", "OLS line V = a·A + b, global", "baseline"),
     ("month_period_ratio", "Ratio by month × day/night, no cell term", "baseline"),
-    ("f_pooled", "F with pooling", "candidate"),
-    ("f_pooled_background", "F with pooling + background B", "candidate"),
+    ("f_pooled", "F with pooling, no background", "ablation"),
+    ("f_pooled_static_background", "F + static background B", "ablation"),
+    ("f_pooled_background", "F + background B, Terra-aware where fitted", "candidate"),
 )
 FINAL = "f_pooled_background"
 BASELINES = tuple(key for key, _, role in METHODS if role == "baseline")
@@ -47,7 +53,10 @@ _METRICS = """
 def build_eval(
     con: duckdb.DuckDBPyConnection, test_panel: str, factors: str, *, name: str = "eval"
 ) -> str:
-    """Test rows to score: `cell_l2, year, month, period, a, v`.
+    """Test rows to score: `cell_l2, year, month, period, a, v, t`.
+
+    `t` is the witness count from the test panel (null where the witness is unknown, and for cells that
+    are only in the calibration universe, where the test panel has no row to say).
 
     `test_panel` comes from `calibration.build_panel` on the test years (cells active in those years).
     Cells of the calibration universe that were silent in the test years are added with zeros, so a
@@ -61,7 +70,7 @@ def build_eval(
         ),
         slots AS (SELECT DISTINCT year, month, period FROM {test_panel})
         SELECT c.cell_l2, s.year, s.month, s.period,
-               coalesce(t.a, 0)::BIGINT AS a, coalesce(t.v, 0)::BIGINT AS v
+               coalesce(t.a, 0)::BIGINT AS a, coalesce(t.v, 0)::BIGINT AS v, t.t
         FROM cells c CROSS JOIN slots s
         LEFT JOIN {test_panel} t USING (cell_l2, year, month, period)
         """
@@ -77,6 +86,7 @@ def predict(
     Baselines are fitted on `panel` (calibration years). A prediction is null when the method has no
     factor for that row; nulls are reported by `score`, never turned into zeros.
     """
+    background = cal.BACKGROUND_SQL.replace("s.t", "e.t")
     con.execute(
         f"""
         CREATE OR REPLACE TEMP TABLE {name} AS
@@ -99,7 +109,9 @@ def predict(
                CASE WHEN e.a = 0 THEN 0 ELSE e.a * coalesce(f.f, r.r_region) END AS f_pooled,
                -- a cell outside the calibration universe gets no background (see calibration.apply_factors)
                CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
-                    WHEN f.cell_l2 IS NULL THEN 0 ELSE f.b END AS f_pooled_background
+                    WHEN f.cell_l2 IS NULL THEN 0 ELSE f.b END AS f_pooled_static_background,
+               CASE WHEN e.a > 0 THEN e.a * coalesce(f.f, r.r_region)
+                    WHEN f.cell_l2 IS NULL THEN 0 ELSE {background} END AS f_pooled_background
         FROM {eval_rows} e
         CROSS JOIN g
         LEFT JOIN mp USING (month, period)

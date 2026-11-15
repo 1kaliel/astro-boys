@@ -50,6 +50,8 @@ def test_eval_covers_universe_and_test_only_cells(con):
 def test_predictions_match_hand_calculation(con):
     ratio = 783 / 221  # all S-NPP over all Aqua in the calibration years
     assert september(con, "raw_aqua") == {"A": 55, "B": 6, "C": 0, "D": 0, "E": 0}
+    # No witness background was fitted in this example: the final method equals the static one.
+    assert september(con, "f_pooled_static_background") == september(con, "f_pooled_background")
     expected = {"A": 55 * ratio, "B": 6 * ratio, "C": 0, "D": 0, "E": 0}
     assert september(con, "global_ratio") == pytest.approx(expected)
     assert september(con, "month_period_ratio") == pytest.approx(september(con, "global_ratio"))
@@ -147,7 +149,8 @@ def test_validate_command_end_to_end(tmp_path, capsys):
     write_counts(tmp_path)
     assert cli.main(["--data-root", str(tmp_path), "validate"]) == 0
     out = capsys.readouterr().out
-    assert "| F with pooling + background B | candidate |" in out and "development years 2020–2021" in out
+    assert "| F + background B, Terra-aware where fitted | candidate |" in out
+    assert "| F + static background B | ablation |" in out and "development years 2020–2021" in out
     result = json.loads(out[out.index("\n{") :])
     report = json.loads(open(result["report"]).read())
     assert report["stage"] == "development"

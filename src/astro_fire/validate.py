@@ -30,6 +30,7 @@ from astro_fire.calibrate import (
     load_counts,
     model_version,
     months_to_exclude,
+    witness_gap_months,
 )
 from astro_fire.config import Settings
 from astro_fire.manifest import Manifest, new_run_id
@@ -38,7 +39,8 @@ from astro_fire.manifest import Manifest, new_run_id
 def _score_years(con, settings: Settings, test_years: Sequence[int], season: Sequence[int], tag: str) -> dict:
     """Score every method on `test_years`: all months, and coverage-adequate months only."""
     incomplete, gaps, coverage_used = months_to_exclude(con, settings, test_years)
-    cal.build_panel(con, "counts", test_years, name=f"test_panel_{tag}", exclude_months=())
+    cal.build_panel(con, "counts", test_years, name=f"test_panel_{tag}", exclude_months=(),
+                    witness_gap_months=witness_gap_months(con, settings, test_years))
     val.build_eval(con, f"test_panel_{tag}", "factors", name=f"eval_{tag}")
     val.predict(con, "panel", "factors", f"eval_{tag}", name=f"predictions_all_{tag}")
     skip = ", ".join(f"({y}, {mo})" for y, mo in incomplete) or "(NULL, NULL)"
@@ -64,12 +66,14 @@ def _score_years(con, settings: Settings, test_years: Sequence[int], season: Seq
     }
 
 
-def _table(result: dict, years: Sequence[int], label: str, k: float, m: float, pool: str) -> str:
+def _table(result: dict, years: Sequence[int], label: str, k: float, m: float, pool: str,
+           m_witness: float | None = None) -> str:
+    extra = "" if m_witness is None else f", Terra-aware background with M = {m_witness:g}"
     span = f"{result['test_years'][0]}–{result['test_years'][-1]}"
     left_out = ", ".join(f"{y}-{mo:02d}" for y, mo in result["incomplete_months_left_out"]) or "none"
     title = (
         f"Aqua → S-NPP monthly hotspot counts, {label} {span} "
-        f"(calibrated on {years[0]}–{years[-1]}; pooling: {pool}, K = {k:g}, M = {m:g})"
+        f"(calibrated on {years[0]}–{years[-1]}; pooling: {pool}, K = {k:g}, M = {m:g}{extra})"
     )
     notes = (
         "\nSource: NASA FIRMS active fire detections (MODIS Aqua, VIIRS S-NPP 375 m), filtered and gridded "
@@ -90,6 +94,7 @@ def run(
     k: float | None = None,
     m: float | None = None,
     pool: str | None = None,
+    witness: bool | None = None,
     counts_location: str | None = None,
 ) -> dict:
     """Score the methods on held-out years.
@@ -121,24 +126,28 @@ def run(
 
     # Calibration years only: panel, pooling level and weights, factors.
     excluded, _, _ = months_to_exclude(con, settings, years)
-    cal.build_panel(con, "counts", years, exclude_months=excluded)
-    choice = choose_model(con, "panel", k=k, m=m, pool=pool)
+    cal.build_panel(con, "counts", years, exclude_months=excluded,
+                    witness_gap_months=witness_gap_months(con, settings, years))
+    choice = choose_model(con, "panel", k=k, m=m, pool=pool, witness=witness)
     k, m, pool = choice["k"], choice["m"], choice["pool"]
-    version_name = model_version(pool)
-    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name)
+    witness, m_witness = choice["witness"], choice["m_witness"]
+    version_name = model_version(pool, witness)
+    cal.fit_factors(con, "panel", k=k, m=m, pool=pool, model_version=version_name,
+                    witness=witness, m_witness=m_witness)
     season = val.high_season_months(con, "panel")
 
     # Held-out years: touched only from here on, and only to score.
     label = "final test" if final else "development years"
     main = _score_years(con, settings, test_years, season, "main")
-    table = _table(main, years, label, k, m, pool)
+    table = _table(main, years, label, k, m, pool, m_witness)
     report = {
         "run_id": run_id,
         "stage": "final test" if final else "development",
         "model_version": version_name,
         "calibration_years": list(years),
         "excluded_calibration_months": [list(ym) for ym in excluded],
-        "weights": {"k": k, "m": m, "pool": pool, "chosen_by": choice["chosen_by"]},
+        "weights": {"k": k, "m": m, "pool": pool, "chosen_by": choice["chosen_by"],
+                    "background": "witness" if witness else "static", "m_witness": m_witness},
         "high_season_months": season,
         "methods": [{"key": key, "label": lab, "role": role} for key, lab, role in val.METHODS],
         **main,
@@ -146,7 +155,7 @@ def run(
     if final:
         late = _score_years(con, settings, LATE_YEARS, season, "late")
         report["late_years"] = late
-        table += "\n" + _table(late, years, "late years (reported separately)", k, m, pool)
+        table += "\n" + _table(late, years, "late years (reported separately)", k, m, pool, m_witness)
     decision = main["verdict"]
 
     target = storage.uri(settings, "artifacts", run_id)
@@ -179,7 +188,7 @@ def run(
         "report": f"{target}/metrics/validation.json",
         "table": f"{target}/reports/validation.md",
         "manifest": manifest.save(settings),
-        "k": k, "m": m, "pool": pool,
+        "k": k, "m": m, "pool": pool, "witness": witness, "m_witness": m_witness,
         "incomplete_months_left_out": main["incomplete_months_left_out"],
         "verdict": decision,
         "summary": table,

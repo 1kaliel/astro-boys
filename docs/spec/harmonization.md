@@ -159,6 +159,14 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
   biases regional totals low. Without pooling (weight 0) the deviance is infinite.
 - When the region has no Aqua detections at all for a month and period, there is no factor and the estimate
   is null, never zero.
+- **Terra-aware background (owner decision, Sun Nov 15).** Zero-Aqua months are split by whether Terra
+  recorded anything in the same cell, month and day/night period, and one background is fitted for each case
+  (`b_witness1`, `b_witness0`) with the same pooling formula. Terra is a witness only: it is never added to
+  Aqua and never decides which cells exist. When Terra is unknown for a month (outage, or before its
+  record), the plain `b` applies. Kept because it lowers the out-of-year deviance on 2012–2019.
+- **Observation gaps** come from `astro-fire coverage` (region-wide daily counts per satellite; rule in
+  [methodology.md](../methodology.md#observation-gaps)). Months in which Aqua or S-NPP was not fully
+  observing are left out of calibration and of the main validation scores; they are never read as zero.
 
 ### Series assembly
 
@@ -177,7 +185,10 @@ Implemented in `src/astro_fire/calibration.py`; the worked example is reproduced
 
 ## 7. Validation
 
-Chronological only. Nothing from the test years is used to choose `K`, `M` or the method.
+Chronological only. Calibration: 2012–2019. Development set: 2020–2021 (scored while the method was built,
+so not a blind test). **Final test: 2022–2023, scored once with `astro-fire validate --final` after the
+method is frozen**; 2024–2025 is reported with it, separately. The code enforces this split. The pass rule
+is fixed before the final test is opened: see [methodology.md](../methodology.md#validation-protocol).
 
 | Method compared on 2020–2021 (Aqua → S-NPP) | Role |
 |---------------------------------------------|------|
@@ -229,6 +240,7 @@ Schemas are the data contract in [../data-dictionary.md](../data-dictionary.md).
 ```bash
 uv run astro-fire ingest     # zips → country CSVs → normalized hotspots Parquet + QA report
 uv run astro-fire aggregate  # → cell_month_counts
+uv run astro-fire coverage   # → coverage_daily, coverage_monthly: satellite outages (exists)
 uv run astro-fire calibrate  # → factors (K, M by cross-validation), continuity factor
 uv run astro-fire harmonize  # → calendar (+ bootstrap intervals, anomalies)
 uv run astro-fire validate   # → validation table and charts
