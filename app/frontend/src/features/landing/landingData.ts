@@ -4,7 +4,7 @@
  */
 import type { CalendarMonth } from "../../data/calendarSource";
 import { aboveUsual, peakMonth, totalActivity } from "../../lib/metrics";
-import { MONTHS_LONG } from "../../lib/format";
+import { MONTHS_LONG, MONTHS_SHORT } from "../../lib/format";
 
 /** VIIRS S-NPP replaces MODIS Aqua as the source of the record in February 2012. */
 export const SENSOR_CHANGE_YEAR = 2012;
@@ -136,8 +136,10 @@ function zoomForDiameter(px: number): number {
 export function globeFraming(width: number, height: number, header: number = 64): GlobeFraming {
   const wide = width >= WIDE_HERO_PX;
   const padding = wide
-    ? { top: header, bottom: 0, left: Math.round(width * 0.4), right: 0 }
-    : { top: header, bottom: Math.round(height * 0.38), left: 0, right: 0 };
+    ? // A little room at the bottom for the timeline, which sits over the southern edge of the globe.
+      { top: header, bottom: Math.round(height * 0.08), left: Math.round(width * 0.4), right: 0 }
+    : // Phones: the timeline sits under the header, the text at the bottom.
+      { top: header + 120, bottom: Math.round(height * 0.38), left: 0, right: 0 };
   const diameter = wide
     ? Math.min(0.9 * height, 0.95 * (width - padding.left))
     : Math.min(0.98 * width, 0.6 * height);
@@ -231,4 +233,91 @@ export function errorReductionPct(mae: number, baseline: number): number | null 
 /** "2020-2021" -> "2020–2021". */
 export function yearSpan(text: string): string {
   return text.replace(/(\d{4})\s*-\s*(\d{4})/, "$1–$2");
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// The globe timeline: the twelve months of 2024 over all of Brazil (experimental), one file.
+
+/**
+ * The one place the timeline files are named (served from public/landing/). 2024 is the default: the biggest fire
+ * season of the record. 2026 is loaded only when chosen.
+ */
+export const BRAZIL_TIMELINES = [
+  { year: 2024, label: "2024", url: "/landing/brazil-2024-months.json", note: "" },
+  {
+    year: 2026,
+    label: "2026 (to Nov 14)",
+    url: "/landing/brazil-2026-months.json",
+    note: "provisional near-real-time data from August",
+  },
+] as const;
+export type TimelineYear = (typeof BRAZIL_TIMELINES)[number]["year"];
+/** One month per this many ms while the timeline plays. */
+export const TIMELINE_STEP_MS = 1200;
+/** The month shown when nothing plays (reduced motion): the peak of the dry season. */
+export const STATIC_MONTH = 9;
+/** Auto-rotation resumes this long after the last touch, drag or zoom on the globe. */
+export const ROTATION_RESUME_MS = 4000;
+
+export type TimelineMonth = {
+  month: number;
+  total: number;
+  /** The month is not complete: `daysObserved` days of it. */
+  partial: boolean;
+  daysObserved: number | null;
+  cells: { id: string; value: number; estimated: boolean; partial: boolean }[];
+};
+export type BrazilMonths = { year: number; breaks: number[]; lastDate: string | null; months: TimelineMonth[] };
+
+/** Reads the timeline file. Throws if it is not the expected shape (the globe then falls back to the pilot). */
+export function parseBrazilMonths(doc: unknown): BrazilMonths {
+  const d = doc as Record<string, unknown> | null;
+  if (!d || !isNumber(d.year) || !Array.isArray(d.breaks) || !Array.isArray(d.months)) {
+    throw new Error("The Brazil timeline has an unexpected format.");
+  }
+  const months = (d.months as unknown[])
+    .map((raw) => raw as Record<string, unknown>)
+    .filter((m) => m && isNumber(m.month) && m.month >= 1 && m.month <= 12 && isNumber(m.total) && Array.isArray(m.cells))
+    .map(
+      (m): TimelineMonth => ({
+        month: m.month as number,
+        total: m.total as number,
+        partial: m.partial === true,
+        daysObserved: isNumber(m.days_observed) ? m.days_observed : null,
+        cells: (m.cells as unknown[])
+          .filter((row): row is [string, number] => Array.isArray(row) && typeof row[0] === "string" && isNumber(row[1]))
+          .map(([id, value]) => ({ id, value, estimated: false, partial: false })),
+      }),
+    )
+    .sort((a, b) => a.month - b.month);
+  if (months.length === 0) throw new Error("The Brazil timeline has no months.");
+  return {
+    year: d.year,
+    breaks: (d.breaks as unknown[]).filter(isNumber),
+    lastDate: typeof d.last_date === "string" ? d.last_date : null,
+    months,
+  };
+}
+
+/** "August 2024"; a partial month says which days: "Nov 1–14, 2026". */
+export function timelineMonthLabel(year: number, m: Pick<TimelineMonth, "month" | "partial" | "daysObserved">): string {
+  if (m.partial && m.daysObserved) return `${MONTHS_SHORT[m.month - 1]} 1–${m.daysObserved}, ${year}`;
+  return monthLabel({ year, month: m.month });
+}
+
+/** The next frame of a looping timeline. */
+export function nextFrame(index: number, count: number): number {
+  return count > 0 ? (index + 1) % count : 0;
+}
+
+/** Where the timeline starts: the first month when it plays, the static month (or the last) when it does not. */
+export function startFrame(months: readonly { month: number }[], playing: boolean): number {
+  if (playing) return 0;
+  const at = months.findIndex((m) => m.month === STATIC_MONTH);
+  return at >= 0 ? at : Math.max(0, months.length - 1);
+}
+
+/** Should the globe turn by itself at `now`: playing, and no user interaction for ROTATION_RESUME_MS. */
+export function rotationActive(playing: boolean, lastInteraction: number | null, now: number): boolean {
+  return playing && (lastInteraction == null || now - lastInteraction >= ROTATION_RESUME_MS);
 }

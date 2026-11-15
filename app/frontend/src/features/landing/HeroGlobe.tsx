@@ -2,6 +2,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import {
   setWorkerUrl,
   type ExpressionSpecification,
+  type Map as MapLibreMap,
   type LayerSpecification,
   type SourceSpecification,
   type StyleSpecification,
@@ -9,14 +10,23 @@ import {
 // MapLibre looks for its worker next to its own file, which does not exist after bundling: point it at the asset.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Map, { Layer, Marker, Source, type MapRef } from "react-map-gl/maplibre";
+import Map, {
+  Layer,
+  Marker,
+  NavigationControl,
+  Popup,
+  Source,
+  type MapLayerMouseEvent,
+  type MapRef,
+} from "react-map-gl/maplibre";
 import type { CellValue } from "../../data/api";
 import { boundsToGeoJSON, cellBounds, cellsToGeoJSON } from "../../lib/grid";
 import { prefersReducedMotion, readTokens } from "../../lib/hooks";
 import { rampStep } from "../../lib/scale";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 import { DATA_ANCHOR, boundsCenter, withDataAnchor } from "../../components/map/view";
-import { driftOffset, globeFraming } from "./landingData";
+import { formatCount } from "../../lib/format";
+import { driftOffset, globeFraming, rotationActive } from "./landingData";
 
 setWorkerUrl(workerUrl);
 
@@ -31,6 +41,7 @@ const [PILOT_LON] = boundsCenter(PILOT_BOUNDS);
 /** The camera opens already facing the Americas, a little west and north of where it settles. */
 const OPEN_FROM = { dLon: -28, dLat: 10, zoomOut: 0.5 } as const;
 const EASE_MS = 2500;
+const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /**
  * The ember ramp, darkest first: on a dark globe more detections read lighter, like embers. Primitives, not the
@@ -118,16 +129,24 @@ class GlobeBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 type HeroGlobeProps = {
-  cells: readonly CellValue[];
+  /** One set of cells per frame of the timeline (one set only when there is no timeline). Computed once. */
+  frames: readonly (readonly CellValue[])[];
+  /** The frame on screen. */
+  frame: number;
+  /** Fixed class limits (the same for every frame). */
+  breaks: readonly number[];
   /** Where the camera settles, centred in the globe's visible face: [lon, lat]. */
   focus: readonly [number, number];
   /** Label the dashed Northeast box as the validated pilot (when the cells cover more than the pilot). */
   labelPilot: boolean;
-  /** Fixed class limits from the API (the same for every month). */
-  breaks: readonly number[];
-  /** False stops the drift for good (user interaction, pause button, reduced motion). */
-  moving: boolean;
+  /** False: no auto-rotation (paused, or reduced motion). The user can still drag and zoom. */
+  playing: boolean;
+  /** For the cell tooltip: "Sep 2024", and whether the numbers come from the experimental run. */
+  monthShort: string;
+  experimental: boolean;
 };
+
+type Hover = { lng: number; lat: number; value: number };
 
 export function HeroGlobe(props: HeroGlobeProps) {
   return (
@@ -137,14 +156,37 @@ export function HeroGlobe(props: HeroGlobeProps) {
   );
 }
 
-function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) {
+function pointsOf(cells: readonly CellValue[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: "FeatureCollection",
+    features: cells.map((cell) => {
+      const b = cellBounds(cell.id);
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [(b.west + b.east) / 2, (b.south + b.north) / 2] },
+        properties: { value: cell.value },
+      };
+    }),
+  };
+}
+
+const ZOOM_HINTS = {
+  "CooperativeGesturesHandler.WindowsHelpText": "Ctrl + scroll to zoom the globe",
+  "CooperativeGesturesHandler.MacHelpText": "⌘ + scroll to zoom the globe",
+  "CooperativeGesturesHandler.MobileHelpText": "Use two fingers to turn the globe",
+};
+
+function GlobeMap({ frames, frame, breaks, playing, focus, labelPilot, monthShort, experimental }: HeroGlobeProps) {
   const [focusLon, focusLat] = focus;
   const colors = useMemo(() => readTokens(TOKENS), []);
   const style = useGlobeStyle(colors);
   const mapRef = useRef<MapRef | null>(null);
   const [arrived, setArrived] = useState(false);
-  const movingRef = useRef(moving);
-  movingRef.current = moving;
+  const [hover, setHover] = useState<Hover | null>(null);
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
+  /** Time of the last drag, zoom, touch or cell hover on the globe: auto-rotation waits ROTATION_RESUME_MS after it. */
+  const lastInteraction = useRef<number | null>(null);
   // The first frame is already framed for this screen and facing the Americas, so there is never an empty scene.
   const opening = useMemo(() => {
     const framing = globeFraming(window.innerWidth, window.innerHeight);
@@ -157,22 +199,16 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
     // The opening frame only: later focus changes ease the camera (see the effect below).
   }, []);
 
-  const shown = useMemo(() => cells.filter((cell) => cell.value > 0), [cells]);
-  const cellData = useMemo(() => cellsToGeoJSON(shown), [shown]);
-  // One point per cell for the glow: seen from this far a 0.25° cell is two pixels; the halo makes the fire read.
-  const glowData = useMemo((): GeoJSON.FeatureCollection<GeoJSON.Point> => {
-    return {
-      type: "FeatureCollection",
-      features: shown.map((cell) => {
-        const b = cellBounds(cell.id);
-        return {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [(b.west + b.east) / 2, (b.south + b.north) / 2] },
-          properties: { value: cell.value },
-        };
-      }),
-    };
-  }, [shown]);
+  // Every frame's GeoJSON is built once; changing month only hands the source another object (MapLibre setData).
+  const fills = useMemo(() => frames.map((cells) => cellsToGeoJSON(cells.filter((c) => c.value > 0))), [frames]);
+  // One point per cell for the glow: seen from this far a 0.25 degree cell is two pixels; the halo makes the fire read.
+  const glows = useMemo(() => frames.map((cells) => pointsOf(cells.filter((c) => c.value > 0))), [frames]);
+  const at = Math.min(Math.max(0, frame), Math.max(0, fills.length - 1));
+  const cellData = fills[at] ?? EMPTY;
+  const glowData = glows[at] ?? EMPTY;
+  // A new month: the hovered value would be stale.
+  useEffect(() => setHover(null), [at]);
+
   const fillColor = useMemo((): ExpressionSpecification | string => {
     const classes = breaks.length + 1;
     const color = (cls: number) => colors[EMBER[rampStep(cls, classes) - 1]];
@@ -185,20 +221,22 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
     return from == null ? 0.35 : (["case", [">=", ["get", "value"], from], 0.4, 0] as unknown as ExpressionSpecification);
   }, [breaks]);
 
-  const frame = () => {
+  const frameFor = () => {
     const map = mapRef.current;
     if (!map) return null;
     const canvas = map.getCanvas();
     return globeFraming(canvas.clientWidth, canvas.clientHeight);
   };
 
-  // The opening move: 2.5 s from the Americas to Northeast Brazil, once. Reduced motion or a hidden tab: framed at once.
-  const onLoad = () => {
-    const map = mapRef.current;
-    const framing = frame();
-    if (!map || !framing) return;
+  // The opening move: 2.5 s from the Americas to Brazil, once. Reduced motion, paused or a hidden tab: framed at once.
+  const onLoad = (event: { target: MapLibreMap }) => {
+    const map = event.target;
+    map.touchZoomRotate.disableRotation();
+    map.keyboard.disableRotation();
+    const framing = frameFor();
+    if (!framing) return;
     const target = { center: [focusLon, focusLat] as [number, number], zoom: framing.zoom, padding: framing.padding };
-    if (prefersReducedMotion() || !movingRef.current || document.hidden) {
+    if (prefersReducedMotion() || !playingRef.current || document.hidden) {
       map.jumpTo(target);
       setArrived(true);
       return;
@@ -211,7 +249,7 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
   useEffect(() => {
     const onResize = () => {
       const map = mapRef.current;
-      const framing = frame();
+      const framing = frameFor();
       if (!map || !framing || !arrived) return;
       map.jumpTo({ zoom: framing.zoom, padding: framing.padding });
     };
@@ -219,14 +257,37 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
     return () => window.removeEventListener("resize", onResize);
   }, [arrived]);
 
-  // After the opening move, a very slow drift of a few degrees around the study area (Brazil never leaves the face).
-  // Stops on interaction, the pause button or reduced motion; skipped while the hero is off screen.
+  // User gestures (they carry an originalEvent; the rotation's own camera moves do not) hold the rotation back.
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !arrived) return;
+    const touched = (event: { originalEvent?: unknown }) => {
+      if (event.originalEvent) lastInteraction.current = performance.now();
+    };
+    const pressed = () => {
+      lastInteraction.current = performance.now();
+    };
+    map.on("movestart", touched);
+    map.on("move", touched);
+    map.on("mousedown", pressed);
+    map.on("touchstart", pressed);
+    return () => {
+      map.off("movestart", touched);
+      map.off("move", touched);
+      map.off("mousedown", pressed);
+      map.off("touchstart", pressed);
+    };
+  }, [arrived]);
+
+  // Auto-rotation: a slow back-and-forth sweep of a few degrees around wherever the globe was left, so Brazil stays
+  // in view unless the user turned it away. Waits 4 s after the last interaction; skipped while off screen.
   useEffect(() => {
     const map = mapRef.current;
-    if (!arrived || !moving || !map || prefersReducedMotion()) return;
+    if (!arrived || !playing || !map || prefersReducedMotion()) return;
     let raf = 0;
     let visible = true;
-    let elapsed = 0;
+    let phase = 0;
+    let base: number | null = null;
     let last = performance.now();
     const observer = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
@@ -235,9 +296,13 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
     const tick = (now: number) => {
       const dt = Math.min(now - last, 100);
       last = now;
-      if (visible) {
-        elapsed += dt;
-        map.jumpTo({ center: [focusLon + driftOffset(elapsed), focusLat] });
+      if (!visible || !rotationActive(true, lastInteraction.current, now)) {
+        base = null; // resume from wherever the user leaves the globe
+      } else {
+        const center = map.getCenter();
+        if (base == null) base = center.lng - driftOffset(phase);
+        phase += dt;
+        map.jumpTo({ center: [base + driftOffset(phase), center.lat] });
       }
       raf = requestAnimationFrame(tick);
     };
@@ -246,7 +311,7 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [arrived, moving, focusLon, focusLat]);
+  }, [arrived, playing]);
 
   // A new focus after the opening (the Brazil file failed and the pilot cells took over): move there.
   const placed = useRef(`${focusLon},${focusLat}`);
@@ -257,6 +322,13 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
     placed.current = key;
     map.easeTo({ center: [focusLon, focusLat], duration: prefersReducedMotion() ? 0 : 1200 });
   }, [arrived, focusLon, focusLat]);
+
+  const hoverAt = (event: MapLayerMouseEvent): Hover | null => {
+    const feature = event.features?.[0];
+    if (!feature) return null;
+    const value = Number((feature.properties as Record<string, unknown>).value);
+    return Number.isFinite(value) ? { lng: event.lngLat.lng, lat: event.lngLat.lat, value } : null;
+  };
 
   if (!style) return null;
 
@@ -273,8 +345,24 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
         "sky-horizon-blend": 0.6,
         "atmosphere-blend": 0.9,
       }}
-      // The page must scroll over the hero: the globe takes no input at all (no wheel, drag or touch capture).
-      interactive={false}
+      // Drag turns the globe. The page keeps the plain wheel and one-finger scroll: zoom is Ctrl/Cmd + wheel, pinch or
+      // the buttons, and on touch the globe turns with two fingers (MapLibre's cooperative gestures show the hint).
+      cooperativeGestures
+      locale={ZOOM_HINTS}
+      dragRotate={false}
+      pitchWithRotate={false}
+      touchPitch={false}
+      minZoom={0.8}
+      maxZoom={7}
+      interactiveLayerIds={["hero-cells-fill"]}
+      onMouseMove={(event) => {
+        const next = hoverAt(event);
+        if (next) lastInteraction.current = performance.now();
+        setHover(next);
+      }}
+      onMouseLeave={() => setHover(null)}
+      onClick={(event) => setHover(hoverAt(event))}
+      cursor={hover ? "pointer" : "grab"}
       // Credits are written in the hero caption instead, so they stay readable and reachable.
       attributionControl={false}
       pixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
@@ -284,6 +372,7 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
       onLoad={onLoad}
       style={{ width: "100%", height: "100%" }}
     >
+      <NavigationControl position="top-right" showCompass={false} />
       <Source id="hero-glow" type="geojson" data={glowData}>
         <Layer
           id="hero-glow"
@@ -314,6 +403,20 @@ function GlobeMap({ cells, breaks, moving, focus, labelPilot }: HeroGlobeProps) 
             Validated pilot
           </span>
         </Marker>
+      )}
+      {hover && (
+        <Popup
+          longitude={hover.lng}
+          latitude={hover.lat}
+          closeButton={false}
+          closeOnClick={false}
+          anchor="bottom"
+          offset={10}
+          className="hero-popup"
+        >
+          {"≈"} {formatCount(hover.value)} VIIRS-equivalent hotspots · {monthShort} · 0.25° cell
+          {experimental ? " · experimental" : ""}
+        </Popup>
       )}
     </Map>
   );

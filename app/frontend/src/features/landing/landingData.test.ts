@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { routeFromHash } from "../../lib/hashRoute";
 import {
+  nextFrame,
+  parseBrazilMonths,
+  rotationActive,
+  timelineMonthLabel,
+  startFrame,
   errorReductionPct,
   parseBrazilPreview,
   yearSpan,
@@ -113,7 +118,7 @@ describe("globe framing", () => {
   it("puts a large globe on the right on wide screens and a smaller one above the text on phones", () => {
     const wide = globeFraming(1440, 900);
     expect(wide.padding.left).toBe(576);
-    expect(wide.padding.bottom).toBe(0);
+    expect(wide.padding.bottom).toBe(72);
     expect(wide.diameter / 900).toBeGreaterThanOrEqual(0.85);
     expect(wide.diameter / 900).toBeLessThanOrEqual(0.95);
     // The zoom draws exactly that diameter: (512 * 2^zoom) / pi.
@@ -178,5 +183,59 @@ describe("Brazil preview file", () => {
     expect(() => parseBrazilPreview(null)).toThrow();
     expect(() => parseBrazilPreview({ ...doc, cells: undefined })).toThrow();
     expect(() => parseBrazilPreview({ ...doc, first_month: "2002/07" })).toThrow();
+  });
+});
+
+describe("Brazil timeline", () => {
+  const doc = {
+    experimental: true,
+    year: 2024,
+    breaks: [2, 6.4],
+    months: [
+      { month: 9, total: 602522, cells: [["G057126.10", 4]] },
+      { month: 1, total: 27468, cells: [["G057126.10", 2], [3]] },
+      { month: 13, total: 1, cells: [] },
+    ],
+  };
+
+  it("reads the months in order and drops malformed rows", () => {
+    const t = parseBrazilMonths(doc);
+    expect(t.year).toBe(2024);
+    expect(t.months.map((m) => m.month)).toEqual([1, 9]);
+    expect(t.months[0].cells).toEqual([{ id: "G057126.10", value: 2, estimated: false, partial: false }]);
+    expect(t.months[0].partial).toBe(false);
+    expect(t.lastDate).toBeNull();
+    expect(timelineMonthLabel(2024, t.months[1])).toBe("September 2024");
+    expect(() => parseBrazilMonths({ ...doc, months: [] })).toThrow();
+    expect(() => parseBrazilMonths(null)).toThrow();
+  });
+
+  it("reads a partial month and words it by its days", () => {
+    const t = parseBrazilMonths({
+      year: 2026,
+      last_date: "2026-11-14",
+      breaks: [2],
+      months: [{ month: 11, total: 63463, partial: true, days_observed: 14, cells: [] }],
+    });
+    expect(t.lastDate).toBe("2026-11-14");
+    expect(t.months[0]).toMatchObject({ partial: true, daysObserved: 14 });
+    expect(timelineMonthLabel(2026, t.months[0])).toBe("Nov 1–14, 2026");
+  });
+
+  it("loops, starts at January when playing and at September when still", () => {
+    expect(nextFrame(0, 12)).toBe(1);
+    expect(nextFrame(11, 12)).toBe(0);
+    expect(nextFrame(3, 0)).toBe(0);
+    const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1 }));
+    expect(startFrame(months, true)).toBe(0);
+    expect(startFrame(months, false)).toBe(8);
+    expect(startFrame([{ month: 1 }, { month: 2 }], false)).toBe(1);
+  });
+
+  it("resumes rotation 4 s after the last interaction, never while paused", () => {
+    expect(rotationActive(true, null, 0)).toBe(true);
+    expect(rotationActive(true, 1000, 4000)).toBe(false);
+    expect(rotationActive(true, 1000, 5000)).toBe(true);
+    expect(rotationActive(false, null, 0)).toBe(false);
   });
 });

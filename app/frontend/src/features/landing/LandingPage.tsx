@@ -2,15 +2,23 @@ import "../../styles/landing.css";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { cellsUrl, useRemote, type CellsResponse } from "../../data/api";
 import { useCalendarDataset } from "../../data/useCalendar";
-import { formatCompact, formatLegendCount, MONTHS_SHORT } from "../../lib/format";
-import { useColorScheme, useMediaQuery } from "../../lib/hooks";
+import { formatCompact, formatCount, formatLegendCount, MONTHS_SHORT } from "../../lib/format";
+import { prefersReducedMotion, useColorScheme, useMediaQuery } from "../../lib/hooks";
 import { applyTheme } from "../../lib/theme";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 import { JumpChart, JumpTable, TotalsChart } from "./JumpChart";
 import { boundsCenter } from "../../components/map/view";
 import {
   BRAZIL_BOUNDS,
+  BRAZIL_TIMELINES,
+  timelineMonthLabel,
+  type TimelineYear,
   BRAZIL_PREVIEW_URL,
+  nextFrame,
+  parseBrazilMonths,
+  startFrame,
+  TIMELINE_STEP_MS,
+  type BrazilMonths,
   errorReductionPct,
   parseBrazilPreview,
   yearSpan,
@@ -38,8 +46,7 @@ export function LandingPage() {
   const dataset = load.status === "ready" ? load.dataset : null;
   const months = dataset?.months;
 
-  // The globe: the Brazil-wide experimental month from a static file; if it cannot be read, the pilot's busiest
-  // month of the latest complete year from the API.
+  // "First look" section: the single-month preview file (yearly totals, development validation).
   const previewLoad = useRemote<unknown>(BRAZIL_PREVIEW_URL);
   const preview = useMemo((): BrazilPreview | null => {
     if (!previewLoad.data) return null;
@@ -50,10 +57,31 @@ export function LandingPage() {
     }
   }, [previewLoad.data]);
   const previewFailed = !previewLoad.loading && !preview;
+
+  // The globe: the twelve months of 2024 over all of Brazil (experimental). If the file cannot be read, the pilot's
+  // busiest month of the latest complete year from the API.
+  const [timelineYear, setTimelineYear] = useState<TimelineYear>(BRAZIL_TIMELINES[0].year);
+  const timelineFile = BRAZIL_TIMELINES.find((t) => t.year === timelineYear) ?? BRAZIL_TIMELINES[0];
+  const timelineLoad = useRemote<unknown>(timelineFile.url);
+  const timeline = useMemo((): BrazilMonths | null => {
+    if (!timelineLoad.data) return null;
+    try {
+      return parseBrazilMonths(timelineLoad.data);
+    } catch {
+      return null;
+    }
+  }, [timelineLoad.data]);
+  const timelineFailed = !timelineLoad.loading && !timeline;
+  // While another year loads, the previous one stays on screen (dimmed through `switching`).
+  const switching = Boolean(timeline && timeline.year !== timelineYear);
+  const shownFile = BRAZIL_TIMELINES.find((t) => t.year === timeline?.year) ?? timelineFile;
   const pilotMonth = useMemo(() => (months ? heroMonth(months) : null), [months]);
-  const cells = useRemote<CellsResponse>(previewFailed && pilotMonth ? cellsUrl("ALL", pilotMonth) : null);
-  const globeCells = preview ? preview.cells : (cells.data?.cells ?? []);
-  const globeBreaks = preview ? preview.breaks : (cells.data?.breaks ?? []);
+  const cells = useRemote<CellsResponse>(timelineFailed && pilotMonth ? cellsUrl("ALL", pilotMonth) : null);
+  const frames = useMemo(
+    () => (timeline ? timeline.months.map((m) => m.cells) : cells.data ? [cells.data.cells] : []),
+    [timeline, cells.data],
+  );
+  const globeBreaks = timeline ? timeline.breaks : (cells.data?.breaks ?? []);
   const figures = useMemo(
     () => (dataset ? recordFigures(dataset.months, dataset.firstYear, dataset.lastYear) : null),
     [dataset],
@@ -61,21 +89,35 @@ export function LandingPage() {
   const years = useMemo(() => (months ? yearlyTotals(months) : []), [months]);
   const jump = useMemo(() => sensorJump(years), [years]);
 
-  // Motion: off under reduced motion, stopped for good by the pause button or the first click or key press.
+  // Motion: the timeline plays and the globe turns by default; Pause stops both. Reduced motion: still, September.
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)");
   const compactChart = useMediaQuery("(max-width: 37.5rem)");
-  const [stopped, setStopped] = useState(false);
+  const [playing, setPlaying] = useState(() => !prefersReducedMotion());
   useEffect(() => {
-    if (stopped) return;
-    const stop = () => setStopped(true);
-    window.addEventListener("pointerdown", stop, { once: true });
-    window.addEventListener("keydown", stop, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", stop);
-      window.removeEventListener("keydown", stop);
-    };
-  }, [stopped]);
-  const moving = !reduced && !stopped;
+    if (reduced) setPlaying(false);
+  }, [reduced]);
+  const [frame, setFrame] = useState<number | null>(null);
+  const count = timeline?.months.length ?? 0;
+  const current = timeline ? (frame ?? startFrame(timeline.months, playing)) : 0;
+  useEffect(() => {
+    if (!timeline || !playing) return;
+    const id = window.setInterval(
+      () => setFrame((f) => nextFrame(f ?? startFrame(timeline.months, true), timeline.months.length)),
+      TIMELINE_STEP_MS,
+    );
+    return () => window.clearInterval(id);
+  }, [timeline, playing]);
+  const chooseYear = (year: TimelineYear) => {
+    if (year === timelineYear) return;
+    setTimelineYear(year);
+    setFrame(null);
+  };
+  // A new file: start it from its first month (or September when still).
+  useEffect(() => setFrame(null), [timeline]);
+  const togglePlay = () => {
+    setFrame(current);
+    setPlaying((value) => !value);
+  };
 
   const toStory = () => {
     const target = document.getElementById(STORY_ID);
@@ -84,13 +126,15 @@ export function LandingPage() {
     target.focus({ preventScroll: true });
   };
 
-  const shownMonth = preview ? { year: preview.year, month: preview.month } : previewFailed ? pilotMonth : null;
-  const monthText = shownMonth ? monthLabel(shownMonth) : null;
-  const globeLabel = preview
-    ? `Globe turned toward Brazil, showing VIIRS-equivalent hotspots per 0.25 degree cell in ${monthText} from an experimental, not validated, run over all of Brazil. Lighter cells had more detections. A dashed box marks the validated Northeast pilot.`
+  const tMonth = timeline?.months[current] ?? null;
+  const shownMonth = timeline && tMonth ? { year: timeline.year, month: tMonth.month } : timelineFailed ? pilotMonth : null;
+  const monthText = timeline && tMonth ? timelineMonthLabel(timeline.year, tMonth) : shownMonth ? monthLabel(shownMonth) : null;
+  const monthShort = shownMonth ? `${MONTHS_SHORT[shownMonth.month - 1]} ${shownMonth.year}` : "";
+  const globeLabel = timeline
+    ? `Interactive globe of Brazil: VIIRS-equivalent hotspots per 0.25 degree cell, month by month through ${timeline.year}, from an experimental, not validated, run. Lighter cells had more detections. A dashed box marks the validated Northeast pilot. Drag to turn it; use the timeline to change month.`
     : monthText
-      ? `Globe turned toward Northeast Brazil, showing VIIRS-equivalent hotspots per 0.25 degree cell in ${monthText}. Lighter cells had more detections. A dashed outline marks the validated pilot area.`
-      : "Globe turned toward Brazil. A dashed box marks the validated Northeast pilot.";
+      ? `Interactive globe of Northeast Brazil, VIIRS-equivalent hotspots per 0.25 degree cell in ${monthText}. Lighter cells had more detections. A dashed outline marks the validated pilot area.`
+      : "Interactive globe of Brazil. A dashed box marks the validated Northeast pilot.";
 
   return (
     <div className="landing">
@@ -101,14 +145,17 @@ export function LandingPage() {
 
       <main>
         <section className="hero" aria-labelledby="hero-title">
-          <div className="hero-globe" role="img" aria-label={globeLabel}>
+          <div className="hero-globe" role="region" aria-label={globeLabel}>
             <Suspense fallback={null}>
               <HeroGlobe
-                cells={globeCells}
+                frames={frames}
+                frame={current}
                 breaks={globeBreaks}
-                moving={moving}
-                focus={previewFailed ? PILOT_CENTER : BRAZIL_CENTER}
-                labelPilot={!previewFailed}
+                playing={playing && !reduced}
+                focus={timelineFailed ? PILOT_CENTER : BRAZIL_CENTER}
+                labelPilot={!timelineFailed}
+                monthShort={monthShort}
+                experimental={Boolean(timeline)}
               />
             </Suspense>
           </div>
@@ -134,21 +181,84 @@ export function LandingPage() {
           </div>
 
           <div className="hero-caption">
-            <p className="hero-caption-text" aria-live="polite">
-              {preview ? (
-                <>
-                  Globe: <strong>{monthText}</strong>, all of Brazil — experimental run, not validated. Dashed box: the
-                  validated Northeast pilot.
-                </>
-              ) : monthText ? (
-                <>
-                  Globe: <strong>{monthText}</strong>, Northeast pilot, VIIRS-equivalent hotspots per 0.25° cell
-                  {cells.loading && !cells.data ? " (loading)" : ""}
-                </>
-              ) : (
-                "Globe: loading the month…"
-              )}
-            </p>
+            {timeline && tMonth ? (
+              <div className={switching ? "hero-timeline is-switching" : "hero-timeline"} aria-busy={switching}>
+                <div className="timeline-years" role="group" aria-label="Year on the globe">
+                  {BRAZIL_TIMELINES.map((t) => (
+                    <button
+                      key={t.year}
+                      type="button"
+                      className="timeline-year"
+                      aria-pressed={timelineYear === t.year}
+                      onClick={() => chooseYear(t.year)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="hero-month">
+                  <span className="hero-month-name">{monthText}</span>
+                  {tMonth.partial && <span className="hero-month-partial">partial</span>}
+                  <span className="hero-month-total">{formatLegendCount(tMonth.total)} hotspots</span>
+                </p>
+                <div className="timeline-controls">
+                  <button
+                    type="button"
+                    className="timeline-play"
+                    onClick={togglePlay}
+                    aria-label={playing ? "Pause the timeline and the globe" : "Play the timeline"}
+                  >
+                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                      {playing ? (
+                        <path d="M4 3h3v10H4zM9 3h3v10H9z" fill="currentColor" />
+                      ) : (
+                        <path d="M4 2.5v11l9-5.5z" fill="currentColor" />
+                      )}
+                    </svg>
+                    <span>{playing ? "Pause" : "Play"}</span>
+                  </button>
+                  <div className="timeline-track">
+                    <input
+                      type="range"
+                      className="timeline-slider"
+                      min={0}
+                      max={count - 1}
+                      step={1}
+                      value={current}
+                      onChange={(event) => {
+                        setPlaying(false);
+                        setFrame(Number(event.target.value));
+                      }}
+                      aria-label={`Month of ${timeline.year}`}
+                      aria-valuetext={`${monthText}${tMonth.partial ? " (partial)" : ""}, ${formatCount(tMonth.total)} hotspots`}
+                    />
+                    <div className="timeline-ticks" aria-hidden="true">
+                      {timeline.months.map((m, i) => (
+                        <span key={m.month} className={i === current ? "is-current" : undefined}>
+                          {MONTHS_SHORT[m.month - 1].slice(0, 1)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <p className="hero-caption-text">
+                  Globe: <strong>{monthText}</strong>, all of Brazil — experimental run, not validated
+                  {shownFile.note ? `; ${shownFile.note}` : ""}. Dashed box: the validated Northeast pilot. Drag to turn,
+                  hover a cell for its count.
+                </p>
+              </div>
+            ) : (
+              <p className="hero-caption-text">
+                {monthText ? (
+                  <>
+                    Globe: <strong>{monthText}</strong>, Northeast pilot, VIIRS-equivalent hotspots per 0.25° cell
+                    {cells.loading && !cells.data ? " (loading)" : ""}
+                  </>
+                ) : (
+                  "Globe: loading the months…"
+                )}
+              </p>
+            )}
             <div className="hero-legend" aria-hidden="true">
               <span>fewer</span>
               <span className="hero-legend-ramp">
@@ -159,19 +269,9 @@ export function LandingPage() {
               <span>more</span>
             </div>
             <div className="hero-caption-row">
-              {!reduced && (
-                <button
-                  type="button"
-                  className="hero-motion"
-                  aria-pressed={stopped}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setStopped((value) => !value);
-                  }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
-                >
-                  {stopped ? "Resume motion" : "Pause motion"}
+              {!timeline && !reduced && (
+                <button type="button" className="hero-motion" aria-pressed={!playing} onClick={togglePlay}>
+                  {playing ? "Pause motion" : "Resume motion"}
                 </button>
               )}
               <span className="hero-credit">
