@@ -933,3 +933,14 @@
   color: var(--color-text-secondary);
   line-height: var(--line-height-normal);
 }
+
+/* One line under the map view selector: what the current view is. */
+.map-view-help {
+  flex-basis: 100%;
+  margin: 0;
+  max-width: 36rem;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+  pointer-events: auto;
+}

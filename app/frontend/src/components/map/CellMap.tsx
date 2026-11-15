@@ -163,7 +163,12 @@ type CellMapProps = {
    */
   live?: WeatherField | null;
   /** A state's municipalities (IBGE) colored by the current feels-like temperature: a tilted view with a compass. */
-  municipal?: { geo: MunicipalitiesGeoJSON; weather: MunicipalitiesWeather | null } | null;
+  municipal?: {
+    geo: MunicipalitiesGeoJSON;
+    weather: MunicipalitiesWeather | null;
+    /** The outline of the state itself (IBGE), drawn in bold so the municipalities read as a whole. */
+    outline?: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon> | null;
+  } | null;
   /**
    * The default view: the live temperature surface, the hotspot cells and the live wind together. The wind has no
    * switch (it is always on while the map is visible); the surface and the cells can be hidden, and the surface has an
@@ -479,8 +484,8 @@ export function CellMap({
                   "circle-color": wxFill,
                   "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 6, 12, 9, 22],
                   "circle-stroke-color": colors["--color-surface"],
-                  "circle-stroke-width": 1,
-                  "circle-opacity": 0.95,
+                  "circle-stroke-width": 0.5,
+                  "circle-opacity": 0.9,
                 }}
               />
             )}
@@ -498,20 +503,29 @@ export function CellMap({
         {muniOn && muniShapes && muniPoints && (
           <>
             <Source id="municipalities" type="geojson" data={muniShapes}>
-              <Layer id="muni-fill" type="fill" paint={{ "fill-color": muniFill, "fill-opacity": 0.55 }} />
+              <Layer id="muni-fill" type="fill" paint={{ "fill-color": muniFill, "fill-opacity": 0.7 }} />
               <Layer
                 id="muni-line"
                 type="line"
                 paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.45 }}
               />
             </Source>
+            {municipal?.outline && (
+              <Source id="state-outline" type="geojson" data={municipal.outline}>
+                <Layer
+                  id="state-outline-line"
+                  type="line"
+                  paint={{ "line-color": colors["--color-text-primary"], "line-width": 2, "line-opacity": 0.9 }}
+                />
+              </Source>
+            )}
             <Source id="municipality-centres" type="geojson" data={muniPoints}>
               <Layer
                 id="muni-centre"
                 type="circle"
                 paint={{
                   "circle-color": muniFill,
-                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 2.5, 7, 5.5, 9, 11],
+                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 1.5, 7, 3, 9, 5.5],
                   "circle-stroke-color": colors["--color-text-primary"],
                   "circle-stroke-width": 1,
                   "circle-opacity": 0.95,

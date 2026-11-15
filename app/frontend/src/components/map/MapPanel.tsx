@@ -112,7 +112,14 @@ export default function MapPanel() {
   const [showHotspots, setShowHotspots] = useState(true);
   const [thermalOpacity, setThermalOpacity] = useState(0.5);
   const [clicked, setClicked] = useState<{ lng: number; lat: number } | null>(null);
-  const states = useRemote<StatesGeoJSON>(liveOn ? STATES_URL : null);
+  const states = useRemote<StatesGeoJSON>(liveOn || muniOn ? STATES_URL : null);
+  // The outline of the state the municipalities belong to (Ceará), taken from the same IBGE states answer.
+  const muniOutline = useMemo(
+    () =>
+      (states.data?.features.find((f) => f.properties.uf === "CE") as
+        GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon> | undefined) ?? null,
+    [states.data],
+  );
   const stateFeatures = useMemo(() => (states.data?.features ?? []) as unknown as RegionFeature[], [states.data]);
   const clickedState = useMemo(
     () => (clicked ? stateAt(clicked.lng, clicked.lat, stateFeatures) : null),
@@ -193,7 +200,9 @@ export default function MapPanel() {
             layer={layer}
             weather={weatherOn ? weather.data : null}
             live={liveOn ? field : null}
-            municipal={muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data } : null}
+            municipal={
+              muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data, outline: muniOutline } : null
+            }
             overview={
               liveOn
                 ? {
@@ -214,6 +223,11 @@ export default function MapPanel() {
           mapRef={mapRef}
           projection={projection}
           onProjection={setProjection}
+          note={
+            muniOn
+              ? "This layer is tilted 50° so the municipalities read in relief: drag with the right button (or two fingers) to turn it. Another layer brings it back to north up."
+              : undefined
+          }
           onArea={(area) => dispatch({ type: "setArea", area })}
         />
       </div>

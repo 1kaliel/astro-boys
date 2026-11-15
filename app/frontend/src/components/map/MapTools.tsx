@@ -10,6 +10,15 @@ import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 /** "3d" is the react-globe.gl view; the other two are MapLibre projections. */
 export type Projection = "mercator" | "globe" | "3d";
 
+/** What each view is, in one line, so the choice is not a guess. Shown under the selector. */
+export const VIEW_HELP: Record<Projection, string> = {
+  mercator:
+    "Flat: a standard flat map (Mercator), north up. Shapes are close to true near the equator, the Northeast included; areas stretch toward the poles.",
+  globe:
+    "Globe: the same map wrapped on a sphere. Good for the whole continent; the cells and layers stay where they are.",
+  "3d": "3D: a separate globe with satellite imagery, where the hotspot cells are drawn as tiles. Weather layers are not in this view yet.",
+};
+
 const PROJECTIONS: ReadonlyArray<SegmentOption<Projection>> = [
   { value: "mercator", label: "Flat" },
   { value: "globe", label: "Globe" },
@@ -17,6 +26,8 @@ const PROJECTIONS: ReadonlyArray<SegmentOption<Projection>> = [
 ];
 
 type MapToolsProps = {
+  /** An extra sentence for the current layer (for example, the tilt of the municipal layer). */
+  note?: string;
   mapRef: RefObject<MapRef | null>;
   projection: Projection;
   onProjection: (projection: Projection) => void;
@@ -27,7 +38,7 @@ type MapToolsProps = {
  * Tools drawn over the map: flat / globe / 3D view, draw a rectangle (terra-draw, loaded only when asked) and use the
  * visible map area (easiest on a phone). Typed bounds live in the filter bar.
  */
-export function MapTools({ mapRef, projection, onProjection, onArea }: MapToolsProps) {
+export function MapTools({ mapRef, projection, onProjection, onArea, note }: MapToolsProps) {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const drawRef = useRef<{ stop(): void } | null>(null);
@@ -89,6 +100,10 @@ export function MapTools({ mapRef, projection, onProjection, onArea }: MapToolsP
     <>
       <div className="map-tools">
         <SegmentedControl label="Map view" options={PROJECTIONS} value={projection} onChange={onProjection} hideLabel />
+        <p className="map-view-help">
+          {VIEW_HELP[projection]}
+          {note && <> {note}</>}
+        </p>
         {/* Drawing and "visible area" belong to MapLibre; the 3D view has its own two-click selection. */}
         {projection !== "3d" &&
           (drawing ? (
