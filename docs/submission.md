@@ -19,15 +19,15 @@ FIREWATCHER helps users explore historical hotspot activity in Northeast Brazil 
 VIIRS detections. Raw counts from these instruments are not directly comparable: a sensor transition can
 introduce an artificial step alongside real changes in activity. We estimate the earlier MODIS record on a
 VIIRS-equivalent scale and use observed VIIRS counts from February 2012 onward. The monthly calendar runs
-from July 2002 to November 2026, with observations through 14 November. Estimates, uncertainty, missing
-observations and partial months are labeled. Users can select an area and period, explore seasonal patterns
-and anomalies, and download normalized, filtered native detections. The frozen method passed its stated
-final-test rule at cell-month level without demonstrating regional superiority. A hotspot is not a fire
+from July 2002 to November 2026, with observations through 14 November. Estimated months are labeled and
+carry a 90% interval; missing observations and partial months are marked. Users can select an area and period, explore seasonal patterns
+and anomalies, and download normalized, filtered native detections. The frozen method passed its pre-set
+final test: lower cell-month errors than every simple baseline, and level with the best one on regional totals. A hotspot is not a fire
 count or burned area. This exploratory prototype provides no forecast or risk assessment.
 
 ## Link to project demo
 
-_To be added (S2): a video of at most 30 seconds or at most 7 slides, in English._
+_To be added (S2): a seven-slide deck in English, including title and intro._
 
 ## Link to final project
 
@@ -81,7 +81,8 @@ The application is a burning-activity calendar for Northeast Brazil built on NAS
 - The 90% intervals contained the observed value in 94% of cell-months of the development years.
 - A clean-clone reproduction at commit 5286248 rebuilt the published calendar and was audited. Early-years
   and 2026 ingestion were repeated on newer code with matching counts; the complete pipeline was not rerun
-  on the latest code. See the reproduction reports linked from methodology.md.
+  on the latest code. See the reproduction reports linked from
+  [methodology.md](methodology.md#reproducibility-and-evidence-status).
 
 ### What it does not do
 
