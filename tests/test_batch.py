@@ -57,6 +57,37 @@ def test_near_midnight_deduplication_and_filtering(tmp_path, monkeypatch):
         ).fetchall() == [("G081136.01", 2012, 12, "D", "Aqua", 2, 1, 14.0, 3)]
 
 
+def test_clip_box_defaults_to_northeast_and_reads_env_override(monkeypatch):
+    monkeypatch.delenv("ASTRO_BBOX", raising=False)
+    assert batch.clip_box() == batch.BBOX
+    monkeypatch.setenv("ASTRO_BBOX", " -74.1,-33.9,-28.8,5.4 ")
+    assert batch.clip_box() == (-74.1, -33.9, -28.8, 5.4)
+    for bad in ("1,2,3", "a,b,c,d", "-30,-10,-40,0", "-50,0,-40,-10", "-50,-10,-40,0,1"):
+        monkeypatch.setenv("ASTRO_BBOX", bad)
+        with pytest.raises(ValueError, match="ASTRO_BBOX"):
+            batch.clip_box()
+
+
+def test_ingest_clips_to_env_box_and_records_it(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASTRO_DATASET_VERSION", "v1")
+    monkeypatch.setenv("ASTRO_BBOX", "-74.1,-33.9,-28.8,5.4")
+    settings = get_settings(astro_data_root=str(tmp_path), duckdb_temp_dir=str(tmp_path / "tmp"))
+    archive_dir = tmp_path / "raw/firms/global/modis"
+    archive_dir.mkdir(parents=True)
+    northeast = "-9,-44,305,1,1,2012-07-01,1500,Aqua,MODIS,80,6.2,295,7,D,0\n"
+    amazon = northeast.replace("-9,-44", "-9,-60")
+    outside = northeast.replace("-9,-44", "-9,-80")
+    for year, rows in ((2012, northeast + amazon + outside), (2013, "")):
+        with ZipFile(archive_dir / f"modis_{year}_all_countries.zip", "w") as archive:
+            archive.writestr(f"modis/{year}/modis_{year}_Brazil.csv", MODIS_HEADER + rows)
+
+    ingest = batch.ingest(settings, (2012, 2012), ["Aqua"])
+    assert ingest["rows"] == 2
+    assert ingest["rows_outside_bbox_dropped"] == 1
+    manifest = json.loads(Path(ingest["manifest"]).read_text(encoding="utf-8"))
+    assert manifest["checks"]["bbox"] == [-74.1, -33.9, -28.8, 5.4]
+
+
 def test_ingest_api_prefers_standard_files_and_preserves_unknown_nrt_type(tmp_path, monkeypatch):
     import duckdb
 

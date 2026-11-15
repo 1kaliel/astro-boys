@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
 import re
 import shutil
 import tempfile
@@ -20,7 +21,22 @@ ARCHIVES = {
 }
 SATELLITES = ("Aqua", "Terra", "SNPP", "N20")
 LAST_ARCHIVE_YEAR = 2025
-BBOX = (-48.8, -18.4, -34.7, -1.0)
+BBOX = (-48.8, -18.4, -34.7, -1.0)  # Northeast default: west, south, east, north
+BBOX_ENV = "ASTRO_BBOX"
+
+
+def clip_box() -> tuple[float, float, float, float]:
+    """The clip box: `ASTRO_BBOX="west,south,east,north"` when set, otherwise the Northeast `BBOX`."""
+    value = os.environ.get(BBOX_ENV, "").strip()
+    if not value:
+        return BBOX
+    try:
+        west, south, east, north = (float(v) for v in value.split(","))
+    except ValueError:
+        raise ValueError(f"{BBOX_ENV} needs four numbers: west,south,east,north") from None
+    if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
+        raise ValueError(f"{BBOX_ENV} must have west < east and south < north, in degrees")
+    return west, south, east, north
 
 # Keep file row order for the stable source ID, even if DuckDB changes its scan parallelism.
 DEDUPLICATE_SQL = """
@@ -154,8 +170,9 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
     manifest = Manifest(new_run_id("ingest"), "ingest", settings.redacted())
     duplicates_by_file: dict[str, int] = {}
     outside_bbox_by_file: dict[str, int] = {}
+    bbox = clip_box()
     manifest.checks = {
-        "local_years": years, "satellites": satellites, "bbox": BBOX,
+        "local_years": years, "satellites": satellites, "bbox": bbox,
         "exact_duplicate_rows_by_file": duplicates_by_file,
         "rows_outside_bbox_by_file": outside_bbox_by_file,
     }
@@ -170,7 +187,7 @@ def ingest(settings: Settings, years: tuple[int, int], satellites: list[str]) ->
             start = max(start, min(availability[satellite] for satellite in selected))
             instrument = "MODIS" if sensor == "modis" else "VIIRS"
             mir, tir = ("brightness", "bright_t31") if sensor == "modis" else ("bright_ti4", "bright_ti5")
-            west, south, east, north = BBOX
+            west, south, east, north = bbox
             for year in range(max(first, start), min(last + 1, LAST_ARCHIVE_YEAR) + 1):
                 source, csv = _source(settings, sensor, year, staging)
                 print(f"Ingesting {csv.name}", flush=True)
@@ -265,7 +282,7 @@ def _api_files(settings: Settings, source: str) -> list[Path]:
 
 
 def _check_api_2026_coverage(files: dict[str, list[Path]]) -> None:
-    bbox_dir = "_".join(map(str, BBOX))
+    bbox_dir = "_".join(map(str, clip_box()))
     for source, (first, last) in API_2026_WINDOWS.items():
         covered = set()
         for path in files[source]:
@@ -304,7 +321,8 @@ def ingest_api(settings: Settings, year: int) -> dict:
     hotspots_dir = hotspots_root / "instrument=VIIRS" / f"year={year}"
     counts_dir = Path(storage.uri(settings, "processed", "cell_month_counts", version)) / f"year={year}"
     manifest = Manifest(new_run_id("ingest-api"), "ingest-api", settings.redacted())
-    west, south, east, north = BBOX
+    bbox = clip_box()
+    west, south, east, north = bbox
     summary: dict[str, dict] = {}
     with tempfile.TemporaryDirectory(prefix="astro_api_") as temp, storage.connect(settings) as con:
         staging = Path(temp)
@@ -383,7 +401,8 @@ def ingest_api(settings: Settings, year: int) -> dict:
     manifest.add_output(hotspots_dir.as_posix(), rows=hotspot_rows)
     manifest.add_output(counts_dir.as_posix(), rows=sum(int(c[3]) for c in coverage))
     manifest.checks = {
-        "year": year, "sources": summary, "hotspot_rows": hotspot_rows, "passing_main_filter": passing,
+        "year": year, "bbox": bbox, "sources": summary,
+        "hotspot_rows": hotspot_rows, "passing_main_filter": passing,
         "months_by_satellite": [list(c) for c in coverage],
         "nrt_type_rule": "Missing type stays null; nominal/high confidence NRT counts are provisional",
     }
