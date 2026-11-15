@@ -265,5 +265,7 @@ Rules:
   focus ring. It never colors a paragraph, and it does not mean "more hotspots" or "alert".
 - The scientific scales are untouched: magma, ember, the diverging ramps, the marks for estimated, partial and no-data.
   `viz.css` did not change; `scripts/check_viz_ramp.py` still passes for both themes.
-- The calendar island keeps its ember scale, petrol ink and ash plane; only its active controls (month chips) take the
-  accent (`--cal-active`).
+- The calendar is one palette with the rest of the page. In the dark theme it has no island: the card takes the navy
+  surface and the cells take the global magma ramp, the same one as the map (ember's darkest step is only 1.4:1 on the
+  navy surface, so it cannot live there). The light-theme island (ash plane, petrol ink, ember ramp) is unchanged, with
+  one exception: its active month chips take the accent (`--cal-active`).

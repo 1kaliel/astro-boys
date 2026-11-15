@@ -3,9 +3,11 @@
  * calendar theme (ember, petrol, ash) are in primitives.css and checked by
  * `uv run python scripts/check_viz_ramp.py --theme calendar`.
  *
- * The calendar theme is an island: light gray plane, petrol ink, ember ramp. It applies to the calendar card only
- * (`.calendar-theme`), in light and in dark OS mode alike, and re-points the global tokens inside the card so the
- * buttons, tabs and tooltip that live there follow it. Nothing outside the card changes.
+ * In the light theme the calendar is an island: light gray plane, petrol ink, ember ramp. It applies to the calendar
+ * card only (`.calendar-theme`) and re-points the global tokens inside the card so the buttons, tabs and tooltip that
+ * live there follow it. Ember was designed for a light plane (its darkest step is 1.4:1 on the navy surface), so in
+ * the dark theme the island dissolves: the card takes the page palette (Crimson Observatory) and the cells take the
+ * global magma ramp, the same one as the map. See the dark blocks right after the island.
  */
 .calendar-theme {
   --cal-plane: var(--ash-100);
@@ -60,6 +62,111 @@
   --viz-partial-mark: var(--cal-ink);
 
   color: var(--cal-ink);
+}
+
+/* Dark theme: no island. Declared twice on purpose, like semantic.css (OS setting, and the explicit toggle). */
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .calendar-theme {
+    /* Back to the page's own values: `unset` on a custom property inherits it from :root. */
+    --card-bg: unset;
+    --card-border: unset;
+    --color-surface: unset;
+    --color-surface-raised: unset;
+    --color-text-primary: unset;
+    --color-text-secondary: unset;
+    --color-border: unset;
+    --color-border-strong: unset;
+    --color-ring: unset;
+    --input-bg: unset;
+    --input-border: unset;
+    --button-bg: unset;
+    --button-fg: unset;
+    --button-border: unset;
+    --tooltip-bg: unset;
+    --tooltip-fg: unset;
+    --tooltip-border: unset;
+    --viz-seq-1: unset;
+    --viz-seq-2: unset;
+    --viz-seq-3: unset;
+    --viz-seq-4: unset;
+    --viz-seq-5: unset;
+    --viz-seq-6: unset;
+    --viz-seq-7: unset;
+    --viz-div-mid: unset;
+    --viz-div-neg-1: unset;
+    --viz-div-neg-2: unset;
+    --viz-div-neg-3: unset;
+    --viz-div-neg-4: unset;
+    --viz-div-pos-1: unset;
+    --viz-div-pos-2: unset;
+    --viz-div-pos-3: unset;
+    --viz-div-pos-4: unset;
+    --viz-null: unset;
+    --viz-cell-outline: unset;
+    --viz-selection: unset;
+    --viz-partial-mark: unset;
+    --cal-plane: var(--color-surface);
+    --cal-ink: var(--color-text-primary);
+    --cal-ink-soft: var(--color-text-secondary);
+    --cal-line: var(--color-border);
+    --cal-hatch: var(--navy-600);
+    --cal-active: var(--color-accent);
+    --cal-on-active: var(--color-on-accent);
+    --cal-zero: var(--color-surface-raised);
+    --cal-nodata-bg: var(--color-surface);
+    color: var(--color-text-primary);
+  }
+}
+
+:root[data-theme="dark"] .calendar-theme {
+  /* Back to the page's own values: `unset` on a custom property inherits it from :root. */
+  --card-bg: unset;
+  --card-border: unset;
+  --color-surface: unset;
+  --color-surface-raised: unset;
+  --color-text-primary: unset;
+  --color-text-secondary: unset;
+  --color-border: unset;
+  --color-border-strong: unset;
+  --color-ring: unset;
+  --input-bg: unset;
+  --input-border: unset;
+  --button-bg: unset;
+  --button-fg: unset;
+  --button-border: unset;
+  --tooltip-bg: unset;
+  --tooltip-fg: unset;
+  --tooltip-border: unset;
+  --viz-seq-1: unset;
+  --viz-seq-2: unset;
+  --viz-seq-3: unset;
+  --viz-seq-4: unset;
+  --viz-seq-5: unset;
+  --viz-seq-6: unset;
+  --viz-seq-7: unset;
+  --viz-div-mid: unset;
+  --viz-div-neg-1: unset;
+  --viz-div-neg-2: unset;
+  --viz-div-neg-3: unset;
+  --viz-div-neg-4: unset;
+  --viz-div-pos-1: unset;
+  --viz-div-pos-2: unset;
+  --viz-div-pos-3: unset;
+  --viz-div-pos-4: unset;
+  --viz-null: unset;
+  --viz-cell-outline: unset;
+  --viz-selection: unset;
+  --viz-partial-mark: unset;
+  --cal-plane: var(--color-surface);
+  --cal-ink: var(--color-text-primary);
+  --cal-ink-soft: var(--color-text-secondary);
+  --cal-line: var(--color-border);
+  --cal-hatch: var(--navy-600);
+  --cal-active: var(--color-accent);
+  --cal-on-active: var(--color-on-accent);
+  --cal-zero: var(--color-surface-raised);
+  --cal-nodata-bg: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .calendar {

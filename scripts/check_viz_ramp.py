@@ -33,7 +33,8 @@ MIN_NULL_DE_CVD = 8.0  # the same, color vision deficiencies
 MIN_PEAK_CONTRAST = 4.5  # most-activity step against the chart surface
 
 # prefix of the ramp tokens (--<prefix>-100 palest .. --<prefix>-700 darkest) and, per theme mode, the tokens
-# of the chart surface and of the "no data" color. The calendar island is light in both OS themes: one mode.
+# of the chart surface and of the "no data" color. The calendar island exists in the light theme only: in the
+# dark theme the calendar uses the global magma ramp.
 THEMES = {
     "global": {
         "prefix": "magma",
