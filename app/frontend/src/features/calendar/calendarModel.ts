@@ -177,5 +177,6 @@ export function provenanceText(entry: CalendarMonth): string {
 export function cellAriaLabel(cell: CalendarDatum): string {
   const when = `${MONTHS_LONG[cell.month - 1]} ${cell.year}`;
   if (!cell.entry) return `${when}: no data`;
+  if (cell.entry.count === null) return `${when}: no estimate. ${provenanceText(cell.entry)}`;
   return `${when}: ${formatCount(cell.entry.count)} hotspot detections. ${provenanceText(cell.entry)}`;
 }

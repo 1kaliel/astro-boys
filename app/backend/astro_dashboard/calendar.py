@@ -9,7 +9,10 @@ The data contract is docs/data-dictionary.md. The rules this module applies:
 * A month with no row anywhere in the extent has no data. A month with rows elsewhere in the extent counts as
   zero detections for cells of the area that have no row: an absent row means no detection by the source
   satellite (it does not prove there was no fire).
-* Nothing becomes zero by accident: an interval that the pipeline has not delivered yet stays `None`.
+* Nothing becomes zero by accident: an interval that the pipeline has not delivered yet stays `None`, and a
+  month whose cells have no estimate (count_harmonized is null) has no count, not a count of 0.
+* The variance of an area sum is `sum(var) x n^0.32` (docs/data-dictionary.md): errors of nearby cells are
+  correlated, so adding the variances as if the cells were independent makes the interval far too narrow.
 """
 
 from __future__ import annotations
@@ -23,8 +26,11 @@ import duckdb
 
 CELL_SIZE_DEG = 0.25
 PERIODS = ("ALL", "D", "N")
-# 90% interval from the variance of the sum (variances of independent cells add; docs/data-dictionary.md).
+# 90% interval from the variance of the area sum.
 Z_90 = 1.645
+# Errors of nearby cells are correlated (docs/data-dictionary.md: measured 2.4x for 16 cells and 13.7x for the
+# whole extent against the independent sum). The variance of a sum of n cells is sum(var) x n^0.32.
+AREA_VARIANCE_EXPONENT = 0.32
 MAD_TO_SIGMA = 1.4826
 # A median over fewer years than this is not shown.
 MIN_BASELINE_YEARS = 3
@@ -50,7 +56,7 @@ class Bounds:
 class MonthRow:
     year: int
     month: int
-    count_harmonized: float
+    count_harmonized: float | None
     ci_low: float | None
     ci_high: float | None
     is_estimated: bool
@@ -152,12 +158,12 @@ class CalendarStore:
                 SELECT cell_l2 FROM cells WHERE {_OVERLAP_SQL}
             ), sums AS (
                 SELECT year, month, sum(count_harmonized) AS total, sum(var_harmonized) AS var_sum,
-                       count(var_harmonized) AS n_var, count(*) AS n_rows
+                       count(var_harmonized) AS n_var, count(count_harmonized) AS n_count, count(*) AS n_rows
                 FROM cal WHERE period = ? AND cell_l2 IN (SELECT cell_l2 FROM sel)
                 GROUP BY year, month
             )
-            SELECT c.year, c.month, coalesce(s.total, 0.0), s.var_sum,
-                   coalesce(s.n_var, 0), coalesce(s.n_rows, 0),
+            SELECT c.year, c.month, s.total, s.var_sum,
+                   coalesce(s.n_var, 0), coalesce(s.n_count, 0), coalesce(s.n_rows, 0),
                    c.is_estimated, c.is_partial, c.days_observed, c.origin, c.source_satellite
             FROM coverage c LEFT JOIN sums s USING (year, month)
             WHERE c.period = ? ORDER BY c.year, c.month
@@ -183,9 +189,10 @@ class CalendarStore:
 def _month_row(
     year: int,
     month: int,
-    total: float,
+    total: float | None,
     var_sum: float | None,
     n_var: int,
+    n_count: int,
     n_rows: int,
     is_estimated: bool,
     is_partial: bool,
@@ -193,19 +200,28 @@ def _month_row(
     origin: str,
     source_satellite: str,
 ) -> MonthRow:
+    count: float | None
     ci_low: float | None = None
     ci_high: float | None = None
-    # An interval needs the variance of every cell that contributed. Until the pipeline delivers it for
-    # estimated months (H11) it stays None: "interval pending", never zero. Observed months have no variance.
-    if n_rows == 0 and not is_estimated:
-        ci_low, ci_high = total, total
-    elif n_rows > 0 and n_var == n_rows and var_sum is not None:
-        spread = Z_90 * math.sqrt(max(var_sum, 0.0))
-        ci_low, ci_high = max(0.0, total - spread), total + spread
+    if n_rows == 0:
+        # The month was observed somewhere in the extent and no cell of the area has a row: zero detections.
+        count = 0.0
+        if not is_estimated:
+            ci_low, ci_high = 0.0, 0.0
+    elif n_count < n_rows or total is None:
+        # Some or all cells have no estimate (null count): a sum would understate the month. No value, not 0.
+        count = None
+    else:
+        count = total
+        # An interval needs the variance of every cell that contributed. Until the pipeline delivers it for
+        # estimated months (H11) it stays None: "interval pending", never zero. Observed months have 0.
+        if n_var == n_rows and var_sum is not None:
+            spread = Z_90 * math.sqrt(max(var_sum, 0.0) * n_rows**AREA_VARIANCE_EXPONENT)
+            ci_low, ci_high = max(0.0, count - spread), count + spread
     return MonthRow(
         year=year,
         month=month,
-        count_harmonized=round(total, 3),
+        count_harmonized=None if count is None else round(count, 3),
         ci_low=None if ci_low is None else round(ci_low, 3),
         ci_high=None if ci_high is None else round(ci_high, 3),
         is_estimated=bool(is_estimated),
@@ -232,7 +248,7 @@ def _with_anomalies(months: list[MonthRow], baseline: tuple[int, int] | None) ->
     start, end = baseline
     by_month: dict[int, list[float]] = {}
     for m in months:
-        if not m.is_partial and start <= m.year <= end:
+        if m.count_harmonized is not None and not m.is_partial and start <= m.year <= end:
             by_month.setdefault(m.month, []).append(m.count_harmonized)
     stats: dict[int, tuple[float, float]] = {}
     for month, values in by_month.items():
@@ -249,7 +265,7 @@ def _with_anomalies(months: list[MonthRow], baseline: tuple[int, int] | None) ->
             out.append(m)
             continue
         median, mad = found
-        if m.is_partial:
+        if m.is_partial or m.count_harmonized is None:
             out.append(_replace(m, median_hist=round(median, 3)))
             continue
         diff = m.count_harmonized - median

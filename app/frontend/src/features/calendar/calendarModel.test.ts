@@ -215,6 +215,13 @@ describe("labels", () => {
     expect(cellAriaLabel(row.data[0])).toBe("January 2010: no data");
   });
 
+  it("describes a month without an estimate, not as zero and not as no data", () => {
+    const [row] = buildSeries([month({ month: 3, count: null, isEstimated: true, isPartial: true, daysObserved: 20 })], "ALL", 2010, 2010);
+    expect(cellAriaLabel(row.data[2])).toBe(
+      "March 2010: no estimate. Estimated from MODIS. Partial month (20 days observed)",
+    );
+  });
+
   it("never calls detections fires", () => {
     const [row] = buildSeries([month({})], "ALL", 2010, 2010);
     expect(cellAriaLabel(row.data[2]).toLowerCase()).not.toContain("fire");
@@ -285,6 +292,7 @@ describe("parseApiResponse", () => {
     area: { cells: 3112 },
     period: "N",
     model_version: "fb-l1-terra-3",
+    interval_is_approximate: true,
     baseline_years: [2003, 2025],
     first_year: 2003,
     last_year: 2025,
@@ -308,6 +316,25 @@ describe("parseApiResponse", () => {
     expect([month.medianHist, month.anomalyAbs, month.anomalyPct, month.anomalyZ]).toEqual([58825.7, 74986.7, 127.5, 4.5]);
   });
 
+  it("says whether the interval of the area is approximate", () => {
+    expect(parseApiResponse(doc).intervalApproximate).toBe(true);
+    expect(parseApiResponse({ ...doc, interval_is_approximate: false }).intervalApproximate).toBe(false);
+  });
+
+  it("keeps a month without an estimate as null, not zero", () => {
+    const dataset = parseApiResponse({
+      ...doc,
+      months: [{ ...apiMonth, count_harmonized: null, ci_low: null, ci_high: null, is_partial: true }],
+    });
+    const [month] = dataset.months;
+    expect(month.count).toBeNull();
+    expect(month.isPartial).toBe(true);
+    // it is still a month of the calendar, shown as "no estimate" and never as a low value
+    const [row] = buildSeries(dataset.months, "N", 2010, 2010);
+    expect(row.data[7].y).toBeNull();
+    expect(row.data[7].entry).not.toBeNull();
+  });
+
   it("rejects an answer that is not a calendar", () => {
     expect(() => parseApiResponse({ detail: "nope" } as unknown as ApiCalendar)).toThrow(/unexpected format/);
   });
@@ -319,6 +346,7 @@ describe("a dataset read with its own period", () => {
       area: { cells: 1 },
       period: "D",
       model_version: "m",
+      interval_is_approximate: false,
       baseline_years: null,
       first_year: 2010,
       last_year: 2010,

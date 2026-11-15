@@ -8,8 +8,8 @@ export type CalendarMonth = {
   year: number;
   month: number; // 1..12
   period: Period;
-  /** VIIRS-equivalent hotspot detections (never "fires"). */
-  count: number;
+  /** VIIRS-equivalent hotspot detections (never "fires"). Null = no estimate for this month, which is not zero. */
+  count: number | null;
   /** 90% interval. Null = not delivered yet for an estimated month (never zero). Equal to `count` when observed. */
   ciLow: number | null;
   ciHigh: number | null;
@@ -34,6 +34,8 @@ export type CalendarDataset = {
   period: Period | null;
   /** Number of 0.25 degree cells in the area, when known. */
   cells: number | null;
+  /** True when the interval of a sum over several cells is the area approximation (errors of nearby cells are correlated). */
+  intervalApproximate: boolean;
   /** Years the median is computed over. Null when there is no complete month. */
   baselineYears: readonly [number, number] | null;
   firstYear: number;
@@ -49,7 +51,7 @@ export type CalendarRequest = { area: Bounds; period: Period };
 type ApiMonth = {
   year: number;
   month: number;
-  count_harmonized: number;
+  count_harmonized: number | null;
   ci_low: number | null;
   ci_high: number | null;
   is_estimated: boolean;
@@ -65,6 +67,7 @@ export type ApiCalendar = {
   area: { cells: number };
   period: Period;
   model_version: string;
+  interval_is_approximate: boolean;
   baseline_years: readonly [number, number] | null;
   first_year: number;
   last_year: number;
@@ -82,6 +85,7 @@ export function parseApiResponse(doc: ApiCalendar): CalendarDataset {
     note: "",
     period: doc.period,
     cells: doc.area?.cells ?? null,
+    intervalApproximate: doc.interval_is_approximate === true,
     baselineYears: doc.baseline_years ?? null,
     firstYear: doc.first_year,
     lastYear: doc.last_year,
@@ -176,6 +180,7 @@ export function parseFixture(doc: FixtureDoc): CalendarDataset {
     note: doc.note,
     period: null,
     cells: doc.cells ?? null,
+    intervalApproximate: true, // the fixture is synthetic and its intervals add variances as if cells were independent
     baselineYears: null,
     firstYear: Math.min(...years),
     lastYear: Math.max(...years),

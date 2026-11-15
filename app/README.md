@@ -40,8 +40,13 @@ Rules (docs/data-dictionary.md, and the diary `DECISION`s of D2):
 - **No data is not zero:** a month with no row anywhere in the extent is absent from the answer. A month with rows
   elsewhere counts as 0 detections for area cells without a row (an absent row means no detection by the source
   satellite; it does not prove there was no fire).
-- **Pending intervals stay `null`:** `ci_low` and `ci_high` of estimated months are `null` until the pipeline delivers
-  them (H11). Observed months have an interval equal to the count. The interval of a sum uses the summed variance.
+- **Pending intervals stay `null`:** if the pipeline has not delivered `ci_low` and `ci_high` for estimated months they
+  are `null` ("pending"), never zero. Observed months have an interval equal to the count.
+- **The interval of an area is approximate:** the variance of a sum of `n` cells is `Σ var × n^0.32`, because nearby
+  cells have correlated errors (the data contract has the numbers). `interval_is_approximate` is true for more than one
+  cell, and the UI says so.
+- **A null estimate is not zero:** if any cell of a month has a null `count_harmonized`, the month's count is `null`
+  (the UI says "No estimate"), not 0.
 - **Partial months** (`is_partial`, `days_observed`) are flagged and get no anomaly.
 
 Data: `$ASTRO_DATA_ROOT/processed/calendar/$ASTRO_DATASET_VERSION` (defaults `data` and `v1`), loaded once at startup

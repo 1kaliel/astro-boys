@@ -23,7 +23,7 @@ export function CalendarTable({ series, unit }: { series: ReadonlyArray<Calendar
               <th scope="row">{row.id}</th>
               {row.data.map((cell) => (
                 <td key={cell.month}>
-                  {formatCount(cell.y)}
+                  {cell.entry && cell.y === null ? "No estimate" : formatCount(cell.y)}
                   {cell.entry?.isEstimated ? " est." : ""}
                   {cell.entry?.isPartial ? " partial" : ""}
                 </td>

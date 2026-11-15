@@ -36,7 +36,7 @@ const THEME = {
   tooltip: { container: { background: "transparent", boxShadow: "none", padding: 0 } },
 };
 
-function CalendarTooltip({ cell }: TooltipProps<CalendarDatum>) {
+function CalendarTooltip({ cell, approximate }: TooltipProps<CalendarDatum> & { approximate: boolean }) {
   const { entry, year, month } = cell.data;
   return (
     <div className="tooltip calendar-tooltip">
@@ -45,13 +45,19 @@ function CalendarTooltip({ cell }: TooltipProps<CalendarDatum>) {
       </p>
       {entry ? (
         <>
-          <p>
-            <strong>{formatCount(entry.count)}</strong> hotspot detections
-          </p>
-          {entry.isEstimated && (
+          {entry.count === null ? (
+            <p>
+              <strong>No estimate</strong> for this month
+            </p>
+          ) : (
+            <p>
+              <strong>{formatCount(entry.count)}</strong> hotspot detections
+            </p>
+          )}
+          {entry.isEstimated && entry.count !== null && (
             <p>
               {entry.ciLow !== null && entry.ciHigh !== null
-                ? `90% interval: ${formatCount(entry.ciLow)} to ${formatCount(entry.ciHigh)}`
+                ? `90% interval${approximate ? " (approximate)" : ""}: ${formatCount(entry.ciLow)} to ${formatCount(entry.ciHigh)}`
                 : "90% interval: pending"}
             </p>
           )}
@@ -119,6 +125,13 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     [scale],
   );
 
+  // Intervals of an area are approximate; say so where the interval is shown and once above the chart.
+  const tooltip = useCallback(
+    (props: TooltipProps<CalendarDatum>) => <CalendarTooltip {...props} approximate={dataset.intervalApproximate} />,
+    [dataset.intervalApproximate],
+  );
+  const showsIntervals = dataset.intervalApproximate && dataset.months.some((m) => m.isEstimated && m.ciLow !== null);
+
   const filter = (
     <MonthFilter months={state.months} peak={peak} onChange={(months) => dispatch({ type: "setMonths", months })} />
   );
@@ -149,7 +162,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           margin={MARGIN}
           layers={["cells", CalendarAxes]}
           cellComponent={CalendarCell}
-          tooltip={CalendarTooltip}
+          tooltip={tooltip}
           colors={colors}
           emptyColor="var(--viz-null)"
           borderColor="var(--viz-cell-outline)"
@@ -186,6 +199,12 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           {dataset.cells !== null && `, ${dataset.cells.toLocaleString("en-US")} cells`}
           {state.months.length > 0 && `. Showing ${monthSpan(state.months)}`}
           {refreshing && ". Updating…"}
+        </p>
+      )}
+      {showsIntervals && (
+        <p className="calendar-notice">
+          Intervals for an area are approximate: the errors of nearby cells are correlated, so the interval of the sum is
+          widened (variance sum × n<sup>0.32</sup>).
         </p>
       )}
       {state.scale === "raw" && (
