@@ -66,3 +66,32 @@ For acceptance, test a fresh browser session while external network access is un
 Suggested task-board note: `D12 in progress: Jean prepared eight screenshots at desktop and phone widths, with live model/version and capture manifest. Local container, offline acceptance and final approved deployment remain pending.`
 
 No repository diary entry was added, preserving Jean's earlier instruction. The task must not be marked done from these screenshots alone.
+
+## Correction: real image sizes (2026-11-15, 12:25 UTC)
+
+Found by Guilherme in review, after this record was merged: the sizes in the capture settings above and in the first
+version of the manifest are the viewports the capture session recorded, not the sizes of the files. Measured from the
+JPEG headers:
+
+| File | Recorded viewport | Image, pixels |
+|---|---|---|
+| `01-dashboard-light-desktop.jpg` | 1280 × 720, full page | 1264 × 2247 |
+| `02-raw-by-sensor-desktop.jpg` | 1280 × 720, full page | 1264 × 2265 |
+| `03-anomaly-desktop.jpg` | 1280 × 720, full page | 1264 × 2301 |
+| `04-dashboard-dark-desktop.jpg` | 1280 × 720, full page | 1264 × 2247 |
+| `05-how-to-read-desktop.jpg` | 1280 × 720 | 1280 × 720 |
+| `06-mobile-top.jpg` | 390 × 844 | 375 × 812 |
+| `07-mobile-full-page.jpg` | 390 × 844, full page | 374 × 3991 |
+| `08-how-to-read-mobile.jpg` | 390 × 844 | 390 × 844 |
+
+- Desktop full-page captures are 1264 px wide, 16 px less than the recorded viewport, which is consistent with a
+  vertical scrollbar; this was not confirmed.
+- Phone captures 06 and 07 are 375 and 374 px wide, not 390: they show the page at about 375 px. Only 08 is
+  390 × 844. The statement above that the document was 390 px wide at a 390 px viewport is therefore not supported by
+  captures 06 and 07.
+- The manifest now keeps the recorded viewport as `viewport_recorded` and adds the measured `image_pixels`. The
+  image files and their SHA-256 values are unchanged.
+
+The captures were not redone: they show the pages they claim to show, and they will be taken again after the final
+deploy. Correction made with an AI assistant for Kali.
+

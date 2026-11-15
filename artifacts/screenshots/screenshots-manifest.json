@@ -2,9 +2,13 @@
   {
     "path": "artifacts/screenshots/01-dashboard-light-desktop.jpg",
     "bytes": 408323,
-    "viewport": {
+    "viewport_recorded": {
       "width": 1280,
       "height": 720
+    },
+    "image_pixels": {
+      "width": 1264,
+      "height": 2247
     },
     "full_page": true,
     "sha256": "76daf1a23f5d39adf6b5a5dceffbf26d9dba817b666a49adc088f20ed35b1c85"
@@ -12,9 +16,13 @@
   {
     "path": "artifacts/screenshots/02-raw-by-sensor-desktop.jpg",
     "bytes": 412743,
-    "viewport": {
+    "viewport_recorded": {
       "width": 1280,
       "height": 720
+    },
+    "image_pixels": {
+      "width": 1264,
+      "height": 2265
     },
     "full_page": true,
     "sha256": "2eb1f71de511498224b5b2d27885fae496ac54f81215dfcfbca35e652088985f"
@@ -22,9 +30,13 @@
   {
     "path": "artifacts/screenshots/03-anomaly-desktop.jpg",
     "bytes": 417229,
-    "viewport": {
+    "viewport_recorded": {
       "width": 1280,
       "height": 720
+    },
+    "image_pixels": {
+      "width": 1264,
+      "height": 2301
     },
     "full_page": true,
     "sha256": "f59b261e5a7f8a953cedc2d5f849bbf8eaf75ef6f2058c9ef5bb53060a6c804d"
@@ -32,9 +44,13 @@
   {
     "path": "artifacts/screenshots/04-dashboard-dark-desktop.jpg",
     "bytes": 409819,
-    "viewport": {
+    "viewport_recorded": {
       "width": 1280,
       "height": 720
+    },
+    "image_pixels": {
+      "width": 1264,
+      "height": 2247
     },
     "full_page": true,
     "sha256": "dec43a26ffca89538a7f6c3a38e70195839f3484dc24215a946956992ba44857"
@@ -42,7 +58,11 @@
   {
     "path": "artifacts/screenshots/05-how-to-read-desktop.jpg",
     "bytes": 122328,
-    "viewport": {
+    "viewport_recorded": {
+      "width": 1280,
+      "height": 720
+    },
+    "image_pixels": {
       "width": 1280,
       "height": 720
     },
@@ -52,9 +72,13 @@
   {
     "path": "artifacts/screenshots/06-mobile-top.jpg",
     "bytes": 42671,
-    "viewport": {
+    "viewport_recorded": {
       "width": 390,
       "height": 844
+    },
+    "image_pixels": {
+      "width": 375,
+      "height": 812
     },
     "full_page": false,
     "sha256": "c7ceb4ba6325bc894eef8b247eca352c1875034b117eb6939ac46837c5000775"
@@ -62,9 +86,13 @@
   {
     "path": "artifacts/screenshots/07-mobile-full-page.jpg",
     "bytes": 238426,
-    "viewport": {
+    "viewport_recorded": {
       "width": 390,
       "height": 844
+    },
+    "image_pixels": {
+      "width": 374,
+      "height": 3991
     },
     "full_page": true,
     "sha256": "085f1a698fd19cb3d805f9a9f8ddc08f05da75d3c4edb575a7d42f136bb9dd14"
@@ -72,7 +100,11 @@
   {
     "path": "artifacts/screenshots/08-how-to-read-mobile.jpg",
     "bytes": 60414,
-    "viewport": {
+    "viewport_recorded": {
+      "width": 390,
+      "height": 844
+    },
+    "image_pixels": {
       "width": 390,
       "height": 844
     },
