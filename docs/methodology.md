@@ -250,13 +250,25 @@ Late years, 2024–2025 (22 months; 2024-07 and 2024-11 left out as S-NPP gaps):
 (The near-zero bias of "F, no background" in these years is two errors cancelling: it leaves out the
 zero-Aqua months, and the drift inflates the rest.)
 
+### Before and after: the 2012 step
+
+![Raw record joined at 2012, and the harmonized record](../artifacts/figures/before_after_2012.png)
+
+Yearly hotspot detections in the pilot extent, 2003–2025 (`uv run python scripts/figure_before_after.py`;
+numbers in `artifacts/figures/before_after_2012.json`). Read as one record, the archive jumps from 78
+thousand detections in 2011 (MODIS Aqua) to 724 thousand in 2012 (VIIRS S-NPP). In the harmonized record
+the estimated years (2003–2011) range from 376 to 1,003 thousand and the observed years (2012–2025) from 310
+to 735 thousand. The estimated years are higher on average; MODIS Aqua's own record shows the same decline
+(107 thousand per year on average in 2003–2011, 73 thousand in 2012–2021), so that difference is in the
+source data and not created by the conversion. The chart has no uncertainty band yet, and it shows annual
+totals: 2022 and 2024 include months with S-NPP outages and are low for that reason.
+
 ### Still to fill in
 
 | Item | Status |
 |------|--------|
 | Bootstrap intervals for the estimates | Not done (H11) |
 | NOAA-20 continuity factor after S-NPP ended | Not done (H11) |
-| Before/after-2012 chart, raw vs harmonized | Not done (H8) |
 | Sensitivity to the confidence filter; Terra-only 2000-11 → 2002-06 | Not done (H12) |
 | Gap dates checked against instrument notices | Not done |
 
