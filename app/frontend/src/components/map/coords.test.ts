@@ -61,6 +61,11 @@ describe("parsing typed coordinates", () => {
     expect(parseCoordinate("9.45 S")).toBe(-9.45);
     expect(parseCoordinate("40.2°W")).toBe(-40.2);
     expect(parseCoordinate("5N")).toBe(5);
+    expect(parseCoordinate("-5 N")).toBe(5);
+    expect(parseCoordinate("-9.45 S")).toBe(-9.45);
+    expect(parseCoordinate("9.45S")).toBe(-9.45);
+    expect(parseCoordinate("40.2 W")).toBe(-40.2);
+    expect(parseCoordinate("-40.2W")).toBe(-40.2);
     expect(parseCoordinate("+.5")).toBe(0.5);
   });
 

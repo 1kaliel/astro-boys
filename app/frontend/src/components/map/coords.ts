@@ -25,16 +25,18 @@ export function formatPointCoord(value: number): string {
 export function parseCoordinate(text: string): number | null {
   let s = text.trim().replace(/−/g, "-").replace(/°/g, "").replace(/\s+/g, "");
   if (!s) return null;
-  let sign = 1;
+  // A hemisphere letter sets the sign whatever was typed: "-9.45 S" and "9.45S" are both south.
+  let hemisphereSign: 1 | -1 | null = null;
   const hemisphere = /^(.*?)([NSEWnsew])$/.exec(s);
   if (hemisphere) {
     s = hemisphere[1];
-    if (/[SWsw]/.test(hemisphere[2])) sign = -1;
+    hemisphereSign = /[SWsw]/.test(hemisphere[2]) ? -1 : 1;
   }
   // A single comma is a decimal comma ("-9,45"); a point stays a point.
   if (/^[-+]?\d+,\d+$/.test(s)) s = s.replace(",", ".");
   if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
-  const value = Number(s) * sign;
+  const typed = Number(s);
+  const value = hemisphereSign === null ? typed : hemisphereSign * Math.abs(typed);
   return Number.isFinite(value) ? value : null;
 }
 
