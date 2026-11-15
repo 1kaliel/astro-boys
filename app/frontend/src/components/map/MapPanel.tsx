@@ -117,6 +117,8 @@ export default function MapPanel() {
             projection={projection}
             drill={drill}
             onDrill={onDrill}
+            monthLabel={monthLabel}
+            suppressFocus={drawing}
           />
         </div>
       </div>
@@ -162,7 +164,7 @@ export default function MapPanel() {
             <Legend
               mode="sequential"
               breaks={breaks}
-              unit="VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month · cells with no detection that month are left empty (the basemap shows through, not zero) · cell outlines appear when you zoom in · click a cell for its sub-cells"
+              unit="VIIRS-equivalent hotspots per 0.25° cell and month, same classes for every month · cells with no detection that month are left empty (the basemap shows through, not zero) · cell outlines appear when you zoom in; closer in, the colors turn translucent so the basemap reads through (same classes) and the cell at the center, or under the mouse, is outlined and described · click a cell for its sub-cells"
               showMarking={false}
             />
           )}

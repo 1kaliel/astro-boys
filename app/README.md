@@ -167,6 +167,14 @@ drawn, so the basemap shows through: never a zero-colored cell. Globe opens on t
 which is dashed and labeled "Study area: Northeast Brazil · data processed only here"; nothing is drawn outside it. A
 click on the box (while it is small) or on its label flies in; the drill-down works in both views.
 
+**Zoomed in.** The map reads like a normal map: place names stay above the cells at every zoom (the data layers go
+under the basemap's label layers), the cell colors turn translucent as a cell grows on screen (0.85 up to 16 px per
+cell, 0.45 from 256 px, `FILL_FADE`; the class never changes), and the max zoom is 12, enough to see the roads inside
+an L3 sub-cell. From 64 px per cell the cell at the map center (or under the mouse) is outlined and described in a
+chip at the bottom left: its VIIRS-equivalent hotspots, the month, the estimated and partial flags, and how to open its
+16 sub-cells; in the drill-down the same for the L3 sub-cell, with its native detections (not harmonized). Helpers
+and their tests: `components/map/view.ts`.
+
 Frontend without a backend: `VITE_CALENDAR_SOURCE=fixture npm run dev` reads a small file of **synthetic** numbers
 (rebuilt by `scripts/build_calendar_fixture.py`) and labels it "Simulated data".
 
