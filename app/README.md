@@ -37,6 +37,8 @@ Language: **hotspots** and **fire activity** for counts. Never "fires" or "burne
 - D9 should-haves: "Raw by sensor" and "Anomaly" views of the calendar, the trend chart (harmonized next to the raw
   counts of Aqua MODIS and S-NPP VIIRS) and the seasonal profile (p10 to p90 band, median, one year with the 90%
   interval of its estimated months). The charts are plain SVG (`features/charts/`), no chart library added.
+- D11 drill-down (backend): `GET /api/drilldown` splits one L2 cell into its 16 L3 cells of native detections for
+  one month, with the 3 × 3 block of L2 cells around it (see [Drill-down API](#drill-down-api)).
 - Not done: "this month vs median" card with date picker (D5).
 
 ## Calendar API
@@ -107,6 +109,35 @@ Locally, pull the years you need or read the bucket after `gcloud auth applicati
 ```bash
 APPLY=1 ./scripts/sync_data.sh pull processed hotspots/v1/instrument=VIIRS/year=2013   # one partition, ~23 MB
 ```
+
+## Drill-down API
+
+`GET /api/drilldown?cell=<L2 id>&year=YYYY&month=M[&period=ALL|D|N]` (D11, AGGS drill-down)
+
+```json
+{"cell": "G083135.16", "year": 2013, "month": 9, "period": "ALL", "satellite": "SNPP", "instrument": "VIIRS",
+ "min_detections": 5, "subdivided": true, "total": 639,
+ "neighbors": [{"id": "G083135.11", "count": 245}, "... 9 cells"],
+ "l3": [{"id": "G083135.16.01", "count": 59}, "... cells with at least one detection"]}
+```
+
+- **Native detections only**, never harmonized values: L3 (0.0625°) exists for drill-down, the harmonized counts stop
+  at L2. Same rows as the calendar's raw counts: local solar month (`date_local`), `passes_main_filter`, optional
+  day or night.
+- **One satellite:** the month's `source_satellite` from the calendar, the one `raw_source` counts (Aqua MODIS
+  before the VIIRS era, S-NPP VIIRS after, NOAA-20 in the months the calendar takes from it). Satellites are never
+  added together, so a MODIS month and a VIIRS month are not comparable.
+- **Neighbors:** the 3 × 3 block of L2 cells centred on `cell` (the cell included), rows from the south and columns
+  from the west, with native counts (0 allowed). The block crosses 1° boundaries; rows beyond a pole are left out.
+- **Stop rules:** L3 is the deepest level (an L3 id is a 422), and a cell with fewer than `min_detections` (5)
+  detections is not subdivided: `subdivided: false`, `l3: []`. `l3` lists the target's L3 cells with a count > 0,
+  sorted by id; their counts add up to `total`.
+- Errors: not an L2 id, bad year, month or period, or a month the calendar does not have: 422. hotspots/v1 or the
+  partition of that instrument and year missing or unreadable: 503 (missing is never zero).
+- Reads one partition (`instrument=…/year=…`) of `$ASTRO_HOTSPOTS_ROOT`, local or `gs://`, like the CSV.
+  Checked on the local 2013 VIIRS partition: G083135.16 in September 2013 gives 639 detections, equal to
+  `/api/hotspots/count` for that cell and month and to the calendar's `raw_snpp`, the 16 L3 counts add up to it;
+  about 0.1 s per request.
 
 ## Map API
 
