@@ -24,6 +24,9 @@ function month(overrides: Partial<CalendarMonth>): CalendarMonth {
     anomalyAbs: null,
     anomalyPct: null,
     anomalyZ: null,
+    comparison: null,
+    comparisonDays: null,
+    comparisonYears: null,
     ...overrides,
   };
 }
@@ -144,6 +147,9 @@ describe("parseFixture", () => {
       anomalyAbs: null,
       anomalyPct: null,
       anomalyZ: null,
+      comparison: null,
+      comparisonDays: null,
+      comparisonYears: null,
     });
     expect(dataset.period).toBeNull();
     expect([dataset.firstYear, dataset.lastYear]).toEqual([2003, 2003]);

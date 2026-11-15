@@ -12,6 +12,10 @@ The data contract is docs/data-dictionary.md. The rules this module applies:
 * The 90% interval of an area is approximate: errors of neighboring cells move together, so the summed
   variance is widened by `n_cells ** 0.32` (docs/methodology.md, "Sums of cells"). One cell is not widened.
 * Nothing becomes zero by accident: an interval without the variance of every contributing cell stays `None`.
+* An unfinished month is compared with the SAME DAYS of earlier years, never with full months (a partial
+  month next to a full-month median would read as "little activity"). The same-days history is
+  `month_to_date`: for each cell and earlier year, the detections on days 1..d of that month. The area sum of
+  those years gives the median.
 """
 
 from __future__ import annotations
@@ -67,6 +71,12 @@ class MonthRow:
     anomaly_abs: float | None = None
     anomaly_pct: float | None = None
     anomaly_z: float | None = None
+    # What `median_hist` is the median of: "month" (the same month in the years of the baseline, complete
+    # months) or "same_days" (days 1..comparison_days of the unfinished month, in comparison_years earlier
+    # years).
+    comparison: str | None = None
+    comparison_days: int | None = None
+    comparison_years: int | None = None
 
 
 @dataclass(frozen=True)
@@ -88,7 +98,7 @@ class NoCellsInArea(ValueError):
 class CalendarStore:
     """`calendar/v1` loaded once into memory (only the columns the app needs), queried per request."""
 
-    def __init__(self, parquet_glob: str) -> None:
+    def __init__(self, parquet_glob: str, month_to_date_glob: str | None = None) -> None:
         self._con = duckdb.connect()
         self._con.execute(
             """
@@ -119,6 +129,23 @@ class CalendarStore:
             FROM cal GROUP BY year, month, period
             """
         )
+        # Same-days history of the unfinished month (optional: without it a partial month has no comparison).
+        self._same_days: tuple[int, int, int, int] | None = None  # month, days, last history year, n_years
+        if month_to_date_glob:
+            self._con.execute(
+                """
+                CREATE TABLE mtd AS
+                SELECT cell_l2, year::INTEGER AS year, month::INTEGER AS month, period,
+                       days::INTEGER AS days, n_hotspots::DOUBLE AS n_hotspots, n_years::INTEGER AS n_years
+                FROM read_parquet(?, hive_partitioning = true)
+                """,
+                [month_to_date_glob],
+            )
+            meta = self._con.execute(
+                "SELECT any_value(month), any_value(days), max(year), any_value(n_years) FROM mtd"
+            ).fetchone()
+            if meta is not None and meta[0] is not None:
+                self._same_days = (int(meta[0]), int(meta[1]), int(meta[2]), int(meta[3]))
         versions = self._con.execute("SELECT DISTINCT model_version FROM cal ORDER BY 1").fetchall()
         self.model_version = ",".join(v[0] for v in versions if v[0])
         row = self._con.execute("SELECT count(*), min(year), max(year) FROM cal").fetchone()
@@ -133,7 +160,9 @@ class CalendarStore:
         files = list(folder.glob("**/*.parquet"))
         if not files:
             raise FileNotFoundError(f"No calendar Parquet files under {folder}")
-        return cls(str(folder / "**" / "*.parquet"))
+        mtd_folder = Path(data_root) / "processed" / "month_to_date" / dataset_version
+        mtd_glob = str(mtd_folder / "**" / "*.parquet") if any(mtd_folder.glob("**/*.parquet")) else None
+        return cls(str(folder / "**" / "*.parquet"), mtd_glob)
 
     def area_calendar(
         self,
@@ -173,6 +202,7 @@ class CalendarStore:
         months = [_month_row(*r, cells=cells) for r in rows]
         used_baseline = baseline or _default_baseline(months)
         months = _with_anomalies(months, used_baseline)
+        months = self._with_same_days(cursor, months, bounds, period)
         return AreaCalendar(
             bounds=bounds,
             cells=cells,
@@ -183,6 +213,71 @@ class CalendarStore:
             last_year=self.last_year,
             months=months,
         )
+
+
+    def _with_same_days(
+        self, cursor: duckdb.DuckDBPyConnection, months: list[MonthRow], bounds: Bounds, period: str
+    ) -> list[MonthRow]:
+        """Compare the unfinished month with the same days of earlier years (like for like).
+
+        Only an observed, partial month that covers exactly the days of `month_to_date` and comes after its
+        last history year is eligible: the same rule the pipeline uses for the cells (harmonize,
+        `same_window`). The history is the sum over the area cells of the detections on those days, one value
+        per earlier year; years with no row in the area count as 0 (a cell with no row counts as 0, as the
+        data contract says).
+        """
+        if self._same_days is None:
+            return months
+        month, days, last_year, n_years = self._same_days
+        eligible = [
+            m
+            for m in months
+            if m.is_partial
+            and not m.is_estimated
+            and m.month == month
+            and m.days_observed == days
+            and m.year > last_year
+            and m.count_harmonized is not None
+        ]
+        if not eligible:
+            return months
+        years = [r[0] for r in cursor.execute("SELECT DISTINCT year FROM mtd ORDER BY year").fetchall()]
+        sums = dict(
+            cursor.execute(
+                f"""
+                WITH sel AS (SELECT cell_l2 FROM cells WHERE {_OVERLAP_SQL})
+                SELECT year, sum(n_hotspots) FROM mtd
+                WHERE cell_l2 IN (SELECT cell_l2 FROM sel) AND (period = ? OR ? = 'ALL')
+                GROUP BY year
+                """,
+                [*bounds.overlap_params(), period, period],
+            ).fetchall()
+        )
+        history = [float(sums.get(year, 0.0)) for year in years]
+        history += [0.0] * max(0, n_years - len(history))  # pad like the pipeline does
+        if len(history) < MIN_BASELINE_YEARS:
+            return months
+        median = statistics.median(history)
+        mad = statistics.median(abs(v - median) for v in history)
+        out: list[MonthRow] = []
+        for m in months:
+            if m not in eligible or m.count_harmonized is None:
+                out.append(m)
+                continue
+            diff = m.count_harmonized - median
+            out.append(
+                _replace(
+                    m,
+                    median_hist=round(median, 3),
+                    anomaly_abs=round(diff, 3),
+                    anomaly_pct=round(diff / median * 100, 1) if median > 0 else None,
+                    anomaly_z=round(diff / (MAD_TO_SIGMA * mad), 2) if mad > 0 else None,
+                    comparison="same_days",
+                    comparison_days=days,
+                    comparison_years=len(history),
+                )
+            )
+        return out
 
 
 def _month_row(
@@ -258,7 +353,7 @@ def _with_anomalies(months: list[MonthRow], baseline: tuple[int, int] | None) ->
             continue
         median, mad = found
         if m.is_partial:
-            out.append(_replace(m, median_hist=round(median, 3)))
+            out.append(_replace(m, median_hist=round(median, 3), comparison="month"))
             continue
         diff = m.count_harmonized - median
         out.append(
@@ -268,10 +363,11 @@ def _with_anomalies(months: list[MonthRow], baseline: tuple[int, int] | None) ->
                 anomaly_abs=round(diff, 3),
                 anomaly_pct=round(diff / median * 100, 1) if median > 0 else None,
                 anomaly_z=round(diff / (MAD_TO_SIGMA * mad), 2) if mad > 0 else None,
+                comparison="month",
             )
         )
     return out
 
 
-def _replace(row: MonthRow, **changes: float | None) -> MonthRow:
+def _replace(row: MonthRow, **changes: float | int | str | None) -> MonthRow:
     return MonthRow(**{**row.__dict__, **changes})

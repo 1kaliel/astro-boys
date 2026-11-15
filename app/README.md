@@ -52,7 +52,13 @@ Rules (docs/data-dictionary.md, and the diary `DECISION`s of D2):
   satellite; it does not prove there was no fire).
 - **Pending intervals stay `null`:** `ci_low` and `ci_high` of estimated months are `null` until the pipeline delivers
   them (H11). Observed months have an interval equal to the count. The interval of a sum uses the summed variance.
-- **Partial months** (`is_partial`, `days_observed`) are flagged and get no anomaly.
+- **Partial months** (`is_partial`, `days_observed`) are flagged. A partial month is never compared with full months.
+  When `processed/month_to_date/v1` is present (optional), an unfinished **observed** month that covers exactly the days
+  of that layer is compared with **the same days of earlier years**: `median_hist`, `anomaly_*` are then those of the
+  same days, `comparison` is `"same_days"`, and `comparison_days` and `comparison_years` say which days and how many
+  years. The history is the sum over the area cells of the detections on days 1..d, one value per earlier year, and a
+  year with no row in the area counts as 0. For every other month `comparison` is `"month"` (complete months only),
+  and a partial month without the layer has no anomaly.
 
 Data: `$ASTRO_DATA_ROOT/processed/calendar/$ASTRO_DATASET_VERSION` (defaults `data` and `v1`), loaded once at startup
 (about 3 s, 290 MiB for 1.7 M rows). If it is missing the app still starts, `/healthz` answers and the calendar says 503.

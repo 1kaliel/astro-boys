@@ -2,7 +2,7 @@ import { Badge } from "../../components/ui/Badge";
 import { KpiTile } from "../../components/viz/KpiTile";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { formatCompact, formatCount, MONTHS_LONG } from "../../lib/format";
-import { busiestMonth, estimatedShare, inYears, percentChange, yearToDate } from "../../lib/metrics";
+import { busiestMonth, estimatedShare, inYears, latestComparison, percentChange, yearToDate } from "../../lib/metrics";
 
 type KpiRowProps = {
   /** The whole series of the area (not cut to the year range): "latest" means the latest month in the data. */
@@ -34,6 +34,7 @@ export function KpiRow({ months, startYear, endYear, baselineYears }: KpiRowProp
   const share = estimatedShare(inYears(months, startYear, endYear));
   const baseline = baselineYears ? `${baselineYears[0]}–${baselineYears[1]}` : "the baseline";
   const monthName = latest ? MONTHS_LONG[latest.month - 1] : "";
+  const comparison = latest ? latestComparison(latest) : null;
 
   return (
     <section className="kpi-row" aria-label="Key figures for the selected area">
@@ -42,11 +43,18 @@ export function KpiRow({ months, startYear, endYear, baselineYears }: KpiRowProp
         label={latest ? `${monthName} ${latest.year}${latest.isPartial ? " so far" : ""}` : "Latest month"}
         value={formatCompact(latest?.count)}
         detail={
-          latest
-            ? latest.isPartial
-              ? // A partial month is never compared with full months: it would read as "little activity".
-                `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
-              : `VIIRS-equivalent hotspots · ${delta(latest.count, latest.medianHist, `the ${monthName} median`)}`
+          latest && comparison
+            ? comparison.kind === "same_days"
+              ? // Like for like: days 1..d of this month against days 1..d of earlier years.
+                `VIIRS-equivalent hotspots · ${delta(
+                  latest.count,
+                  comparison.base,
+                  `the median of the same ${comparison.days} days`,
+                )}, ${comparison.years} earlier years`
+              : comparison.kind === "none"
+                ? // A partial month is never compared with full months: it would read as "little activity".
+                  `VIIRS-equivalent hotspots · partial month, not compared with the ${monthName} median`
+                : `VIIRS-equivalent hotspots · ${delta(latest.count, comparison.base, `the ${monthName} median`)}`
             : "No data"
         }
         badges={

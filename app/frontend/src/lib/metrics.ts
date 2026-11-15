@@ -44,6 +44,25 @@ export function yearToDate(
   };
 }
 
+/**
+ * How the latest month is compared with history, for the headline figure.
+ *  - a complete month against the median of that month in earlier years;
+ *  - an unfinished month against the median of the SAME DAYS of earlier years (like for like), when the API has it;
+ *  - otherwise nothing: an unfinished month is never set against full months, it would read as "little activity".
+ */
+export type LatestComparison =
+  | { kind: "month"; base: number | null }
+  | { kind: "same_days"; base: number; days: number; years: number }
+  | { kind: "none" };
+
+export function latestComparison(latest: CalendarMonth): LatestComparison {
+  if (!latest.isPartial) return { kind: "month", base: latest.medianHist };
+  if (latest.comparison === "same_days" && latest.medianHist != null && latest.comparisonDays != null) {
+    return { kind: "same_days", base: latest.medianHist, days: latest.comparisonDays, years: latest.comparisonYears ?? 0 };
+  }
+  return { kind: "none" };
+}
+
 export function estimatedShare(months: readonly CalendarMonth[]): { estimated: number; total: number } {
   return { estimated: months.filter((m) => m.isEstimated).length, total: months.length };
 }

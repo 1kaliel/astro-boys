@@ -83,6 +83,11 @@ class MonthOut(BaseModel):
     anomaly_abs: float | None
     anomaly_pct: float | None
     anomaly_z: float | None
+    # What median_hist is the median of: "month" (the same month in the baseline years, complete months) or
+    # "same_days" (days 1..comparison_days of an unfinished month in comparison_years earlier years).
+    comparison: str | None
+    comparison_days: int | None
+    comparison_years: int | None
 
 
 class CalendarResponse(BaseModel):

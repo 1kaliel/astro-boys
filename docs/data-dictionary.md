@@ -68,6 +68,11 @@ Rules for consumers:
   Incomplete S-NPP months show the observed subset with `is_partial=true`.
 - To get a region, **sum `count_harmonized` over its cells first**, then compute medians and anomalies on the sum.
   Do not average per-cell anomalies. Variances add (independence approximation; note it in the UI).
+- **An unfinished month is compared with the same days of earlier years, never with full months.** Use
+  `processed/month_to_date/v1`: for the area, sum `n_hotspots` over its cells for each earlier year (days 1..`days`),
+  count a year with no row in the area as 0 (up to `n_years` values), and take the median and the MAD of those values.
+  Compare the month so far with that median. Only an observed partial month that covers exactly `days` days of the
+  layer's month qualifies (the same rule as `same_window` in `harmonize`).
 - Never add `raw_*` columns of different satellites together.
 - An absent row means no detection in that cell-month by the source satellite, **not** a confirmed absence of fire.
 

@@ -23,6 +23,14 @@ export type CalendarMonth = {
   anomalyAbs: number | null;
   anomalyPct: number | null;
   anomalyZ: number | null;
+  /**
+   * What `medianHist` is the median of: the same month in earlier years ("month", complete months), or the SAME DAYS
+   * of an unfinished month in earlier years ("same_days": like for like). Null when there is no median.
+   */
+  comparison: "month" | "same_days" | null;
+  /** For "same_days": days 1..comparisonDays of the month, and how many earlier years the median is over. */
+  comparisonDays: number | null;
+  comparisonYears: number | null;
 };
 
 export type CalendarDataset = {
@@ -59,6 +67,9 @@ type ApiMonth = {
   anomaly_abs: number | null;
   anomaly_pct: number | null;
   anomaly_z: number | null;
+  comparison?: string | null;
+  comparison_days?: number | null;
+  comparison_years?: number | null;
 };
 
 export type ApiCalendar = {
@@ -100,6 +111,9 @@ export function parseApiResponse(doc: ApiCalendar): CalendarDataset {
         anomalyAbs: m.anomaly_abs,
         anomalyPct: m.anomaly_pct,
         anomalyZ: m.anomaly_z,
+        comparison: m.comparison === "same_days" || m.comparison === "month" ? m.comparison : null,
+        comparisonDays: m.comparison_days ?? null,
+        comparisonYears: m.comparison_years ?? null,
       }),
     ),
   };
@@ -167,6 +181,9 @@ export function parseFixture(doc: FixtureDoc): CalendarDataset {
       anomalyAbs: null,
       anomalyPct: null,
       anomalyZ: null,
+      comparison: null,
+      comparisonDays: null,
+      comparisonYears: null,
     };
   });
   const years = months.map((m) => m.year);
