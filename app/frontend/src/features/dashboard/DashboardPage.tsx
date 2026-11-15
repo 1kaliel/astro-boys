@@ -1,10 +1,10 @@
 import { Card } from "../../components/ui/Card";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
 import { YearSelect } from "../../components/ui/YearSelect";
-import { Legend } from "../../components/viz/Legend";
 import { StatTile } from "../../components/viz/StatTile";
 import { useApiStatus } from "../../data/useApiStatus";
 import { FIRST_YEAR, LAST_YEAR, useDashboard, type Period, type Scale } from "../../state/dashboard";
+import { BurningCalendar } from "../calendar/BurningCalendar";
 import { AboutDialog } from "./AboutDialog";
 
 const PERIOD_OPTIONS: ReadonlyArray<SegmentOption<Period>> = [
@@ -75,8 +75,7 @@ export function DashboardPage() {
           className="dashboard-calendar"
           caption={`Source: NASA FIRMS · ${state.startYear}–${state.endYear} · ${UNIT}`}
         >
-          <div className="panel-placeholder">Year × month heatmap (task D4).</div>
-          <Legend mode="sequential" unit={UNIT} />
+          <BurningCalendar />
         </Card>
         <Card title="This month vs historical median" className="dashboard-stat">
           <StatTile

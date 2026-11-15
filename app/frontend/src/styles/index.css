@@ -3,6 +3,7 @@
 @import "./semantic.css";
 @import "./viz.css";
 @import "./components.css";
+@import "./calendar.css";
 
 *,
 *::before,
