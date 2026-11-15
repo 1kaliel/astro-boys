@@ -1,5 +1,5 @@
 import { ResponsiveHeatMap, type ComputedCell, type TooltipProps } from "@nivo/heatmap";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
@@ -45,7 +45,7 @@ const RAW_UNIT = "Native hotspot detections per month, counted by the month's so
 const ANOMALY_UNIT = "Robust z-score of the month against the median of that month of the year";
 
 // Chart geometry in pixels (nivo needs numbers; colors and strokes come from tokens in calendar.css).
-const ROW_PX = 18; // compact rows: 6 to 8 years fit the explorer's bottom panel without scrolling
+const ROW_PX = 28; // rows tall enough to read and hit; with many years the grid scrolls inside its own box
 const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
 const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
 // On a phone the 12 months fit the card (no sideways scroll, so the year labels stay in view): compact cells, with
@@ -117,6 +117,18 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   const phone = useMediaQuery(PHONE);
   const [hovered, setHovered] = useState<{ year: number; month: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // The selected year's row stays in view in the scrolling grid (all years do not fit the panel).
+  const selectedYear = state.selected?.year ?? null;
+  const firstRow = Math.max(state.startYear, dataset.firstYear);
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (!box || selectedYear === null) return;
+    const top = MARGIN.top + (selectedYear - firstRow) * ROW_PX;
+    if (top < box.scrollTop + MARGIN.top || top + ROW_PX > box.scrollTop + box.clientHeight) {
+      box.scrollTop = Math.max(0, top - box.clientHeight / 2 + ROW_PX / 2);
+    }
+  }, [selectedYear, firstRow]);
   // Only years the data covers are shown: the selector can go past the last published year.
   const startYear = Math.max(state.startYear, dataset.firstYear);
   const endYear = Math.min(state.endYear, dataset.lastYear);
@@ -273,7 +285,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   }));
   const chart = (
     <>
-    <div className="calendar-scroll">
+    <div className="calendar-scroll" ref={scrollRef}>
       <div
         className="calendar-chart"
         style={{

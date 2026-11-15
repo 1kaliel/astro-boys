@@ -50,8 +50,8 @@ const RELEVANCE_OPTIONS: ReadonlyArray<SegmentOption<Relevance>> = [
 ];
 const YEARS = Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
 
-/** Same as the reducer's initial years (state/dashboard.tsx): the last 10 years. */
-const DEFAULT_START_YEAR = LAST_YEAR - 9;
+/** Same as the reducer's initial years (state/dashboard.tsx): all years. */
+const DEFAULT_START_YEAR = FIRST_YEAR;
 
 const PERIOD_TEXT: Record<Period, string> = { ALL: "Day and night", D: "Day only", N: "Night only" };
 const RELEVANCE_TEXT: Record<Relevance, string> = { l: "All confidence", n: "Nominal or high confidence", h: "High confidence only" };
@@ -163,7 +163,16 @@ function activeFilters(state: DashboardState, dispatch: (action: DashboardAction
  * years of the period), 3 What (data series, time of day, more filters). They drive the map, the numbers, the days
  * and the timeline. On a phone the list folds behind one button; the month stays in view outside it.
  */
-export function FilterBar({ when, collapsible }: { when?: ReactNode; collapsible?: boolean }) {
+export function FilterBar({
+  when,
+  collapsible,
+  summary,
+}: {
+  when?: ReactNode;
+  collapsible?: boolean;
+  /** One line said by the folded toggle on a phone, e.g. "Northeast · Sep 2025 · Harmonized". */
+  summary?: string;
+}) {
   const [state, dispatch] = useDashboard();
   const [panelOpen, setPanelOpen] = useState(false);
   const panelId = useId();
@@ -189,7 +198,7 @@ export function FilterBar({ when, collapsible }: { when?: ReactNode; collapsible
           onClick={() => setPanelOpen((open) => !open)}
         >
           <span>
-            Change area, years or data
+            {summary ?? "Change area, years or data"}
             {active > 0 ? <span className="fbar-toggle-count">{` · ${active} changed`}</span> : null}
           </span>
           <span className="fbar-toggle-icon" aria-hidden="true">

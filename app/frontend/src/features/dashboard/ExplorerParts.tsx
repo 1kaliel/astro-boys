@@ -19,12 +19,33 @@ const NATIVE: Record<Exclude<Sensor, "harmonized">, string> = {
   n20: "native NOAA-20 VIIRS counts, not harmonized",
 };
 
-/** The month every view shows: the one picked, else the latest month of the data. */
+/** The month every view shows: the one picked, else the opening month (`openingMonth`). */
 export function currentMonth(selected: MonthRef | null, dataset: CalendarDataset | null): MonthRef | null {
   if (selected) return selected;
   if (!dataset) return null;
-  const last = monthBounds(dataset.months)?.last;
-  return last ?? null;
+  return openingMonth(dataset);
+}
+
+/**
+ * The month the explorer opens on: the busiest complete month of the latest complete fire season (the latest year
+ * whose August to November are all complete), so the first view shows a full month with activity, not a partial
+ * month. Falls back to the latest complete month, then to the latest month.
+ */
+export function openingMonth(dataset: CalendarDataset): MonthRef | null {
+  const complete = dataset.months.filter((m) => !m.isPartial && m.count !== null);
+  const years = [...new Set(complete.map((m) => m.year))].sort((a, b) => b - a);
+  for (const year of years) {
+    const ofYear = complete.filter((m) => m.year === year);
+    if (![8, 9, 10, 11].every((month) => ofYear.some((m) => m.month === month))) continue;
+    const best = ofYear.reduce((a, b) => ((b.count ?? 0) > (a.count ?? 0) ? b : a));
+    return { year: best.year, month: best.month };
+  }
+  const latest = complete.reduce<CalendarMonth | null>(
+    (a, b) => (!a || b.year * 12 + b.month > a.year * 12 + a.month ? b : a),
+    null,
+  );
+  if (latest) return { year: latest.year, month: latest.month };
+  return monthBounds(dataset.months)?.last ?? null;
 }
 
 export function monthEntry(dataset: CalendarDataset | null, ref: MonthRef | null, period: Period): CalendarMonth | null {

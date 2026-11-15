@@ -107,9 +107,9 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
               Cancel
             </Button>
           ) : (
-            <Button className="map-tool" onClick={() => void startDrawing()}>
+            <Button className="map-tool" onClick={() => void startDrawing()} title="Draw an area on the map">
               <Icon name="draw" />
-              Draw area
+              <span className="map-tool-label">Draw area</span>
             </Button>
           ))}
         {!drilled && (
@@ -120,7 +120,7 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
             title="Use the visible map area as the area filter"
           >
             <Icon name="frame" />
-            Use view
+            <span className="map-tool-label">Use view</span>
           </Button>
         )}
         {!drilled && coords}

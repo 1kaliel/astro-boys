@@ -114,16 +114,6 @@ export default function MapPanel() {
         </h2>
         <MapLayerControl sensor={state.sensor} onSensor={(sensor) => dispatch({ type: "setSensor", sensor })} />
       </header>
-      {(drillCell || (estimated && !drillCell) || partial) && (
-        <div className="map-sub">
-          {drillCell && <p className="map-month">Cell {drillCell}: native detections of its 0.0625° sub-cells</p>}
-          <div className="map-badges">
-            {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
-            {estimated && !drillCell && <Badge kind="estimated" />}
-            {partial && <Badge kind="partial" />}
-          </div>
-        </div>
-      )}
 
       {/* The frame holds the tools and the map: over the map on wide screens, in a row above it on a phone. */}
       <div className="map-frame">
@@ -166,6 +156,16 @@ export default function MapPanel() {
       </div>
 
       <div className="map-info">
+        {(drillCell || (estimated && !drillCell) || partial) && (
+          <div className="map-sub">
+            {drillCell && <p className="map-month">Cell {drillCell}: native detections of its 0.0625° sub-cells</p>}
+            <div className="map-badges">
+              {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
+              {estimated && !drillCell && <Badge kind="estimated" />}
+              {partial && <Badge kind="partial" />}
+            </div>
+          </div>
+        )}
       {remote.error && (
         <p className="map-note map-error" role="alert">
           Could not load the cells: {remote.error}

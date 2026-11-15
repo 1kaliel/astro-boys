@@ -17,7 +17,7 @@
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
     "side map"
-    "panel panel";
+    "side panel";
   min-height: 0;
 }
 
@@ -27,11 +27,11 @@
   grid-area: side;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   border-inline-end: 1px solid var(--color-border);
   background: var(--color-surface);
 }
@@ -100,7 +100,7 @@
 
 .xp-step-list {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -404,16 +404,15 @@
   transform: translateX(-50%);
 }
 
-/* Map and tools side by side only when the map is wide enough; else the tools go under the layer switch. */
-@media (max-width: 90rem) {
-  .is-wide .xp-map .map-tools {
-    top: calc(var(--space-12) + var(--space-6));
-    left: var(--space-3);
-    right: auto;
-  }
-
-  .is-wide .xp-map .map-sub {
-    top: calc(2 * var(--space-12) + var(--space-6));
+/* One compact tool row top right; below 1360px only the icons show (each has a tooltip and a name). */
+@media (max-width: 85rem) {
+  .xp-map .map-tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
@@ -433,7 +432,7 @@
 }
 
 .is-wide .xp-panel {
-  height: max(28vh, 220px);
+  height: max(32vh, 240px);
 }
 
 .is-wide .xp-panel.is-collapsed {
@@ -526,7 +525,7 @@
   }
 
   .xp-panel .dash-charts .line-chart {
-    max-height: calc(max(28vh, 220px) - 6rem);
+    max-height: calc(max(32vh, 240px) - 9rem);
   }
 
   .xp-panel .dash-charts .chart-block {
@@ -633,7 +632,7 @@
   position: fixed;
   top: auto;
   right: var(--space-4);
-  bottom: calc(max(28vh, 220px) + var(--space-12));
+  bottom: calc(max(32vh, 240px) + var(--space-12));
 }
 
 .xp-app.is-narrow .hh-prompt {
@@ -643,4 +642,248 @@
   bottom: var(--space-4);
   left: var(--spacing-page-x);
   justify-content: space-between;
+}
+
+/* ---- Final layout pass ------------------------------------------------------------------------------------ */
+
+/* Layer switch alone top left: the card title is for screen readers. */
+.is-wide .xp-map .map-head .card-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.is-wide .xp-map .map-head {
+  padding: var(--space-1);
+}
+
+.xp-map .map-info .map-sub {
+  position: static;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
+}
+
+.is-wide .xp-map .map-tools {
+  flex-wrap: nowrap;
+}
+
+/* The sidebar: Where / When / What and This month fit one screen. */
+.xp-explain {
+  font-size: var(--font-size-xs);
+}
+
+.xp-days-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.xp-days-toggle[aria-expanded="true"] .fbar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* A day picked: its details move to the top of the sidebar, under "You're looking at" and "Back to the month". */
+.xp-side.has-day .xp-days,
+.xp-side.has-day .xp-days .month-view,
+.xp-side.has-day .xp-days .month-view-body {
+  display: contents;
+}
+
+.xp-side.has-day > .banner {
+  order: -4;
+}
+
+.xp-side.has-day > .xp-looking {
+  order: -3;
+}
+
+.xp-side.has-day > .xp-day-back {
+  order: -2;
+  justify-self: start;
+  align-self: flex-start;
+}
+
+.xp-side.has-day .day-details {
+  order: -1;
+}
+
+/* The period figures: a slim strip at the top of the bottom panel, one line each. */
+.is-wide .xp-kpi-strip {
+  padding: 0 var(--space-5) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.is-wide .xp-kpi-strip .kpi-row.kpi-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  overflow: visible;
+  padding: 0;
+}
+
+.is-wide .xp-kpi-strip .kpi {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.is-wide .xp-kpi-strip .kpi-head {
+  min-height: 0;
+}
+
+.is-wide .xp-kpi-strip .kpi-badges,
+.is-wide .xp-kpi-strip .kpi-detail {
+  display: none;
+}
+
+.is-wide .xp-kpi-strip .kpi-value,
+.is-wide .xp-kpi-strip .kpi-hero .kpi-value {
+  margin: 0;
+  font-size: var(--font-size-base);
+  letter-spacing: 0;
+}
+
+.is-wide .xp-kpi-strip .kpi-comparison {
+  flex-basis: 100%;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.is-wide .xp-kpi-strip .kpi-action {
+  font-size: var(--font-size-xs);
+}
+
+.is-wide .xp-kpi-strip .kpi-link,
+.is-wide .xp-kpi-strip .kpi-source-hint {
+  font-size: var(--font-size-xs);
+}
+
+.is-wide .xp-kpi-strip .kpi-source-hint {
+  margin: 0;
+  padding: 0;
+}
+
+.is-wide .xp-kpi-strip .kpi-clickable:hover {
+  box-shadow: none;
+}
+
+/* Timeline: readable rows; with all years the grid scrolls inside its own box, the selected year in view. */
+@media (min-width: 64rem) {
+  .xp-panel .calendar-scroll {
+    max-height: calc(max(32vh, 240px) - 10rem);
+    min-height: calc(5 * var(--space-8));
+    overflow-y: auto;
+  }
+}
+
+/* ---- Phones: the map first, then what it shows and the folded steps, then the tabs ---------------------- */
+.is-narrow .xp-map .map-stage {
+  min-height: 55svh;
+}
+
+.is-narrow .xp-stack {
+  padding-top: 0;
+}
+
+/* The "New here?" bar is fixed at the bottom of the screen: keep the end of the page clear of it. */
+.xp-app.is-narrow:has(.hh-prompt) .xp-stack {
+  padding-bottom: calc(var(--space-12) * 2.5);
+}
+
+/* One line per figure: label · value · comparison (cut with an ellipsis; the whole figure opens its evidence). */
+.is-wide .xp-kpi-strip .kpi {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.is-wide .xp-kpi-strip .kpi-head,
+.is-wide .xp-kpi-strip .kpi-value,
+.is-wide .xp-kpi-strip .kpi-action {
+  flex: none;
+}
+
+.is-wide .xp-kpi-strip .kpi-comparison {
+  flex: 1 1 0;
+  flex-basis: auto;
+  min-width: 0;
+}
+
+.is-wide .xp-kpi-strip .kpi-source-hint {
+  display: none;
+}
+
+.is-wide .xp-kpi-strip .kpi-open {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.is-wide .xp-kpi-strip .kpi-row.kpi-row-3 {
+  grid-template-columns: 1.1fr 1.2fr 1fr;
+}
+
+/* Fit Where / When / What and This month in one screen down to 1280 x 720. */
+.xp-side {
+  gap: var(--space-3);
+}
+
+.xp-sentence {
+  font-size: var(--font-size-sm);
+}
+
+.xp-step-list {
+  gap: var(--space-3);
+}
+
+.xp-step {
+  gap: var(--space-1);
+}
+
+.xp-step-n {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.xp-latest {
+  flex-basis: auto;
+  min-height: 0;
+  padding-inline: var(--space-1);
+}
+
+.xp-stepper .xp-month-title {
+  font-size: var(--font-size-lg);
+}
+
+.xp-years {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.xp-big {
+  font-size: var(--font-size-2xl);
+}
+
+.xp-this-month {
+  gap: var(--space-1);
+}
+
+@media (min-width: 64rem) {
+  .xp-panel .calendar-scroll {
+    max-height: calc(max(32vh, 240px) - 8.5rem);
+    min-height: calc(3 * var(--space-8) + var(--space-8));
+  }
 }
