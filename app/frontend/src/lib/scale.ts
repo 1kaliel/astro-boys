@@ -35,3 +35,40 @@ export function sequentialEdges(values: readonly number[]): { edges: number[]; t
   const edges = Array.from({ length: SEQ_STEPS - 1 }, (_, i) => (top * (i + 1)) / SEQ_STEPS);
   return { edges, top };
 }
+
+/** At most this many classes for the 16 sub-cells of a drill-down: more would split a handful of values. */
+export const DRILL_CLASSES = 4;
+
+/**
+ * Class limits for the native counts of one drill-down (at most 16 L3 cells): equal steps from the lowest to the
+ * highest positive count, whole numbers, strictly increasing, at most DRILL_CLASSES classes and never more classes
+ * than distinct counts. Deterministic, and printed in the legend. Empty when every count is the same.
+ */
+export function drillBreaks(counts: readonly number[]): number[] {
+  const positive = counts.filter((c) => c > 0);
+  if (positive.length === 0) return [];
+  const min = Math.min(...positive);
+  const max = Math.max(...positive);
+  const classes = Math.min(DRILL_CLASSES, new Set(positive).size);
+  const edges: number[] = [];
+  for (let i = 1; i < classes; i++) {
+    const edge = Math.ceil(min + ((max - min) * i) / classes);
+    if (edge > min && edge <= max && edge > (edges[edges.length - 1] ?? -Infinity)) edges.push(edge);
+  }
+  return edges;
+}
+
+/** Ramp step (1…7) of a drill-down count. A single class takes the middle step, not the darkest. */
+export function drillStep(count: number, breaks: readonly number[]): number {
+  const classes = breaks.length + 1;
+  return classes === 1 ? Math.ceil(SEQ_STEPS / 2) : rampStep(classOf(count, breaks), classes);
+}
+
+/** Legend entries of a drill-down: each color with the whole-number range of counts it holds ("1–3", "4–6"…). */
+export function drillStops(counts: readonly number[], breaks: readonly number[]): Array<{ step: number; from: number; to: number }> {
+  const positive = counts.filter((c) => c > 0);
+  if (positive.length === 0) return [];
+  const lows = [Math.min(...positive), ...breaks];
+  const max = Math.max(...positive);
+  return lows.map((from, i) => ({ step: drillStep(from, breaks), from, to: i < breaks.length ? breaks[i] - 1 : max }));
+}

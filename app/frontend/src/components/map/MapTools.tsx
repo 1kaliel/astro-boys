@@ -19,18 +19,24 @@ type MapToolsProps = {
   projection: Projection;
   onProjection: (projection: Projection) => void;
   onArea: (area: Bounds) => void;
+  /** In the L3 drill-down the area tools step aside for "Back to L2 cells" (Escape does the same). */
+  drilled: boolean;
+  onBack: () => void;
+  /** Tells the map a rectangle is being drawn, so a click there draws instead of opening a drill-down. */
+  onDrawing: (drawing: boolean) => void;
 };
 
 /**
  * Tools drawn over the map: flat/globe view, draw a rectangle (terra-draw, loaded only when asked) and use the
  * visible map area (easiest on a phone). Typed bounds live in the filter bar.
  */
-export function MapTools({ mapRef, projection, onProjection, onArea }: MapToolsProps) {
+export function MapTools({ mapRef, projection, onProjection, onArea, drilled, onBack, onDrawing }: MapToolsProps) {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const drawRef = useRef<{ stop(): void } | null>(null);
 
   useEffect(() => () => drawRef.current?.stop(), []);
+  useEffect(() => onDrawing(drawing), [drawing, onDrawing]);
 
   function apply(candidate: Bounds) {
     const check = checkArea(candidate, PILOT_BOUNDS);
@@ -86,13 +92,19 @@ export function MapTools({ mapRef, projection, onProjection, onArea }: MapToolsP
   return (
     <>
       <div className="map-tools">
-        <SegmentedControl label="Map view" options={PROJECTIONS} value={projection} onChange={onProjection} hideLabel />
-        {drawing ? (
-          <Button onClick={stopDrawing}>Cancel</Button>
-        ) : (
-          <Button onClick={() => void startDrawing()}>Draw area</Button>
+        {drilled && (
+          <Button className="map-back" onClick={onBack} aria-keyshortcuts="Escape">
+            ← Back to L2 cells
+          </Button>
         )}
-        <Button onClick={applyVisibleArea}>Use visible area</Button>
+        <SegmentedControl label="Map view" options={PROJECTIONS} value={projection} onChange={onProjection} hideLabel />
+        {!drilled &&
+          (drawing ? (
+            <Button onClick={stopDrawing}>Cancel</Button>
+          ) : (
+            <Button onClick={() => void startDrawing()}>Draw area</Button>
+          ))}
+        {!drilled && <Button onClick={applyVisibleArea}>Use visible area</Button>}
       </div>
       {(drawing || error) && (
         <p className={cx("map-note", "map-hint", error && "map-error")} role={error ? "alert" : undefined}>

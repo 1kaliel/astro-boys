@@ -1,7 +1,8 @@
 /**
  * Hierarchical AGGS-style grid (docs/spec/harmonization.md section 4). L2 cells are 0.25°.
  * IDs: "G" + 3-digit floor(lat + 90) + 3-digit floor(lon + 180) + "." + 2-digit k, where k = row * 4 + col + 1
- * inside the 1° cell, rows from the south and columns from the west.
+ * inside the 1° cell, rows from the south and columns from the west. An L3 ID (0.0625°) adds ".NN" with the same
+ * rule inside its L2 cell.
  */
 export const L2_SIZE = 0.25;
 
@@ -27,6 +28,67 @@ export function cellBounds(id: string): Bounds {
   const south = Number(match[1]) - 90 + Math.floor(k / 4) * L2_SIZE;
   const west = Number(match[2]) - 180 + (k % 4) * L2_SIZE;
   return { west, south, east: west + L2_SIZE, north: south + L2_SIZE };
+}
+
+/** L3 cells are 0.0625° (about 7 km): the drill-down of native detections only, never of estimates. */
+export const L3_SIZE = L2_SIZE / 4;
+
+/** Bounds of an L3 cell ("G072131.11.05"), derived from its ID alone: the same k rule, inside the L2 cell. */
+export function l3Bounds(id: string): Bounds {
+  const match = /^(G\d{6}\.\d{2})\.(\d{2})$/.exec(id);
+  if (!match) throw new Error(`Not an L3 cell ID: ${id}`);
+  const k = Number(match[2]) - 1;
+  if (k < 0 || k > 15) throw new Error(`L3 index out of range in ${id}`);
+  const parent = cellBounds(match[1]);
+  const south = parent.south + Math.floor(k / 4) * L3_SIZE;
+  const west = parent.west + (k % 4) * L3_SIZE;
+  return { west, south, east: west + L3_SIZE, north: south + L3_SIZE };
+}
+
+/** ID of the L3 cell that contains the point (lat, lon). */
+export function l3IdAt(lat: number, lon: number): string {
+  const l2 = cellIdAt(lat, lon);
+  const b = cellBounds(l2);
+  const row = Math.min(3, Math.floor((lat - b.south) / L3_SIZE));
+  const col = Math.min(3, Math.floor((lon - b.west) / L3_SIZE));
+  return `${l2}.${pad(row * 4 + col + 1, 2)}`;
+}
+
+/** The 16 L3 cells of an L2 cell, in k order (rows from the south, columns from the west). */
+export function l3Children(l2Id: string): string[] {
+  cellBounds(l2Id); // throws on a bad ID
+  return Array.from({ length: 16 }, (_, i) => `${l2Id}.${pad(i + 1, 2)}`);
+}
+
+/**
+ * The 3 x 3 block of L2 cells around one cell, the cell itself in the middle (index 4), from the south-west corner,
+ * row by row. Crosses 1° boundaries (the neighbor gets another L1 prefix). Rows past a pole are left out, and
+ * longitudes wrap at the antimeridian.
+ */
+export function neighborsOf(l2Id: string): string[] {
+  const b = cellBounds(l2Id);
+  const lat = b.south + L2_SIZE / 2;
+  const lon = b.west + L2_SIZE / 2;
+  const ids: string[] = [];
+  for (const dLat of [-1, 0, 1]) {
+    const y = lat + dLat * L2_SIZE;
+    if (y < -90 || y > 90) continue;
+    for (const dLon of [-1, 0, 1]) {
+      const x = lon + dLon * L2_SIZE;
+      ids.push(cellIdAt(y, x >= 180 ? x - 360 : x < -180 ? x + 360 : x));
+    }
+  }
+  return ids;
+}
+
+/** The smallest bounds that enclose the boxes (e.g. the 3 x 3 block of the drill-down). */
+export function unionBounds(boxes: readonly Bounds[]): Bounds {
+  return {
+    west: Math.min(...boxes.map((b) => b.west)),
+    south: Math.min(...boxes.map((b) => b.south)),
+    east: Math.max(...boxes.map((b) => b.east)),
+    north: Math.max(...boxes.map((b) => b.north)),
+  };
 }
 
 /**

@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { cellBounds, cellIdAt, cellOutlinesGeoJSON, cellsInBounds, cellsToGeoJSON, clampBounds } from "./grid";
+import {
+  cellBounds,
+  cellIdAt,
+  cellOutlinesGeoJSON,
+  cellsInBounds,
+  cellsToGeoJSON,
+  clampBounds,
+  l3Bounds,
+  l3Children,
+  l3IdAt,
+  neighborsOf,
+  unionBounds,
+} from "./grid";
 
 const PILOT = { west: -48.8, south: -18.4, east: -34.7, north: -1.0 };
 
@@ -66,5 +78,85 @@ describe("area cell outlines", () => {
       expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(0.25, 9);
       expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(0.25, 9);
     }
+  });
+});
+
+describe("L3 drill-down cells", () => {
+  it("decodes an L3 ID from the ID alone: k = row * 4 + col + 1 inside the L2 cell", () => {
+    // G072131.11 is -48.5..-48.25 x -17.5..-17.25.
+    expect(l3Bounds("G072131.11.01")).toEqual({ west: -48.5, south: -17.5, east: -48.4375, north: -17.4375 });
+    expect(l3Bounds("G072131.11.04")).toEqual({ west: -48.3125, south: -17.5, east: -48.25, north: -17.4375 });
+    expect(l3Bounds("G072131.11.05")).toEqual({ west: -48.5, south: -17.4375, east: -48.4375, north: -17.375 });
+    expect(l3Bounds("G072131.11.16")).toEqual({ west: -48.3125, south: -17.3125, east: -48.25, north: -17.25 });
+  });
+
+  it("round-trips a point to its L3 cell and back, and the parent is the ID without its last .NN", () => {
+    for (const id of l3Children("G080140.06")) {
+      const b = l3Bounds(id);
+      expect(l3IdAt((b.south + b.north) / 2, (b.west + b.east) / 2)).toBe(id);
+      expect(id.slice(0, -3)).toBe("G080140.06");
+      expect(cellIdAt((b.south + b.north) / 2, (b.west + b.east) / 2)).toBe("G080140.06");
+    }
+  });
+
+  it("the 16 children tile their parent exactly", () => {
+    const ids = l3Children("G072131.11");
+    expect(ids).toHaveLength(16);
+    expect(new Set(ids).size).toBe(16);
+    expect(ids[0]).toBe("G072131.11.01");
+    expect(ids[15]).toBe("G072131.11.16");
+    expect(unionBounds(ids.map(l3Bounds))).toEqual(cellBounds("G072131.11"));
+    const area = ids.map(l3Bounds).reduce((sum, b) => sum + (b.east - b.west) * (b.north - b.south), 0);
+    expect(area).toBeCloseTo(0.25 * 0.25, 12);
+  });
+
+  it("rejects malformed L3 IDs", () => {
+    expect(() => l3Bounds("G072131.11")).toThrow();
+    expect(() => l3Bounds("G072131.11.00")).toThrow();
+    expect(() => l3Bounds("G072131.11.17")).toThrow();
+    expect(() => l3Bounds("G072131.17.01")).toThrow();
+    expect(() => l3Bounds("G072131.11.1")).toThrow();
+    expect(() => l3Children("G072131.11.01")).toThrow();
+    expect(() => l3Children("nope")).toThrow();
+  });
+});
+
+describe("neighbors of an L2 cell", () => {
+  it("returns the 3 x 3 block, the cell in the middle, inside one 1° cell", () => {
+    // k = 6 is row 1, col 1: every neighbor is in the same 1° cell.
+    expect(neighborsOf("G080140.06")).toEqual([
+      "G080140.01", "G080140.02", "G080140.03",
+      "G080140.05", "G080140.06", "G080140.07",
+      "G080140.09", "G080140.10", "G080140.11",
+    ]);
+  });
+
+  it("crosses 1° boundaries: the south-west corner cell has neighbors in three other 1° cells", () => {
+    const ids = neighborsOf("G080140.01");
+    expect(ids).toEqual([
+      "G079139.16", "G079140.13", "G079140.14",
+      "G080139.04", "G080140.01", "G080140.02",
+      "G080139.08", "G080140.05", "G080140.06",
+    ]);
+  });
+
+  it("crosses the north-east corner too, and the block is 0.75° on each side around the cell", () => {
+    const ids = neighborsOf("G080140.16");
+    expect(ids[8]).toBe("G081141.01");
+    expect(ids[4]).toBe("G080140.16");
+    const block = unionBounds(ids.map(cellBounds));
+    const center = cellBounds("G080140.16");
+    expect(block).toEqual({
+      west: center.west - 0.25,
+      south: center.south - 0.25,
+      east: center.east + 0.25,
+      north: center.north + 0.25,
+    });
+    expect(new Set(ids).size).toBe(9);
+  });
+
+  it("rejects malformed IDs", () => {
+    expect(() => neighborsOf("G080140.17")).toThrow();
+    expect(() => neighborsOf("G080140.16.01")).toThrow();
   });
 });

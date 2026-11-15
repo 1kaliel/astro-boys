@@ -2,13 +2,23 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { setWorkerUrl, type ExpressionSpecification, type StyleSpecification } from "maplibre-gl";
 // MapLibre looks for its worker next to its own file, which does not exist after bundling: point it at the asset.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { useEffect, useMemo, useState, type RefObject } from "react";
-import Map, { Layer, NavigationControl, Popup, Source, type MapLayerMouseEvent, type MapRef } from "react-map-gl/maplibre";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import Map, { Layer, Marker, NavigationControl, Popup, Source, type MapLayerMouseEvent, type MapRef } from "react-map-gl/maplibre";
+import type { DrilldownResponse } from "../../data/api";
 import { formatCount } from "../../lib/format";
-import { boundsToGeoJSON, cellOutlinesGeoJSON, cellsInBounds, cellsToGeoJSON, type Bounds, type CellFeatureProps } from "../../lib/grid";
+import {
+  boundsToGeoJSON,
+  cellBounds,
+  cellOutlinesGeoJSON,
+  cellsInBounds,
+  cellsToGeoJSON,
+  type Bounds,
+  type CellFeatureProps,
+} from "../../lib/grid";
 import { prefersReducedMotion, readTokens, useColorScheme, type ColorScheme } from "../../lib/hooks";
-import { rampStep } from "../../lib/scale";
+import { drillStep, rampStep } from "../../lib/scale";
 import { PILOT_BOUNDS } from "../../state/dashboard";
+import { blockBounds, blockGeoJSON, l3GeoJSON, nativeDetections, satelliteName, type DrillCellProps } from "./drill";
 
 setWorkerUrl(workerUrl);
 
@@ -20,7 +30,13 @@ const STYLE_URLS: Record<ColorScheme, string> = {
 const STYLE_TIMEOUT_MS = 5000;
 
 const SEQ_TOKENS = [1, 2, 3, 4, 5, 6, 7].map((i) => `--viz-seq-${i}`);
-const TOKENS = [...SEQ_TOKENS, "--viz-selection", "--color-surface"] as const;
+const TOKENS = [...SEQ_TOKENS, "--viz-selection", "--color-surface", "--color-text-secondary", "--viz-cell-outline"] as const;
+type Token = (typeof TOKENS)[number];
+
+/** Layers the pointer reads: the harmonized L2 cells, or, in the drill-down, the L3 cells and the 3 x 3 block. */
+const L2_LAYERS = ["cells-fill"];
+const DRILL_LAYERS = ["drill-l3-hit", "drill-block-hit"];
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /** Pan limits in the flat view, [west, south, east, north]: the pilot extent with a margin. */
 const MERCATOR_LIMITS: [number, number, number, number] = [-56, -26, -27, 6];
@@ -56,6 +72,10 @@ function useBasemap(scheme: ColorScheme): { style: StyleSpecification | null; of
   return state;
 }
 
+/** The drill-down on screen: the L2 cell, the API answer once it is in (null while loading or on error), and the
+ * class limits of its L3 counts. */
+export type DrillView = { cell: string; data: DrilldownResponse | null; breaks: readonly number[] };
+
 type CellMapProps = {
   mapRef: RefObject<MapRef | null>;
   cells: readonly CellFeatureProps[];
@@ -63,16 +83,30 @@ type CellMapProps = {
   breaks: readonly number[];
   area: Bounds;
   projection: "mercator" | "globe";
+  /** Null = the harmonized L2 map. Otherwise only native detections are drawn, never the harmonized layer. */
+  drill: DrillView | null;
+  /** Click on an L2 cell (or on a neighbor in the drill-down): show its L3 sub-cells. */
+  onDrill: (cell: string) => void;
 };
 
-type Hover = { lng: number; lat: number; cell: CellFeatureProps };
+type Hover = { lng: number; lat: number } & (
+  | { kind: "l2"; cell: CellFeatureProps }
+  | { kind: "block"; id: string; count: number | null; target: boolean }
+  | { kind: "l3"; id: string; count: number }
+);
 
-export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProps) {
+const isTrue = (value: unknown) => value === true || value === "true";
+/** GeoJSON properties come back from MapLibre serialized: a null may arrive as missing or as "null". */
+const countOf = (value: unknown) => (value == null || value === "null" ? null : Number(value));
+
+export function CellMap({ mapRef, cells, breaks, area, projection, drill, onDrill }: CellMapProps) {
   const scheme = useColorScheme();
   const { style, offline } = useBasemap(scheme);
   // Re-read the tokens whenever the theme changes.
   const colors = useMemo(() => readTokens(TOKENS), [scheme]);
   const [hover, setHover] = useState<Hover | null>(null);
+  const drillCell = drill?.cell ?? null;
+  const drillData = drill && drill.data?.cell === drill.cell ? drill.data : null;
 
   // Zero detections are not drawn: "no detection" (never "no fire"), and empty areas stay empty.
   const cellData = useMemo(() => cellsToGeoJSON(cells.filter((cell) => cell.value > 0)), [cells]);
@@ -87,6 +121,53 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
     return ["step", ["get", "value"], color(1), ...breaks.flatMap((edge, i) => [edge, color(i + 2)])] as unknown as ExpressionSpecification;
   }, [colors, breaks]);
 
+  // Drill-down: the 3 x 3 block (outlines, native counts) and the target's 16 L3 cells (own scale, native counts).
+  const blockData = useMemo(() => (drillCell ? blockGeoJSON(drillCell, drillData) : EMPTY_FC), [drillCell, drillData]);
+  const l3Data = useMemo(() => l3GeoJSON(drillData), [drillData]);
+  const targetData = useMemo(() => (drillCell ? boundsToGeoJSON(cellBounds(drillCell)) : EMPTY_FC), [drillCell]);
+  const drillBreaks = drill?.breaks;
+  const l3Color = useMemo((): ExpressionSpecification | string => {
+    const edges = drillBreaks ?? [];
+    const color = (count: number) => colors[`--viz-seq-${drillStep(count, edges)}` as Token];
+    if (edges.length === 0) return color(1);
+    return ["step", ["get", "count"], color(0), ...edges.flatMap((edge) => [edge, color(edge)])] as unknown as ExpressionSpecification;
+  }, [colors, drillBreaks]);
+  const labels = useMemo(
+    () =>
+      blockData.features
+        .map((f) => f.properties as DrillCellProps)
+        // Once subdivided, the target's counts are its L3 cells: a label on top would hide them.
+        .filter((p) => !(p.target && drillData?.subdivided)),
+    [blockData, drillData],
+  );
+
+  // Entering the drill-down frames the 3 x 3 block and remembers the view; leaving it restores that view.
+  // Declared before the area effect, so a new area (which also leaves the drill-down) wins over the restore.
+  const savedView = useRef<{ center: [number, number]; zoom: number } | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    setHover(null);
+    if (!map) return;
+    const duration = prefersReducedMotion() ? 0 : 400;
+    if (drillCell) {
+      if (!savedView.current) {
+        const center = map.getCenter();
+        savedView.current = { center: [center.lng, center.lat], zoom: map.getZoom() };
+      }
+      const b = blockBounds(drillCell);
+      map.fitBounds(
+        [
+          [b.west, b.south],
+          [b.east, b.north],
+        ],
+        { padding: 32, duration },
+      );
+    } else if (savedView.current) {
+      map.easeTo({ ...savedView.current, duration });
+      savedView.current = null;
+    }
+  }, [drillCell, mapRef]);
+
   // Follow the selected area (no animation when the user asked for reduced motion).
   useEffect(() => {
     mapRef.current?.fitBounds(
@@ -98,24 +179,37 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
     );
   }, [area, mapRef]);
 
-  const onPointer = (event: MapLayerMouseEvent) => {
+  const hoverAt = (event: MapLayerMouseEvent): Hover | null => {
     const feature = event.features?.[0];
-    if (!feature) {
-      setHover(null);
-      return;
-    }
+    if (!feature) return null;
     const p = feature.properties as Record<string, unknown>;
-    setHover({
-      lng: event.lngLat.lng,
-      lat: event.lngLat.lat,
-      cell: {
-        id: String(p.id),
-        value: Number(p.value),
-        estimated: p.estimated === true || p.estimated === "true",
-        partial: p.partial === true || p.partial === "true",
-      },
-    });
+    const at = { lng: event.lngLat.lng, lat: event.lngLat.lat };
+    switch (feature.layer.id) {
+      case "drill-l3-hit":
+        return { ...at, kind: "l3", id: String(p.id), count: Number(p.count) };
+      case "drill-block-hit":
+        return { ...at, kind: "block", id: String(p.id), count: countOf(p.count), target: isTrue(p.target) };
+      default:
+        return {
+          ...at,
+          kind: "l2",
+          cell: { id: String(p.id), value: Number(p.value), estimated: isTrue(p.estimated), partial: isTrue(p.partial) },
+        };
+    }
   };
+
+  const onMove = (event: MapLayerMouseEvent) => setHover(hoverAt(event));
+
+  // A click on an L2 cell, or on a neighbor in the drill-down, subdivides it. A click on an L3 cell (the deepest
+  // level) or on the target shows its popup, which is how a touch screen reads a cell.
+  const onClick = (event: MapLayerMouseEvent) => {
+    const next = hoverAt(event);
+    if (next?.kind === "l2") onDrill(next.cell.id);
+    else if (next?.kind === "block" && !next.target) onDrill(next.id);
+    else setHover(next);
+  };
+
+  const source = drillData ? `${satelliteName(drillData.satellite)} ${drillData.instrument}` : "native";
 
   if (!style) {
     return <div className="map-canvas map-loading">Loading basemap…</div>;
@@ -143,9 +237,9 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
         pixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
         fadeDuration={0}
         attributionControl={{ compact: true }}
-        interactiveLayerIds={["cells-fill"]}
-        onMouseMove={onPointer}
-        onClick={onPointer}
+        interactiveLayerIds={drill ? DRILL_LAYERS : L2_LAYERS}
+        onMouseMove={onMove}
+        onClick={onClick}
         onMouseLeave={() => setHover(null)}
         onLoad={(event) => {
           event.target.touchZoomRotate.disableRotation();
@@ -157,14 +251,60 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
         <NavigationControl position="top-right" showCompass={false} />
         <Source id="cells" type="geojson" data={cellData}>
           {/* No stroke around cells: an estimated month is flagged once (badge), not on thousands of cells. */}
-          <Layer id="cells-fill" type="fill" paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }} />
+          {/* Hidden in the drill-down: the harmonized layer is never shown next to the native L3 cells, or as them. */}
+          <Layer
+            id="cells-fill"
+            type="fill"
+            layout={{ visibility: drill ? "none" : "visible" }}
+            paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
+          />
         </Source>
         <Source id="area-cells" type="geojson" data={areaCellData}>
-          <Layer id="area-cells-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 0.5, "line-opacity": 0.6 }} />
+          <Layer
+            id="area-cells-line"
+            type="line"
+            layout={{ visibility: drill ? "none" : "visible" }}
+            paint={{ "line-color": colors["--viz-selection"], "line-width": 0.5, "line-opacity": 0.6 }}
+          />
         </Source>
         <Source id="area" type="geojson" data={areaData}>
           <Layer id="area-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }} />
         </Source>
+        {/* Drill-down, native detections only. Always mounted (empty outside it), so the layers the pointer reads exist. */}
+        <Source id="drill-block" type="geojson" data={blockData}>
+          <Layer id="drill-block-hit" type="fill" paint={{ "fill-color": colors["--color-surface"], "fill-opacity": 0 }} />
+          <Layer
+            id="drill-block-line"
+            type="line"
+            filter={["!", ["get", "target"]]}
+            paint={{ "line-color": colors["--color-text-secondary"], "line-width": 1, "line-dasharray": [3, 2] }}
+          />
+        </Source>
+        <Source id="drill-l3" type="geojson" data={l3Data}>
+          <Layer id="drill-l3-fill" type="fill" filter={[">", ["get", "count"], 0]} paint={{ "fill-color": l3Color, "fill-opacity": 0.9 }} />
+          <Layer id="drill-l3-hit" type="fill" paint={{ "fill-color": colors["--color-surface"], "fill-opacity": 0 }} />
+          <Layer id="drill-l3-line" type="line" paint={{ "line-color": colors["--viz-cell-outline"], "line-width": 0.5 }} />
+        </Source>
+        <Source id="drill-target" type="geojson" data={targetData}>
+          <Layer id="drill-target-line" type="line" paint={{ "line-color": colors["--viz-selection"], "line-width": 2 }} />
+        </Source>
+        {drill &&
+          labels.map((p) => {
+            const b = cellBounds(p.id);
+            return (
+              <Marker
+                key={p.id}
+                longitude={(b.west + b.east) / 2}
+                latitude={(b.south + b.north) / 2}
+                anchor="center"
+                style={{ pointerEvents: "none" }}
+              >
+                <span className="map-cell-label" aria-hidden="true">
+                  {p.count == null ? "…" : formatCount(p.count)}
+                </span>
+              </Marker>
+            );
+          })}
         {hover && (
           <Popup
             longitude={hover.lng}
@@ -175,11 +315,40 @@ export function CellMap({ mapRef, cells, breaks, area, projection }: CellMapProp
             offset={10}
             className="map-popup"
           >
-            <strong>{formatCount(hover.cell.value)}</strong> VIIRS-equivalent hotspots
-            <br />
-            Cell {hover.cell.id}
-            {hover.cell.estimated && " · Estimated from MODIS"}
-            {hover.cell.partial && " · Partial month"}
+            {hover.kind === "l2" && (
+              <>
+                <strong>{formatCount(hover.cell.value)}</strong> VIIRS-equivalent hotspots
+                <br />
+                Cell {hover.cell.id}
+                {hover.cell.estimated && " · Estimated from MODIS"}
+                {hover.cell.partial && " · Partial month"}
+                <br />
+                <span className="map-popup-hint">Click to see its 16 sub-cells (native detections)</span>
+              </>
+            )}
+            {hover.kind === "l3" && (
+              <>
+                {hover.count > 0 ? <strong>{nativeDetections(hover.count)}</strong> : "No native detection"} · Cell{" "}
+                {hover.id}
+                <br />
+                <span className="map-popup-hint">
+                  {hover.count > 0
+                    ? `0.0625° sub-cell · ${source}, not harmonized`
+                    : "No detection does not mean no fire"}
+                </span>
+              </>
+            )}
+            {hover.kind === "block" && (
+              <>
+                {hover.count == null ? "Loading…" : <strong>{nativeDetections(hover.count)}</strong>} · Cell {hover.id}
+                <br />
+                <span className="map-popup-hint">
+                  {hover.target
+                    ? `0.25° cell, not subdivided · ${source}, not harmonized`
+                    : `Neighboring 0.25° cell · ${source}, not harmonized · click to subdivide it`}
+                </span>
+              </>
+            )}
           </Popup>
         )}
       </Map>

@@ -85,7 +85,11 @@ export function DashboardPage() {
         <Card
           className="dash-map"
           title="Map"
-          caption="Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"
+          caption={
+            state.drillCell
+              ? "Source: NASA FIRMS · native detections of one satellite per 0.0625° sub-cell, not harmonized · basemap © OpenStreetMap contributors"
+              : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"
+          }
         >
           {showMap ? (
             <Suspense
