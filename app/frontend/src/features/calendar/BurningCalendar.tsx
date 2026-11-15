@@ -3,9 +3,18 @@ import { useCallback, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
+import { ImageDownload, TextDownload } from "../../components/ui/DownloadBar";
 import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
 import { anomalyColor, anomalyStep } from "../../lib/charts";
+import {
+  areaText,
+  calendarCsv,
+  exportFileName,
+  periodText,
+  SOURCE_TEXT,
+  type ExportMeta,
+} from "../../lib/exportFile";
 import { formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
 import { CalendarAxes, CalendarCell, CalendarCellContext, CalendarDefs } from "./CalendarCell";
@@ -179,7 +188,39 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   }
 
   const columns = series[0]?.data.length ?? 12;
+  const unit = raw ? RAW_UNIT : CALENDAR_UNIT;
+  const shownYears = `${series[0]?.id ?? startYear}-${series[series.length - 1]?.id ?? endYear}`;
+  const exportMeta: ExportMeta = {
+    title: anomaly ? "Burning calendar: anomaly" : "Burning calendar",
+    unit: anomaly ? ANOMALY_UNIT : unit,
+    series: raw
+      ? "Raw by sensor: native count of each month's source satellite (Aqua MODIS until January 2012; VIIRS after). Not harmonized."
+      : "Harmonized: VIIRS-equivalent hotspot detections; months before February 2012 are estimated from MODIS.",
+    area: areaText(state.area),
+    period: `${periodText(startYear, endYear, period)}${state.months.length > 0 ? `; months: ${monthSpan(state.months)}` : ""}`,
+    modelVersion: dataset.modelVersion,
+    source: SOURCE_TEXT,
+    legend: [
+      anomaly
+        ? "Colors: robust z-score against the median of that month of the year (not a probability, not a forecast)."
+        : `Colors, lightest to darkest: ${legendRanges(scale)
+            .map((range) => range.label)
+            .join(", ")} detections per month (quantile steps).`,
+      "Hatched: no data. Dot: estimated from MODIS. Corner mark: partial month.",
+    ],
+  };
+  const csvRows = series.map((row) => ({
+    year: Number(row.id),
+    cells: row.data.map((cell) => ({
+      month: cell.month,
+      label: cell.x,
+      count: cell.y,
+      estimated: cell.entry?.isEstimated ?? false,
+      partial: cell.entry?.isPartial ?? false,
+    })),
+  }));
   const chart = (
+    <>
     <div className="calendar-scroll">
       <div
         className="calendar-chart"
@@ -217,6 +258,12 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         </CalendarCellContext.Provider>
       </div>
     </div>
+    <ImageDownload
+      meta={exportMeta}
+      fileName={(ext) => exportFileName("calendar", [raw ? "raw" : anomaly ? "anomaly" : "harmonized", shownYears, period], ext)}
+      svgSelector=".calendar-chart svg"
+    />
+    </>
   );
 
   return (
@@ -255,11 +302,16 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           (robust z-score). It says how unusual a month was; it is not a probability of fire and not a forecast.
         </p>
       )}
-      <ChartTableTabs
-        label="Burning calendar"
-        chart={chart}
-        table={<CalendarTable series={series} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />}
-      />
+      <div className="download-bar" role="group" aria-label="Download the calendar table">
+        <span className="download-label">Table</span>
+        <TextDownload
+          label="Download CSV"
+          mime="text/csv"
+          fileName={exportFileName("calendar", [raw ? "raw" : "harmonized", shownYears, period], "csv")}
+          build={() => calendarCsv(csvRows, { ...exportMeta, title: "Burning calendar table", unit })}
+        />
+      </div>
+      <ChartTableTabs label="Burning calendar" chart={chart} table={<CalendarTable series={series} unit={unit} />} />
       {anomaly ? (
         <AnomalyLegend unit={ANOMALY_UNIT} />
       ) : (

@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
+import { ImageDownload } from "../../components/ui/DownloadBar";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { axisTicks, monthsOfYear, niceCeil, seasonalProfile } from "../../lib/charts";
+import { areaText, exportFileName, periodText, SOURCE_TEXT, type ExportContext } from "../../lib/exportFile";
 import { formatCompact, formatCount } from "../../lib/format";
 import { monthLong, monthShort } from "../calendar/calendarText";
 import { BASELINE_Y, CHART, INNER_WIDTH, bandPath, linePath, xOf, yOf, type Point } from "./svg";
@@ -15,6 +17,8 @@ type SeasonalProfileProps = {
   endYear: number;
   /** The year drawn over the band: the year of the month picked in the calendar, or the latest year. */
   year: number;
+  /** Area, period and model version, written into the downloaded image. */
+  exportContext: ExportContext;
 };
 
 /**
@@ -22,7 +26,7 @@ type SeasonalProfileProps = {
  * median of the years shown, with one year drawn over it. Estimated months of that year carry their 90% interval
  * as error bars; a partial month is a hollow point and is never read as "little activity".
  */
-export function SeasonalProfile({ months, startYear, endYear, year }: SeasonalProfileProps) {
+export function SeasonalProfile({ months, startYear, endYear, year, exportContext }: SeasonalProfileProps) {
   const profile = useMemo(() => seasonalProfile(months, startYear, endYear), [months, startYear, endYear]);
   const yearMonths = useMemo(() => monthsOfYear(months, year), [months, year]);
 
@@ -49,7 +53,23 @@ export function SeasonalProfile({ months, startYear, endYear, year }: SeasonalPr
   const hasEstimated = yearMonths.some((m) => m?.isEstimated && m.ciLow !== null && m.ciHigh !== null);
   const hasPartial = yearMonths.some((m) => m?.isPartial && m.count !== null);
 
+  const exportMeta = {
+    title: `Seasonal profile: ${year} against ${startYear}-${endYear}`,
+    unit: SEASONAL_UNIT,
+    series: `Harmonized series (VIIRS-equivalent); months before February 2012 are estimated from MODIS.`,
+    area: areaText(exportContext.area),
+    period: periodText(startYear, endYear, exportContext.period),
+    modelVersion: exportContext.modelVersion,
+    source: SOURCE_TEXT,
+    legend: [
+      `Shaded band: 10th to 90th percentile of complete months, ${startYear}-${endYear}. Dashed line: median. Solid line: ${year}.`,
+      ...(hasEstimated ? ["Vertical bars: 90% interval of months estimated from MODIS."] : []),
+      ...(hasPartial ? ["Hollow point: partial month, not comparable with the band."] : []),
+    ],
+  };
+
   const chart = (
+    <>
     <div className="chart-scroll">
       <svg
         className="line-chart"
@@ -106,6 +126,12 @@ export function SeasonalProfile({ months, startYear, endYear, year }: SeasonalPr
         </g>
       </svg>
     </div>
+    <ImageDownload
+      meta={exportMeta}
+      fileName={(ext) => exportFileName("seasonal-profile", [year, `${startYear}-${endYear}`, exportContext.period], ext)}
+      svgSelector="svg.line-chart"
+    />
+    </>
   );
 
   const table = (

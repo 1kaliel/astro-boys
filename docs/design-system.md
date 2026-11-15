@@ -188,6 +188,21 @@ labels scroll with it.
 - Inside the calendar card the diverging tokens are re-pointed to their light values in every OS mode (the card is
   always light): about the median is white, "no comparison" takes the plane color.
 
+## Downloads (D9)
+
+- **Calendar table as CSV**: a "Table: Download CSV" button above the calendar. Built in the browser from the months in
+  memory (`lib/exportFile.ts`, `calendarCsv`), for the scale (harmonized or raw by sensor), time of day, years and months
+  on screen. First rows are `#` comments with title, unit, area, period, series, model version and source; then `year`
+  plus one column per month. Counts are rounded like the table; **no data or no estimate is an empty field, never 0**;
+  estimated and partial months are listed in closing `#` rows.
+- **Chart images**: "Image: SVG, PNG" under the calendar heatmap, the seasonal profile and the trend chart
+  (`components/ui/DownloadBar.tsx`, `lib/chartExport.ts`). The SVG on screen is cloned with its computed styles inlined
+  (CSS variables and `currentColor` resolved), so the file needs no stylesheet and keeps the theme on screen (dark, light,
+  the calendar's light island). Title, series, legend, unit, area, period, source, model version and the "not fires"
+  sentence are written as text. PNG is the same SVG drawn at 2x.
+- Real `<button>`s with labels (`Button`), keyboard operable; under 56rem the targets are 44 px
+  (`--download-target-touch`, `styles/charts.css`).
+
 ## Words
 
 - Say **hotspots** or **fire activity**. Never "fires", "burned area", "risk", "probability" or "forecast".
