@@ -154,7 +154,8 @@ export function CalendarKey({ ranges, anomaly, unit }: CalendarKeyProps) {
               0
             </span>
             <span>
-              <strong>Zero</strong>: the sensors looked and found no detection. A measured zero, not missing data.
+              <strong>Zero</strong>: the sensors were observing and found no detection. A measured zero, not missing
+              data; a day or month they were not observing is hatched instead.
             </span>
           </li>
         )}
@@ -174,7 +175,8 @@ export function CalendarKey({ ranges, anomaly, unit }: CalendarKeyProps) {
         <li>
           <span className="calendar-chip calendar-chip-nodata" aria-hidden="true" />
           <span>
-            <strong>Hatched</strong>: no data for that month. It is not zero.
+            <strong>Hatched</strong>: no data for that month, or in the Skyline a day the sensor was not observing (an
+            outage). It is not zero.
           </span>
         </li>
         <li>

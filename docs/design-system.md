@@ -352,6 +352,14 @@ sources. The layer selector has six options, so on a narrow screen it scrolls si
 A third view of the calendar, after Chart and Table: one year of one sensor, day by day. A flat heat map (days as boxes
 on a week grid) folds into an isometric skyline (the same boxes as bars, the height is the count) and back. The projection
 is linear, so equal heights have equal lengths on screen anywhere in the grid. Colours are the hotspot ramp tokens
-(`--magma-*`); the legend uses the same tokens. The view is for reading one year: the year picker covers 2013 to 2025 of
+(`--magma-*`); the legend uses the same tokens. A measured zero (the sensor was observing and found nothing) is a thin
+slab in the calendar's zero colour with its thin edge (`--cal-zero`, `--cal-line`). A day the sensor was not observing
+(an outage or not operating, from `coverage_daily`) is **no data**: a flat tile with the calendar's hatching
+(`--cal-nodata-bg`, `--cal-hatch`), never a bar and never a zero slab, in both the flat and the 3D view; it reads "No
+data: VIIRS S-NPP was not observing (outage)" on hover and with the keys, and it takes no part in the total, the busiest
+day, the runs (it ends a run) or the colour levels. The legend shows the zero chip, the ramp and the no-data chip, the
+same chips as the calendar key. If the coverage cannot be checked, days without detections are drawn as no data too, and
+a line above the chart says so. The days of the first week before 1 January are not drawn. The view is for reading one
+year: the year picker covers 2013 to 2025 of
 VIIRS S-NPP. Keys: arrows move between days, Escape clears, Home and End go to the first and last day. The skyline is
 not a replacement of the harmonized calendar and carries its own label: "native hotspot detections, not harmonized".
