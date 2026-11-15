@@ -139,7 +139,7 @@ def test_observed_months_have_an_interval_equal_to_the_count(client: TestClient)
     assert observed["ci_low"] == observed["ci_high"] == observed["count_harmonized"]
 
 
-def test_the_interval_of_a_sum_comes_from_the_summed_variance(
+def test_the_interval_of_a_sum_widens_the_summed_variance_for_correlated_cells(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _write_calendar(tmp_path, estimated_var=4.0)
@@ -147,10 +147,24 @@ def test_the_interval_of_a_sum_comes_from_the_summed_variance(
     with TestClient(app) as client:
         estimated = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2003, 1)
 
-    spread = 1.645 * math.sqrt(4.0 + 4.0)  # variances of A and B add
+    # Errors of neighboring cells move together: var_area = (4 + 4) * 2 cells ** 0.32, not just 4 + 4.
+    spread = 1.645 * math.sqrt((4.0 + 4.0) * 2**0.32)
     assert estimated["count_harmonized"] == 11
     assert estimated["ci_low"] == pytest.approx(11 - spread, abs=0.001)
     assert estimated["ci_high"] == pytest.approx(11 + spread, abs=0.001)
+
+
+def test_the_interval_of_one_cell_is_not_widened(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _write_calendar(tmp_path, estimated_var=4.0)
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp_path))
+    box = {"west": -39.95, "south": -9.95, "east": -39.8, "north": -9.8}  # cell A only
+    with TestClient(app) as client:
+        estimated = _month(client.get("/api/calendar", params=box).json(), 2003, 1)
+
+    spread = 1.645 * math.sqrt(4.0)  # 1 ** 0.32 = 1
+    assert estimated["count_harmonized"] == 10
+    assert estimated["ci_low"] == pytest.approx(max(0.0, 10 - spread), abs=0.001)
+    assert estimated["ci_high"] == pytest.approx(10 + spread, abs=0.001)
 
 
 def test_a_partial_month_is_flagged_and_gets_no_anomaly(client: TestClient) -> None:

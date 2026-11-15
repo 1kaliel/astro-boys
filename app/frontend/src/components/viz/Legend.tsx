@@ -1,14 +1,20 @@
+import { Fragment } from "react";
+import { formatCompact } from "../../lib/format";
+import { rampStep } from "../../lib/scale";
+
 type LegendProps = {
   mode: "sequential" | "diverging";
-  /** Shown at the ends of the ramp, e.g. "0" and "1,240" (sequential) — ignored for diverging. */
+  /** Shown at the ends of the ramp, e.g. "0" and "113K+" (sequential). */
   minLabel?: string;
   maxLabel?: string;
-  /** e.g. "VIIRS-equivalent hotspots per month" */
-  unit: string;
-  /** Show the provenance marks (estimated, partial month, no data). */
-  showMarking?: boolean;
+  /** Class limits (map): the legend shows each limit between its two colors instead of min and max. */
+  breaks?: readonly number[];
   /** Sequential only: the colors actually used, each with where it starts (e.g. "≥ 4,400"). */
   stops?: ReadonlyArray<{ step: number; label: string }>;
+  /** e.g. "VIIRS-equivalent hotspots per month" */
+  unit: string;
+  /** Show the calendar marks (sensor change line, partial month, no data). */
+  showMarking?: boolean;
   /** One line that says how the colors were split, so the scale is never a secret. */
   note?: string;
 };
@@ -16,7 +22,7 @@ type LegendProps = {
 const SEQ_STEPS = [1, 2, 3, 4, 5, 6, 7];
 const DIV_STEPS = ["neg-4", "neg-3", "neg-2", "neg-1", "mid", "pos-1", "pos-2", "pos-3", "pos-4"];
 
-export function Legend({ mode, minLabel, maxLabel, unit, showMarking = true, stops, note }: LegendProps) {
+export function Legend({ mode, minLabel, maxLabel, breaks, unit, showMarking = true, stops, note }: LegendProps) {
   return (
     <div className="legend" aria-label="Legend">
       <div className="legend-row">
@@ -29,6 +35,19 @@ export function Legend({ mode, minLabel, maxLabel, unit, showMarking = true, sto
               </li>
             ))}
           </ol>
+        ) : mode === "sequential" && breaks && breaks.length > 0 ? (
+          <span className="legend-classes">
+            {[...breaks, null].map((edge, i) => (
+              <Fragment key={i}>
+                <span
+                  className="legend-step"
+                  aria-hidden="true"
+                  style={{ background: `var(--viz-seq-${rampStep(i + 1, breaks.length + 1)})` }}
+                />
+                {edge !== null && <span className="legend-break">{formatCompact(edge)}</span>}
+              </Fragment>
+            ))}
+          </span>
         ) : mode === "sequential" ? (
           <>
             <span className="legend-end">{minLabel ?? "Less"}</span>
@@ -59,10 +78,8 @@ export function Legend({ mode, minLabel, maxLabel, unit, showMarking = true, sto
       {showMarking && (
         <ul className="legend-marks">
           <li>
-            <span className="legend-mark legend-mark-observed" aria-hidden="true" /> Observed by VIIRS
-          </li>
-          <li>
-            <span className="legend-mark legend-mark-estimated" aria-hidden="true" /> Estimated from MODIS
+            <span className="legend-mark legend-mark-boundary" aria-hidden="true" /> Sensor change, February 2012:
+            months before it are estimated from MODIS, months after it are observed by VIIRS
           </li>
           <li>
             <span className="legend-mark legend-mark-partial" aria-hidden="true" /> Partial month

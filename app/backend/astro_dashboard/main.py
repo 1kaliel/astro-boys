@@ -14,10 +14,13 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated, Literal
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from astro_dashboard import cells
 from astro_dashboard.api import load_store_from_env, router
 
 APP_DIR = Path(__file__).resolve().parents[2]
@@ -38,6 +41,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(router)
 
 
@@ -45,6 +49,19 @@ app.include_router(router)
 def healthz() -> dict[str, str]:
     """Liveness probe for Cloud Run and for the local container check."""
     return {"status": "ok"}
+
+
+@app.get("/api/cells", tags=["map"])
+def api_cells(
+    year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
+    month: Annotated[int | None, Query(ge=1, le=12)] = None,
+    period: Literal["ALL", "D", "N"] = "ALL",
+) -> dict:
+    """VIIRS-equivalent hotspot counts per 0.25° cell for one month (the map); latest month by default."""
+    try:
+        return cells.cells_for_month(year, month, period)
+    except cells.DataNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 # Mounted last, so API routes always win over static files.

@@ -70,7 +70,8 @@ class MonthOut(BaseModel):
     month: int
     # VIIRS-equivalent hotspot detections, summed over the cells of the area (never "fires").
     count_harmonized: float
-    # 90% interval. None = not delivered yet for estimated months; never zero.
+    # Approximate 90% interval (summed variance widened by n_cells ** 0.32). None = a contributing cell has no
+    # variance yet; never zero.
     ci_low: float | None
     ci_high: float | None
     is_estimated: bool

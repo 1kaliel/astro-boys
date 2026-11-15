@@ -8,13 +8,21 @@ type SegmentedControlProps<T extends string> = {
   options: ReadonlyArray<SegmentOption<T>>;
   value: T;
   onChange: (value: T) => void;
+  /** Keep the label for screen readers only (e.g. on the map toolbar). */
+  hideLabel?: boolean;
 };
 
 /** Single-choice toggle group (e.g. Day / Night / All). One option is always selected. */
-export function SegmentedControl<T extends string>({ label, options, value, onChange }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  hideLabel,
+}: SegmentedControlProps<T>) {
   return (
     <div className="control">
-      <span className="control-label">{label}</span>
+      <span className={hideLabel ? "sr-only" : "control-label"}>{label}</span>
       <ToggleGroup
         className="segmented"
         aria-label={label}
