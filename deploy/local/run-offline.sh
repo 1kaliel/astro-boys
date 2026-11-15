@@ -14,7 +14,7 @@
 #   processed/calendar/v1        baked into the image (required)
 #   processed/month_to_date/v1   baked with it; without it the unfinished month has no median (the build warns)
 #   processed/hotspots/v1        optional, mounted read-only for the CSV: only the years pulled locally answer
-# Offline, the basemap tiles are unavailable: the map shows the cells only. Record: docs/d12-offline-test.md
+# Offline, the basemap tiles are unavailable: the map shows the cells only. Tested on 2026-11-15 (D12, see docs/diary/2026-11-15.md)
 # Works in Git Bash on Windows (MSYS path conversion off, Windows paths via `pwd -W`) and on Linux/macOS.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1

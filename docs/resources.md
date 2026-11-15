@@ -123,7 +123,8 @@ LAADS DAAC alerts https://ladsweb.modaps.eosdis.nasa.gov/alerts-and-issues
 
 **Required by the rules.** The submission must say how AI tools were used, and AI-generated code and data must be
 acknowledged in descriptive text and metadata (images/video need a visible watermark). Record each use here as it
-happens. See [challenge/official-requirements.md](challenge/official-requirements.md#ai-super-intelligence-rules).
+happens. See the official [Participant FAQs](https://www.spaceappschallenge.org/resources/participant-faqs/) and
+[Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/).
 
 | What | Tool | Notes |
 |------|------|-------|
@@ -157,14 +158,15 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 | FIREWATCHER logo integration and favicon cropped from the supplied mark | Codex | Integrated the eight original SVG assets supplied by Mateus and adapted their placement for the dashboard and browser tab. |
 | Dashboard redesign from the team's frontend proposal, built on PR 82: `/api/daily` (`app/backend/astro_dashboard/daily.py`, `api.py`, `tests/test_daily_api.py`), calendar month and day views (`features/calendar/MonthView.tsx`, `DayDetails.tsx`, `monthModel.ts`), header with Guide tour and "Understand the data" (`AppBar.tsx`, `DataGuideDialog.tsx`, `components/ui/Tour.tsx`, `tourSteps.ts`), hierarchical filters with approximate state boxes (`FilterBar.tsx`, `AreaPicker.tsx`, `areaPresets.ts`), coordinate search with radius (`components/map/CoordinateSearch.tsx`, `coords.ts`), three KPIs and the phone view switch (`KpiRow.tsx`, `lib/metrics.ts`, `kpiEvidence.ts`, `DashboardPage.tsx`), their styles and tests | Claude Code (Anthropic; Claude Opus 5.5 and subagents) | Code written with AI assistance for Kali. The layout, the three indicators, the calendar levels, the filters and the coordinate search come from the team's proposal (FireWatch frontend specification), not from AI. Daily views show native detections of one satellite and say so; the harmonized series stays monthly. State boxes are rectangles, not borders. No data, model or metric was changed |
 | Landing page and explorer layout pass (`features/landing/`, `lib/hashRoute.ts`, `styles/landing.css`, explorer components and styles), the Brazil-wide experimental pipeline run (branch `exp/brazil`: `ASTRO_BBOX` clip override in `src/astro_fire/batch.py`; outputs only under `gs://<bucket>/astro-brazil/`) and its landing preview file `app/frontend/public/landing/brazil-2024-09.json` | Claude Code (Anthropic; Claude Opus 5.5 and subagents) | Built with AI assistance for Kali, who asked for a landing page and a Brazil-wide trial. The Brazil run uses the frozen Northeast method (no recalibration of hyperparameters, no new final test); its 2020-2021 development-year scores are reported as such. The published Northeast data was not modified |
+| Repository cleanup before submission: removal of team-internal coordination files (task board, timeline, risks, roles, team list, tool and cloud runbooks, challenge copy, internal D10/D12 check records, agent and contribution rules, issue and PR templates, diary helper, empty folders), the move of `docs/cloud/storage-layout.md` to `docs/storage-layout.md`, and the link fixes in `README.md` and the other documents | Claude Code (Anthropic) | Prepared from Jean Gustavo's cleanup plan for Kali to review; no code, data or scientific result changed |
 
 ## D12 screenshot evidence assistance
 
-Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. See [D12 validation](d12-validation.md).
+Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. The screenshots and their manifest are in [artifacts/screenshots/](../artifacts/screenshots/).
 
 ## L4 final-delivery assignment assistance
 
-AI assistance helped prepare the L4 role/format record and align the task board and team roster at Jean Gustavo's request. Jean selected Justino for S5. Existing task owners and scientific results are unchanged. This record does not claim a completed presentation, review or submission. See [delivery-roles.md](delivery-roles.md).
+AI assistance helped prepare the L4 role/format record and align the task board and team roster at Jean Gustavo's request. Jean selected Justino for S5. Existing task owners and scientific results are unchanged. This record does not claim a completed presentation, review or submission.
 
 ## S1 editorial review for Jean (15 November 2026)
 

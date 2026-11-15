@@ -37,7 +37,7 @@ the judges need a public dashboard URL. The challenge lists only FIRMS as a reso
 
 - Kali creates the project, billing, budget alert and resources, step by step, with the dry-run-first
   scripts in `infra/gcp/`. Nothing exists yet.
-- Least-privilege service accounts and team roles per [docs/cloud/iam-and-access.md](../cloud/iam-and-access.md).
-- Costs are capped by VM auto-stop, Cloud Run max instances and a budget alert ([budget-and-cost.md](../cloud/budget-and-cost.md)).
+- Least-privilege service accounts and team roles (team-internal IAM notes, removed before submission).
+- Costs are capped by VM auto-stop, Cloud Run max instances and a budget alert.
 - Google Cloud is a deviation from the challenge's suggested tools (it lists only FIRMS); recorded in
-  [suggested-tools.md](../challenge/suggested-tools.md#deviations-approved).
+  the team's suggested-tools notes (removed before submission).

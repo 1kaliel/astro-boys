@@ -12,7 +12,7 @@ The hackathon started Sat Nov 14, 2026, and the official challenge and its rules
 ## Decision
 
 1. **Challenge:** [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/).
-   It matches plan v1 Blocks 1 and 2. Summary: [../challenge/brief.md](../challenge/brief.md).
+   It matches plan v1 Blocks 1 and 2. Summary: the challenge brief (team-internal copy, removed before submission).
 2. **Two teams of three**, mirroring the two parts the brief suggests:
    - **Harmonization:** Kali, Justino, Mateus. FIRMS data → harmonized dataset and analytics.
    - **Dashboard:** Cleber, Guilherme, Jean. The web app.
@@ -22,9 +22,9 @@ The hackathon started Sat Nov 14, 2026, and the official challenge and its rules
 ## Facts that shape the plan
 
 - Deadline: **Sun Nov 15, 23:59 local event time**, about 39 hours from the start, not the 48 hours plan v1 assumed.
-  Schedule compressed in [../timeline.md](../timeline.md).
+  Schedule compressed in the team timeline (removed before submission).
 - Submission and linked materials must be in English; AI use must be acknowledged; demo ≤ 30 s or ≤ 7 slides.
-  See [../challenge/official-requirements.md](../challenge/official-requirements.md).
+  See the official [Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/).
 
 ## Consequences
 

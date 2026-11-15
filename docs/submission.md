@@ -1,7 +1,7 @@
 # Submission draft: project page fields
 
 Draft for Kali and Jean to review and paste into the Space Apps project page (tasks S1 and S4). The fields are the
-ones listed in [challenge/official-requirements.md](challenge/official-requirements.md#project-page-fields). Every
+ones listed in the official [Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/). Every
 number below comes from [methodology.md](methodology.md) or the live dashboard; check them again if the data or
 the site changes before submitting. Text drafted with an AI assistant from the team's documents; the team reviews
 and owns it.
