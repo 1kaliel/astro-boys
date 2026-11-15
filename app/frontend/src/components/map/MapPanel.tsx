@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 import {
   cellsUrl,
@@ -66,8 +66,6 @@ const LAYER_OPTIONS: ReadonlyArray<SegmentOption<MapLayer>> = (
 
 // The map opens flat, with the overview (temperature, hotspots and the live wind): those layers are MapLibre ones, and the
 // 3D globe, which has no weather yet, stays one click away.
-// The 3D view pulls in three.js: it only downloads when someone opens it.
-const GlobeView = lazy(() => import("./GlobeView"));
 
 /**
  * Map panel (task D3). Loaded on demand (React.lazy), so phones only download MapLibre when they open the map.
@@ -249,44 +247,33 @@ export default function MapPanel() {
       )}
 
       <div className="map-stage">
-        {projection === "3d" ? (
-          <Suspense fallback={<p className="map-note">Loading the 3D globe…</p>}>
-            <GlobeView
-              cells={cells}
-              breaks={breaks}
-              area={state.area}
-              onArea={(area) => dispatch({ type: "setArea", area })}
-            />
-          </Suspense>
-        ) : (
-          <CellMap
-            mapRef={mapRef}
-            cells={cells}
-            breaks={breaks}
-            cellUnit={SERIES_SHORT[shownSeries]}
-            cellSource={sourceText}
-            cellDate={hotspotsMonth}
-            area={state.area}
-            projection={projection}
-            layer={layer}
-            weather={weatherOn ? weather.data : null}
-            live={liveOn ? field : null}
-            municipal={
-              muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data, outline: muniOutline } : null
-            }
-            overview={
-              liveOn
-                ? {
-                    showThermal,
-                    thermalOpacity,
-                    showHotspots,
-                    selectedRegion: clickedState,
-                    onRegionClick: (lng, lat) => setClicked({ lng, lat }),
-                  }
-                : null
-            }
-          />
-        )}
+        <CellMap
+          mapRef={mapRef}
+          cells={cells}
+          breaks={breaks}
+          cellUnit={SERIES_SHORT[shownSeries]}
+          cellSource={sourceText}
+          cellDate={hotspotsMonth}
+          area={state.area}
+          projection={projection}
+          layer={layer}
+          weather={weatherOn ? weather.data : null}
+          live={liveOn ? field : null}
+          municipal={
+            muniOn && muniGeo.data ? { geo: muniGeo.data, weather: muniWeather.data, outline: muniOutline } : null
+          }
+          overview={
+            liveOn
+              ? {
+                  showThermal,
+                  thermalOpacity,
+                  showHotspots,
+                  selectedRegion: clickedState,
+                  onRegionClick: (lng, lat) => setClicked({ lng, lat }),
+                }
+              : null
+          }
+        />
         {liveOn && regionAnswer && field && (
           <RegionWeatherPanel answer={regionAnswer} field={field} onClose={() => setClicked(null)} />
         )}

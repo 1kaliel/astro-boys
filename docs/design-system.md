@@ -305,7 +305,7 @@ adjusted (default 50%); the wind has no switch, it runs while the map is visible
   month". The wind is then called "Historical wind" and moves at the mean flow of the month.
 
 The other layers are in the selector: Hotspots only, ERA5 temperature, ERA5 wind speed, ERA5 wind direction, and Ceará
-feels like. The 3D globe has no weather yet.
+feels like. The 3D view (MapLibre globe, tilted, cells raised by class) has no weather yet.
 
 ## Typography
 
@@ -378,4 +378,11 @@ not a replacement of the harmonized calendar and carries its own label: "native 
   link to NASA FIRMS, the API answer and a CSV of the shown rows. Sample data is badged as simulated.
 - **Map series.** MODIS (raw), VIIRS (raw), VIIRS-equivalent (harmonized). Labels come from the answer on screen, not from
   the selector, so a late answer is never shown under a newer choice.
+
+## 3D view (MapLibre)
+
+The 3D view is the same MapLibre map as Flat and Globe: the globe projection, tilted 55°, with the hotspot cells drawn as
+`fill-extrusion` boxes. The height is the class of the cell (the same classes as the colors, one step of 9 km per class),
+not a measured height: the legend and the help line say so. The area tools (draw, use the visible area) work in it.
+three.js and react-globe.gl were removed.
 
