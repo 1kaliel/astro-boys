@@ -101,7 +101,7 @@ FIREWATCHER has two pages, both open without an account.
 - A clean-clone reproduction at commit 5286248 rebuilt the published calendar and was audited. Early-years
   and 2026 ingestion were repeated on newer code with matching counts; the complete pipeline was not rerun
   on the latest code. See the reproduction reports linked from
-  https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md#reproducibility-and-evidence-status.
+  https://github.com/1kaliel/astro-boys/blob/main/docs/methodology.md#reproducibility-and-evidence-status (reproducibility section).
 
 ### What it does not do
 
