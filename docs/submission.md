@@ -6,8 +6,8 @@ number below comes from [methodology.md](methodology.md) or the live dashboard; 
 the site changes before submitting. Text drafted with an AI assistant from the team's documents; the team reviews
 and owns it.
 
-**Still open before this can be pasted:** the demo link (S2), a last read by Kali and Jean, and
-the point marked "to confirm" in the AI section.
+**Still open before this can be pasted:** the demo link (S2), a last read by Kali and Jean, and a check
+that the AI section still matches the final demo slides.
 
 ## Project name
 
@@ -127,8 +127,9 @@ AI tools were used to speed up the work, not to decide how to solve the challeng
 - **No AI-generated data, images, audio or video:** every number comes from NASA FIRMS detections processed by
   the pipeline; the charts are drawn from that data; the screenshots are captures of the running site. The one
   synthetic table (`astro-fire mock-calendar`) was used only to build screens and is labeled as synthetic.
-- **To confirm by Kali before submitting:** how the team's first plan and research notes, which were drafted with
-  chat assistants, are described here.
+- **Plan and research notes:** the team's first plan and research notes were written by team members; chat
+  assistants helped structure, consolidate and translate them into English (`docs/project-plan.md`,
+  `docs/spec/`). The choices in them are the team's, recorded as DECISION entries in the diary.
 
 ## NASA data
 
@@ -158,7 +159,7 @@ algorithm papers, tools, AI assistance) is listed with its license or citation i
 - [ ] Demo link added and opened in a private window.
 - [ ] Both site and repository links opened in a private window (S5).
 - [ ] Numbers above checked against [methodology.md](methodology.md) and the live site.
-- [ ] AI section confirmed by Kali.
+- [x] AI section confirmed by Kali (recheck against the final demo slides).
 - [ ] Both confirmation boxes ticked on the form.
 
 ## S1 editorial review status

@@ -118,16 +118,20 @@ export function AppBar({ apiStatus, simulated, modelVersion, tourSteps = TOUR_ST
     ? `${API_TEXT[apiStatus]} · Simulated data`
     : `${API_TEXT[apiStatus]}${modelVersion ? ` · Model ${modelVersion}` : ""}`;
   const showPrompt = !seen && !tourOpen;
+  const logo = scheme === "dark"
+    ? "/brand/firewatcher-logo-horizontal-compacto-negativo.svg"
+    : "/brand/firewatcher-logo-horizontal-compacto.svg";
 
   return (
     <header className="app-bar hh-bar">
       <div className="app-brand">
-        <a className="hh-home" href="#home" aria-label="FIREWATCHER home: the story behind the data">
-          <span className="app-logo" aria-hidden="true" />
-        </a>
         <div className="hh-brand-text">
           <div className="hh-title-row">
-            <h1 className="app-title">FIREWATCHER</h1>
+            <h1 className="app-title">
+              <a className="hh-home" href="#home" title="Home: the story behind the data">
+                <img className="app-logo-img" src={logo} alt="FIREWATCHER" />
+              </a>
+            </h1>
             <Tooltip content={statusText} side="bottom">
               <button type="button" className="hh-status" data-status={apiStatus} aria-label={statusText}>
                 <span className="hh-status-dot" aria-hidden="true" />

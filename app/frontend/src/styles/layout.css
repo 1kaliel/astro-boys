@@ -7,10 +7,6 @@
   --heatmap-cell-min: var(--size-target-min);
   --heatmap-gap: var(--size-px-2); /* surface gap between cells, never a border */
   --dash-gap: var(--space-4);
-  /* The logo is the brand mark, not data: fixed ends that match public/favicon.svg in both themes (the data ramp
-     --viz-seq-* flips in dark mode). */
-  --logo-start: var(--magma-300);
-  --logo-end: var(--magma-600);
 }
 
 /* App shell */
@@ -41,21 +37,15 @@
   min-width: 0;
 }
 
-.app-logo {
-  flex: none;
-  width: var(--size-target-min);
-  height: var(--size-target-min);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--logo-start), var(--logo-end));
-}
-
 .app-title {
   margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-primary);
-  white-space: nowrap;
+}
+
+.app-title img {
+  display: block;
+  width: clamp(8rem, 27vw, 12rem);
+  max-width: 100%;
+  height: auto;
 }
 
 .app-subtitle {
