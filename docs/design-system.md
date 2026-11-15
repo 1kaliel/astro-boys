@@ -225,7 +225,7 @@ deck.gl is deferred to the L3 drill-down.
 |-------|------|
 | Engine | MapLibre GL JS via react-map-gl, in its own lazy chunk (~315 KB gzip). Phones download it only after "Show map" |
 | Projection | Flat (Mercator) by default, best for choosing an area. A Flat / Globe toggle uses MapLibre's own globe (no extra library) |
-| Basemap | OpenFreeMap Positron (light) or Dark, following the theme. If the style does not load in 5 s, a plain background is used and the map says so |
+| Basemap | Satellite imagery in both themes, like Google Earth: Sentinel-2 cloudless 2016 (EOX) over NASA GIBS Blue Marble, with the borders and place names of OpenFreeMap Positron on top, white on a dark halo (`lib/basemap.ts`). If the vector style does not load in 5 s, the imagery is shown alone and the map says so. Everything drawn over the imagery for the wind (streaks, arrows, outline of Brazil) is white on a dark halo |
 | Attribution | Comes with the style, compact control, always visible. Never hidden |
 | Cells | L2 polygons built in the browser from the cell ID (`lib/grid.ts`); the API sends values only (~9 KB gzip per month) |
 | Colors | `--viz-seq-1…7`, read with `getComputedStyle` because MapLibre cannot read `var()`; re-read on theme change. Classes: fixed limits from `/api/cells` (`breaks`: quantiles 50–98% of every positive cell-month), the same for every month so a quiet month looks quiet |

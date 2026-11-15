@@ -49,10 +49,12 @@ export function WindParticles({ mapRef, field, color }: WindParticlesProps) {
 
     const count = width < 600 ? 900 : 2200;
     const spawn = (particle: Particle) => {
-      // Anywhere in the lattice; a spot with no value is retried a few times, then left for the next frame.
-      for (let tries = 0; tries < 6; tries += 1) {
-        const lon = field.west + Math.random() * (field.east - field.west);
-        const lat = field.south + Math.random() * (field.north - field.south);
+      // Anywhere the field is known (inside the clip, if any); a spot with no value is retried a few times, then left
+      // for the next frame.
+      const box = field.spawnBounds;
+      for (let tries = 0; tries < 10; tries += 1) {
+        const lon = box.west + Math.random() * (box.east - box.west);
+        const lat = box.south + Math.random() * (box.north - box.south);
         if (field.sample(lon, lat)) {
           particle.lon = lon;
           particle.lat = lat;
@@ -62,7 +64,8 @@ export function WindParticles({ mapRef, field, color }: WindParticlesProps) {
       particle.age = Math.floor(Math.random() * MAX_AGE_FRAMES);
     };
     const particles: Particle[] = Array.from({ length: count }, () => {
-      const p = { lon: field.west, lat: field.south, age: 0 };
+      // Starts with no position: if no spot is found, sample() is null and it is spawned again next frame.
+      const p = { lon: Number.NaN, lat: Number.NaN, age: 0 };
       spawn(p);
       return p;
     });
