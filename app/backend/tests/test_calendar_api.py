@@ -243,3 +243,143 @@ def test_the_app_starts_without_data_and_says_so(tmp_path: Path, monkeypatch: py
 
     assert response.status_code == 503
     assert "ASTRO_DATA_ROOT" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------------------------------------
+# Months without an estimate, and the unfinished month against the same days of earlier years
+
+
+def _add_rows(root: Path, year: int, name: str, rows: list[tuple]) -> None:
+    """Add calendar rows (cell, month, period, count, estimated, partial, days) as one more file of `year`."""
+    con = duckdb.connect()
+    con.execute(
+        """CREATE TABLE t (cell_l2 VARCHAR, lat_min DOUBLE, lat_max DOUBLE, lon_min DOUBLE, lon_max DOUBLE,
+           month INTEGER, period VARCHAR, count_harmonized DOUBLE, var_harmonized DOUBLE,
+           is_estimated BOOLEAN, is_partial BOOLEAN, days_observed INTEGER, origin VARCHAR,
+           source_satellite VARCHAR, model_version VARCHAR)"""
+    )
+    for cell, month, period, count, estimated, partial, days in rows:
+        lat, lon = CELLS[cell]
+        origin = "VIIRS_EQUIVALENT_FROM_MODIS" if estimated else "VIIRS_OBSERVED"
+        con.execute(
+            "INSERT INTO t VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [cell, lat, lat + 0.25, lon, lon + 0.25, month, period, count, None if count is None else 0.0,
+             estimated, partial, days, origin, "Aqua" if estimated else "SNPP", "test-model"],
+        )  # fmt: skip
+    folder = root / "processed" / "calendar" / "v1" / f"year={year}"
+    folder.mkdir(parents=True, exist_ok=True)
+    con.execute(f"COPY t TO '{folder / name}' (FORMAT parquet)")
+
+
+def _write_month_to_date(
+    root: Path, rows: list[tuple], month: int = 2, days: int = 10, n_years: int = 4
+) -> None:
+    """`rows` are (cell, year, period, n_hotspots): days 1..`days` of `month` in earlier years."""
+    con = duckdb.connect()
+    con.execute(
+        """CREATE TABLE t (cell_l2 VARCHAR, year INTEGER, month INTEGER, period VARCHAR, days INTEGER,
+           n_hotspots BIGINT, n_years INTEGER)"""
+    )
+    con.executemany(
+        "INSERT INTO t VALUES (?,?,?,?,?,?,?)", [(c, y, month, p, days, n, n_years) for c, y, p, n in rows]
+    )
+    folder = root / "processed" / "month_to_date" / "v1"
+    folder.mkdir(parents=True, exist_ok=True)
+    con.execute(f"COPY t TO '{folder / 'part-0.parquet'}' (FORMAT parquet)")
+
+
+# Days 1..10 of February in 2003..2006. Area (A + B), day + night, per year: 2003 -> 2 + 1 + 1 = 4,
+# 2004 -> 8, 2005 -> no row in the area (only C) = 0, 2006 -> 10. Median of 0, 4, 8, 10 = 6, MAD = 3.
+TO_DATE_ROWS = [
+    ("A", 2003, "D", 2), ("A", 2003, "N", 1), ("B", 2003, "D", 1),
+    ("A", 2004, "D", 8),
+    ("C", 2005, "D", 50),
+    ("B", 2006, "D", 7), ("B", 2006, "N", 3), ("C", 2006, "N", 9),
+]  # fmt: skip
+
+
+def _client_for(root: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(root))
+    return TestClient(app)
+
+
+def test_an_estimated_partial_month_without_an_estimate_has_no_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path)
+    # March 2003: estimated and partial, no estimate in any cell (like July and August of 2002).
+    _add_rows(tmp_path, 2003, "extra.parquet", [(c, 3, "ALL", None, True, True, 26) for c in CELLS])
+    with _client_for(tmp_path, monkeypatch) as client:
+        whole = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2003, 3)
+        # Cell C alone, and a month in which the area has no row at all: still no count, never zero.
+        only_c = {"west": -45.2, "south": -5.2, "east": -44.8, "north": -4.8}
+        single = _month(client.get("/api/calendar", params=only_c).json(), 2003, 3)
+
+    for month in (whole, single):
+        assert month["count_harmonized"] is None
+        assert month["ci_low"] is None and month["ci_high"] is None
+        assert month["anomaly_abs"] is None
+        assert month["is_estimated"] is True and month["is_partial"] is True
+
+
+def test_a_cell_without_an_estimate_leaves_the_area_sum_without_a_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path)
+    _add_rows(tmp_path, 2003, "extra.parquet", [("A", 3, "ALL", 12.0, True, False, 30),
+                                               ("B", 3, "ALL", None, True, False, 30)])  # fmt: skip
+    with _client_for(tmp_path, monkeypatch) as client:
+        body = client.get("/api/calendar", params=FULL_BOX).json()
+        only_a = client.get(
+            "/api/calendar", params={"west": -39.95, "south": -9.95, "east": -39.8, "north": -9.8}
+        ).json()
+
+    assert _month(body, 2003, 3)["count_harmonized"] is None  # 12 alone would understate the area
+    assert _month(only_a, 2003, 3)["count_harmonized"] == 12
+
+
+def test_the_unfinished_month_is_compared_with_the_same_days_of_earlier_years(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path)
+    _write_month_to_date(tmp_path, TO_DATE_ROWS)
+    with _client_for(tmp_path, monkeypatch) as client:
+        body = client.get("/api/calendar", params=FULL_BOX).json()
+        day = client.get("/api/calendar", params={**FULL_BOX, "period": "D"}).json()
+
+    partial = _month(body, 2007, 2)
+    assert partial["count_harmonized"] == 6 and partial["days_observed"] == 10
+    assert partial["median_hist"] == 6  # 0, 4, 8, 10: the year without a row in the area counts as zero
+    assert partial["median_n_years"] == 4 and partial["median_days"] == 10
+    assert partial["anomaly_abs"] == 0 and partial["anomaly_pct"] == 0 and partial["anomaly_z"] == 0
+    # A complete month keeps the full-month median, over whole months.
+    january = _month(body, 2007, 1)
+    assert january["median_hist"] == 33 and january["median_n_years"] == 5 and january["median_days"] is None
+    # The fixture has no day row for February 2007, so the day series has no unfinished month to compare.
+    assert all(m["median_days"] is None for m in day["months"])
+
+
+def test_a_year_missing_from_the_whole_table_counts_as_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path)
+    _write_month_to_date(tmp_path, TO_DATE_ROWS, n_years=5)  # five years, one with no row anywhere
+    with _client_for(tmp_path, monkeypatch) as client:
+        partial = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2007, 2)
+
+    assert partial["median_n_years"] == 5 and partial["median_hist"] == 4  # 0, 0, 4, 8, 10
+
+
+def test_a_partial_month_never_gets_the_full_month_median(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_calendar(tmp_path)
+    # A partial January: the full-month January median (33) exists, and must not be put next to it.
+    _add_rows(tmp_path, 2008, "data_0.parquet", [("A", 1, "ALL", 3.0, False, True, 12)])
+    _write_month_to_date(tmp_path, TO_DATE_ROWS, month=1, days=14)  # other days than the 12 observed
+    with _client_for(tmp_path, monkeypatch) as client:
+        partial = _month(client.get("/api/calendar", params=FULL_BOX).json(), 2008, 1)
+
+    assert partial["count_harmonized"] == 3
+    assert partial["median_hist"] is None and partial["median_n_years"] is None
+    assert partial["anomaly_abs"] is None
