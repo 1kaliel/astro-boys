@@ -215,6 +215,19 @@ class CalendarStore:
         ).fetchone()
         return (int(row[0]), int(row[1]), int(row[2])) if row and row[3] else None
 
+    def source_satellite(self, year: int, month: int, period: str = "ALL") -> str | None:
+        """The month's source satellite (`Aqua`, `Terra`, `SNPP`, `N20`), the one `raw_source` counts; None if
+        the calendar has no row for that month and period anywhere in the extent."""
+        row = (
+            self._con.cursor()
+            .execute(
+                "SELECT source_satellite FROM coverage WHERE year = ? AND month = ? AND period = ?",
+                [year, month, period],
+            )
+            .fetchone()
+        )
+        return row[0] if row else None
+
     def cells_in(self, bounds: Bounds) -> tuple[str, ...]:
         """The 0.25 degree cells that overlap the box (the area rule of the calendar), sorted.
 

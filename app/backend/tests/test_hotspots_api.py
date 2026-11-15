@@ -112,10 +112,24 @@ def test_csv_has_the_contract_columns_in_time_order(client: TestClient) -> None:
 
 
 def test_csv_with_no_match_is_only_the_header(client: TestClient) -> None:
-    response = client.get("/api/hotspots.csv", params=_params(start="2010-01-01", end="2010-12-31"))
+    # 2013 is in the source, but its detections are in July.
+    response = client.get("/api/hotspots.csv", params=_params(start="2013-01-01", end="2013-06-30"))
 
     assert response.status_code == 200
     assert response.text.splitlines() == [",".join(hotspots.COLUMNS)]
+
+
+def test_years_missing_from_a_local_copy_are_a_503_not_zero(client: TestClient) -> None:
+    # The fixture has 2004, 2005 and 2013 only: 2010 is missing data, not "no detections".
+    for path in ("/api/hotspots/count", "/api/hotspots.csv"):
+        response = client.get(path, params=_params(start="2010-01-01", end="2011-12-31"))
+        assert response.status_code == 503
+        assert response.json()["detail"] == (
+            "The native hotspots of 2010-2011 are not on this server (it has: 2004, 2005, 2013)."
+        )
+    # A range that touches a year of the copy is counted from the years present.
+    partly = _params(start="2010-01-01", end="2013-12-31")
+    assert client.get("/api/hotspots/count", params=partly).status_code == 200
 
 
 def test_too_many_rows_is_a_413_before_any_byte(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

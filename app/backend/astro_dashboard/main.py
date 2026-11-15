@@ -18,6 +18,7 @@ from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from astro_dashboard import cells
@@ -66,6 +67,12 @@ def api_cells(
         return cells.cells_for_month(year, month, period)
     except cells.DataNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> RedirectResponse:
+    """Clients that ask for /favicon.ico without reading the page get the SVG icon of the built frontend."""
+    return RedirectResponse("/favicon.svg", status_code=301)
 
 
 # Mounted last, so API routes always win over static files.

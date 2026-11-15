@@ -48,6 +48,10 @@ docker run --rm -p 8080:8080 -e PORT=8080 --memory 1g astro-dashboard
 curl http://localhost:8080/api/version                             # model_version of the baked calendar
 ```
 
+For the offline fallback the same steps are one command, `./deploy/local/run-offline.sh` (build if missing, then run
+with the local `hotspots/v1` mounted read-only and no credentials). Tested with the external network cut on
+2026-11-15: [D12 offline test](../../docs/d12-offline-test.md).
+
 The build fails if the calendar is missing, if its `model_version` is not `MODEL_VERSION`, or if `month_to_date`
 covers other days than the calendar's unfinished month. For an image without
 data (skeleton checks only) add `--build-arg ALLOW_NO_CALENDAR=1`. If it works here, it will work on Cloud Run
