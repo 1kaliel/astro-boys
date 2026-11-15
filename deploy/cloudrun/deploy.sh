@@ -4,6 +4,7 @@
 #
 #   ./deploy/cloudrun/deploy.sh             dry run: prints every command
 #   APPLY=1 ./deploy/cloudrun/deploy.sh     executes, after typing the project ID
+#   BUILDER=cloudbuild ...                  build on Cloud Build instead of local Docker (no Docker/BuildKit here)
 #
 # Prerequisites (Kali): APIs enabled, Artifact Registry repo (infra/gcp/40-artifact-registry.sh),
 # dashboard service account (infra/gcp/20-service-accounts.sh). Runbook: deploy/cloudrun/README.md
@@ -13,6 +14,8 @@ require GCP_PROJECT_ID GCP_REGION AR_REPOSITORY RUN_SERVICE DASHBOARD_SA_NAME
 APP_DIR="${APP_DIR:-$REPO_DIR/app}"
 SERVICE_ENV="${SERVICE_ENV:-$REPO_DIR/deploy/cloudrun/service.env}"
 TAG="${TAG:-$(git -C "$REPO_DIR" rev-parse --short HEAD)}"
+BUILDER="${BUILDER:-docker}"
+[[ "$BUILDER" == docker || "$BUILDER" == cloudbuild ]] || { echo "BUILDER must be docker or cloudbuild" >&2; exit 1; }
 IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPOSITORY}/${RUN_SERVICE}:${TAG}"
 
 [[ -f "$APP_DIR/Dockerfile" ]] || { echo "No Dockerfile in $APP_DIR yet (Dashboard team chooses the stack first)." >&2; exit 1; }
@@ -41,12 +44,38 @@ echo "Month to date: $TO_DATE_DIR"
 
 confirm "build $IMAGE (calendar model $MODEL_VERSION) and deploy Cloud Run service $RUN_SERVICE in $GCP_REGION"
 
-run gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
-run docker build --platform linux/amd64 \
-  --build-context "calendar=$CALENDAR_DIR" --build-context "month_to_date=$TO_DATE_DIR" \
-  --build-arg "MODEL_VERSION=$MODEL_VERSION" \
-  -t "$IMAGE" "$APP_DIR"
-run docker push "$IMAGE"
+if [[ "$BUILDER" == cloudbuild ]]; then
+  # Cloud Build builds what is committed (the image tag is the commit), plus the two local data folders.
+  # The first build creates the source bucket gs://${GCP_PROJECT_ID}_cloudbuild unless CLOUDBUILD_STAGING is set.
+  CLOUDBUILD_SA="${CLOUDBUILD_SA:-$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')@cloudbuild.gserviceaccount.com}"
+  if [[ -n "$(git -C "$REPO_DIR" status --porcelain -- "$APP_DIR")" ]]; then
+    echo "Uncommitted changes under $APP_DIR are NOT in the build: Cloud Build gets commit $TAG." >&2
+  fi
+  STAGE="$(mktemp -d)"
+  trap 'rm -rf "$STAGE"' EXIT
+  if [[ "$APPLY" == "1" ]]; then
+    git -C "$REPO_DIR" archive HEAD app | tar -x -C "$STAGE"
+    cp -r "$CALENDAR_DIR" "$STAGE/calendar"
+    cp -r "$TO_DATE_DIR" "$STAGE/month_to_date"
+    echo "# everything staged here is uploaded" > "$STAGE/.gcloudignore"
+  else
+    echo "DRY-RUN: stage app/ (git archive HEAD), calendar/ and month_to_date/ in a temporary folder"
+  fi
+  staging_args=()
+  [[ -n "${CLOUDBUILD_STAGING:-}" ]] && staging_args=(--gcs-source-staging-dir="$CLOUDBUILD_STAGING")
+  run gcloud builds submit "$STAGE" \
+    --project="$GCP_PROJECT_ID" --region="$GCP_REGION" \
+    --config="$REPO_DIR/deploy/cloudrun/cloudbuild.yaml" \
+    --service-account="projects/$GCP_PROJECT_ID/serviceAccounts/$CLOUDBUILD_SA" \
+    --substitutions="_IMAGE=$IMAGE,_MODEL_VERSION=$MODEL_VERSION" "${staging_args[@]}"
+else
+  run gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+  run docker build --platform linux/amd64 \
+    --build-context "calendar=$CALENDAR_DIR" --build-context "month_to_date=$TO_DATE_DIR" \
+    --build-arg "MODEL_VERSION=$MODEL_VERSION" \
+    -t "$IMAGE" "$APP_DIR"
+  run docker push "$IMAGE"
+fi
 
 env_args=()
 [[ -f "$SERVICE_ENV" ]] && env_args=(--env-vars-file="$SERVICE_ENV")

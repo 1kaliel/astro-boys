@@ -62,6 +62,12 @@ APPLY=1 ./scripts/sync_data.sh pull processed month_to_date/v1       # baked wit
 APPLY=1 ./deploy/cloudrun/deploy.sh                                  # build, push, deploy
 ```
 
+No Docker with BuildKit on your machine? Build on Cloud Build instead (same Dockerfile and build contexts, see
+[cloudbuild.yaml](cloudbuild.yaml)): `BUILDER=cloudbuild ./deploy/cloudrun/deploy.sh`. It builds the **committed**
+app (`git archive HEAD`) with the two local data folders, as the Cloud Build service account
+(`<project number>@cloudbuild.gserviceaccount.com`, or `CLOUDBUILD_SA`). The first build creates the source bucket
+`gs://<project>_cloudbuild` (set `CLOUDBUILD_STAGING=gs://...` to use another place) and build minutes are billed.
+
 The image is tagged with the git commit, so every deploy is traceable. Defaults: 1 vCPU, 1 GiB,
 min 0 / max 3 instances (cost cap), public URL only if `RUN_ALLOW_PUBLIC=true` in `infra/gcp/gcp.env`.
 
