@@ -81,8 +81,8 @@
   padding-bottom: var(--space-2);
   /* Soft edge shadows that only show where there is more to scroll to (the classic "scroll shadows"). */
   background:
-    linear-gradient(to right, var(--cal-plane) 30%, transparent) left center / var(--space-6) 100% no-repeat local,
-    linear-gradient(to left, var(--cal-plane) 30%, transparent) right center / var(--space-6) 100% no-repeat local,
+    linear-gradient(to right, var(--cal-plane) 40%, transparent) left center / var(--space-12) 100% no-repeat local,
+    linear-gradient(to left, var(--cal-plane) 40%, transparent) right center / var(--space-12) 100% no-repeat local,
     linear-gradient(to right, color-mix(in srgb, var(--cal-ink) 22%, transparent), transparent) left center /
       var(--space-3) 100% no-repeat scroll,
     linear-gradient(to left, color-mix(in srgb, var(--cal-ink) 22%, transparent), transparent) right center /
