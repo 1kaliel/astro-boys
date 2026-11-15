@@ -119,8 +119,8 @@ def daily(
     first = date(year, month, 1)
     last = date(year, month, _calendar.monthrange(year, month)[1])
     source = _partition_source(root, instrument, year)
-    # One read of the partition for the month and satellite (the slow part on gs://), kept in memory; every count
-    # and the passes come from it. Only the archive's last date needs a second, two-column read of the year.
+    # One read of the partition for the month and satellite (the slow part on gs://), kept in memory; every
+    # count and the passes come from it. Only the archive's last date needs a second, two-column read of the year.
     month_filter = ["satellite = ?", "date_local BETWEEN ? AND ?"]
     month_params: list = [satellite, first, last]
     clauses = ["passes_main_filter", "list_contains(?, cell_l2)"]
@@ -133,7 +133,8 @@ def daily(
     con = hotspots._connect(root)
     try:
         con.execute(
-            f"CREATE TEMP TABLE month_rows AS SELECT date_local, daynight, acq_ts_utc, cell_l2, passes_main_filter "
+            "CREATE TEMP TABLE month_rows AS "
+            "SELECT date_local, daynight, acq_ts_utc, cell_l2, passes_main_filter "
             f"FROM {source} WHERE {' AND '.join(month_filter)}",
             month_params,
         )

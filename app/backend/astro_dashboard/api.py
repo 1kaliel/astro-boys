@@ -307,7 +307,8 @@ def drilldown_cell(
     min_frp: float | None = Query(None, ge=0, le=100000, description="Minimum FRP (MW)"),
     min_confidence: Literal["l", "n", "h"] = Query("l", description="Lowest confidence class kept"),
     sensor: Literal["harmonized", "aqua", "terra", "snpp", "n20"] = Query(
-        "harmonized", description="Map layer: harmonized uses the month's source satellite, else that satellite"
+        "harmonized",
+        description="Map layer: harmonized uses the month's source satellite, else that satellite",
     ),
 ) -> DrilldownOut:
     try:

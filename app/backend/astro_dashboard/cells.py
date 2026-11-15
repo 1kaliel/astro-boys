@@ -20,8 +20,9 @@ import duckdb
 
 MAP_QUANTILES = (0.5, 0.7, 0.8, 0.9, 0.95, 0.98)
 
-# Layers of the map. "harmonized" is the VIIRS-equivalent count of the calendar (MODIS months estimated on the VIIRS
-# scale); the others are the native filtered counts of one satellite, never added together (docs/data-dictionary.md).
+# Layers of the map. "harmonized" is the VIIRS-equivalent count of the calendar (MODIS months estimated on the
+# VIIRS scale); the others are the native filtered counts of one satellite, never added together
+# (docs/data-dictionary.md).
 SENSOR_COLUMNS = {
     "harmonized": "count_harmonized",
     "aqua": "raw_aqua",
@@ -90,9 +91,9 @@ def is_simulated(model_version: str | None) -> bool:
 def cells_for_month(year: int | None, month: int | None, period: str, sensor: str = "harmonized") -> dict:
     """Values per L2 cell for one month (the map). Geometry is derived from the cell ID by the client.
 
-    Without a year and month, the most recent month in the data is used. `sensor` picks the layer: the harmonized
-    VIIRS-equivalent count (default) or the native count of one satellite; a native layer has no estimated cells and
-    leaves out the cells the satellite had no data for (null is not zero).
+    Without a year and month, the most recent month in the data is used. `sensor` picks the layer: the
+    harmonized VIIRS-equivalent count (default) or the native count of one satellite; a native layer has no
+    estimated cells and leaves out the cells the satellite had no data for (null is not zero).
     """
     if sensor not in SENSOR_COLUMNS:
         raise ValueError(f"Unknown sensor {sensor!r}")
