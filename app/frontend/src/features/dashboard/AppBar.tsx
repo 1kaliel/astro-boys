@@ -34,7 +34,11 @@ export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
         <span className="api-status" role="status" aria-live="polite">
           {API_TEXT[apiStatus]}
         </span>
-        {simulated ? <Badge kind="simulated" /> : modelVersion && <span className="badge">Model {modelVersion}</span>}
+        {simulated ? <Badge kind="simulated" /> : modelVersion && (
+          <span className="badge" title={`Model ${modelVersion}`}>
+            Model {modelVersion}
+          </span>
+        )}
         <AboutDialog />
         <Button
           className="icon-button"
