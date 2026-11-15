@@ -4,10 +4,11 @@
  * It is one scene, not two charts: every day is a box on a grid. The flat view looks straight down; the 3D view is
  * the same grid from a corner, and switching views swings the camera while each week's bars rise in a wave, oldest
  * week first. Hover or tap a day for its count; the arrow keys walk the grid. Only the detections it is given are drawn:
- * there is no sample data. Colours are the hotspot ramp (magma) of the project.
+ * there is no sample data. Colours are the hotspot ramp (magma) of the project. A day the sensor was not observing is
+ * "no data": a flat hatched tile, never a zero slab, the same hatching as the calendar's months without data.
  *
- * Adapted from "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (21st.dev), MIT License. See lib/skyline.ts
- * and docs/resources.md.
+ * Adapted from "GitHub Contribution Graph 3D Heatmap" by Kedhareswer Naidu (21st.dev), MIT License: copyright and
+ * permission notice in ContributionSkyline.LICENSE.txt (next to this file). See lib/skyline.ts and docs/resources.md.
  */
 import * as React from "react";
 import {
@@ -15,18 +16,20 @@ import {
   computeStats,
   depthOf,
   DAY_MS,
-  barHeight,
   camera,
   dayMs,
   easeInOutCubic,
   lerp,
+  markOf,
   monthLabels,
   project,
+  readDay,
   riseAt,
   smoothstep,
   WAVE,
   type Cam,
   type DayCount,
+  type MissingDay,
 } from "../../lib/skyline";
 import { prefersReducedMotion } from "../../lib/hooks";
 import { Button } from "../ui/Button";
@@ -45,8 +48,16 @@ export const SKYLINE_PALETTE = {
 export interface SkylineProps {
   /** One entry per day (`YYYY-MM-DD`), counts of the chosen sensor. Repeated dates add up. */
   days: readonly DayCount[];
-  /** Last day shown (`YYYY-MM-DD`). The grid covers the 365 days up to it. */
+  /** Last day shown (`YYYY-MM-DD`). The grid covers the 365 days up to it, or from `startDate`. */
   endDate: string;
+  /** First day asked for (`YYYY-MM-DD`). The days of the first week before it are not drawn. */
+  startDate?: string;
+  /** Days the sensor was not observing: drawn as no data, never as zero, and left out of every statistic. */
+  missingDays?: readonly MissingDay[];
+  /** False when the coverage could not be checked: days without detections are then no data ("not verified"). */
+  coverageChecked?: boolean;
+  /** Sensor name for the readings ("No data: VIIRS S-NPP was not observing"). */
+  sensor?: string;
   /** Noun for one detection, and its plural. */
   unit?: string;
   unitPlural?: string;
@@ -99,6 +110,10 @@ const quad = (ctx: CanvasRenderingContext2D, p: number[]) => {
 export default function ContributionSkyline({
   days,
   endDate,
+  startDate,
+  missingDays,
+  coverageChecked = true,
+  sensor = "the sensor",
   unit = "hotspot detection",
   unitPlural,
   title,
@@ -108,10 +123,17 @@ export default function ContributionSkyline({
 }: SkylineProps) {
   const plural = unitPlural ?? unit + "s";
   const endMs = dayMs(endDate);
+  const startMs = startDate ? dayMs(startDate) : Number.NaN;
   const model = React.useMemo(() => {
-    const grid = buildGrid(days, endMs, 0);
-    return { ...grid, stats: computeStats(grid.cells), months: monthLabels(grid.cells, grid.weeks, locale) };
-  }, [days, endMs, locale]);
+    const grid = buildGrid(days, endMs, 0, { startMs, missing: missingDays, coverageChecked });
+    const firstShown = Math.max(0, grid.cells.findIndex((c) => c.status !== "outside"));
+    return {
+      ...grid,
+      firstShown,
+      stats: computeStats(grid.cells),
+      months: monthLabels(grid.cells, grid.weeks, locale),
+    };
+  }, [days, endMs, startMs, missingDays, coverageChecked, locale]);
 
   const nf = React.useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const dfl = React.useMemo(
@@ -130,10 +152,11 @@ export default function ContributionSkyline({
     [locale],
   );
   const noun = (n: number) => (n === 1 ? unit : plural);
+  const reading = { unit, plural, sensor, format: (n: number) => nf.format(n) };
   const describe = (i: number) => {
     const c = model.cells[i];
     if (!c) return "";
-    return (c.count ? `${nf.format(c.count)} ${noun(c.count)}` : `No ${plural}`) + " on " + dfl.format(dayMs(c.date));
+    return readDay(c, reading) + " on " + dfl.format(dayMs(c.date));
   };
 
   const [view, setView] = React.useState<SkylineView>(defaultView);
@@ -178,6 +201,8 @@ export default function ContributionSkyline({
     let wk = new Float32Array(0);
     let dy = new Float32Array(0);
     let lv = new Uint8Array(0);
+    // 0: not drawn (outside the period), 1: a bar (observed; a zero is a slab), 2: no data (a flat hatched tile)
+    let kd = new Uint8Array(0);
     let hgt = new Float32Array(0);
     let zs = new Float32Array(0);
     let hov = new Float32Array(0);
@@ -187,6 +212,9 @@ export default function ContributionSkyline({
     let bg: Rgb = BG_FALLBACK;
     let palette: Rgb[] = [];
     let empty: Rgb = FG_FALLBACK;
+    let emptyEdge: Rgb = FG_FALLBACK;
+    let noDataBg: Rgb = BG_FALLBACK;
+    let hatch: Rgb = FG_FALLBACK;
     let font = "400 11px sans-serif";
     let muted: Rgb = FG_FALLBACK;
     let gutter = 30;
@@ -201,6 +229,7 @@ export default function ContributionSkyline({
       wk = new Float32Array(n);
       dy = new Float32Array(n);
       lv = new Uint8Array(n);
+      kd = new Uint8Array(n);
       hgt = new Float32Array(n);
       zs = new Float32Array(n);
       hov = new Float32Array(n);
@@ -210,8 +239,10 @@ export default function ContributionSkyline({
         const c = m.cells[i];
         wk[i] = c.week;
         dy[i] = c.day;
-        lv[i] = c.level;
-        hgt[i] = barHeight(c.count, m.max);
+        const mark = markOf(c, m.max);
+        kd[i] = mark.kind === "bar" ? 1 : mark.kind === "nodata" ? 2 : 0;
+        lv[i] = mark.kind === "bar" ? mark.level : 0;
+        hgt[i] = mark.kind === "bar" ? mark.height : 0;
       }
     };
 
@@ -222,7 +253,16 @@ export default function ContributionSkyline({
       const dark = luminance(bg) < 0.45;
       const token = (name: string): Rgb => toRgb(cs.getPropertyValue(name).trim(), FG_FALLBACK) ?? FG_FALLBACK;
       palette = (dark ? SKYLINE_PALETTE.dark : SKYLINE_PALETTE.light).map(token);
-      empty = mix(bg, fg, dark ? 0.12 : 0.08);
+      // Zero and no data use the calendar's own tokens (--cal-zero, --cal-line, --cal-hatch, --cal-nodata-bg), so a
+      // zero day and a day without data look like the calendar's zero month and its hatched month, and the key matches.
+      const optional = (name: string, fallback: Rgb): Rgb => {
+        const value = cs.getPropertyValue(name).trim();
+        return (value && toRgb(value, null)) || fallback;
+      };
+      empty = optional("--cal-zero", mix(bg, fg, dark ? 0.12 : 0.08));
+      emptyEdge = optional("--cal-line", mix(bg, fg, 0.18));
+      noDataBg = optional("--cal-nodata-bg", bg);
+      hatch = optional("--cal-hatch", mix(bg, fg, 0.4));
       muted = mix(bg, fg, 0.55);
       font = `400 11px ${cs.fontFamily || "sans-serif"}`;
       ctx.font = font;
@@ -305,11 +345,12 @@ export default function ContributionSkyline({
       const off = (1 - w) / 2;
       const radius = lerp(0.17, 0.03, e) * s;
       for (const i of order) {
+        if (kd[i] === 0) continue;
         const x0 = wk[i] + off;
         const y0 = dy[i] + off;
         const x1 = x0 + w;
         const y1 = y0 + w;
-        const z = zs[i] + hov[i] * 0.5 * e;
+        const z = kd[i] === 2 ? 0 : zs[i] + hov[i] * 0.5 * e; // a no-data tile stays on the ground
         const top = [
           px(x0, y0),
           py(x0, y0, z),
@@ -321,6 +362,39 @@ export default function ContributionSkyline({
           py(x0, y1, z),
         ];
         quads.set(top, i * 8);
+        if (kd[i] === 2) {
+          // No data: a flat tile on the ground, hatched, never a bar or a zero slab.
+          quad(ctx, top);
+          ctx.fillStyle = rgb(hov[i] > 0.01 ? mix(noDataBg, fg, 0.12 * hov[i]) : noDataBg);
+          ctx.fill();
+          ctx.save();
+          ctx.clip();
+          let minx = Infinity;
+          let maxx = -Infinity;
+          let miny = Infinity;
+          let maxy = -Infinity;
+          for (let k = 0; k < 8; k += 2) {
+            minx = Math.min(minx, top[k]);
+            maxx = Math.max(maxx, top[k]);
+            miny = Math.min(miny, top[k + 1]);
+            maxy = Math.max(maxy, top[k + 1]);
+          }
+          ctx.beginPath();
+          const step = 3;
+          for (let x = minx - (maxy - miny); x < maxx; x += step) {
+            ctx.moveTo(x, maxy);
+            ctx.lineTo(x + (maxy - miny), miny);
+          }
+          ctx.strokeStyle = rgb(hatch);
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+          quad(ctx, top);
+          ctx.strokeStyle = rgb(i === activeRef.current ? fg : hatch);
+          ctx.lineWidth = i === activeRef.current ? 1.5 : 1;
+          ctx.stroke();
+          continue;
+        }
         const level = lv[i];
         const base = level === 0 ? empty : palette[level - 1];
         const fill = hov[i] > 0.01 ? mix(base, fg, 0.18 * hov[i]) : base;
@@ -355,6 +429,11 @@ export default function ContributionSkyline({
         if (i === activeRef.current) {
           ctx.strokeStyle = rgb(fg);
           ctx.lineWidth = 1.5;
+          ctx.stroke();
+        } else if (level === 0) {
+          // A measured zero keeps the thin edge of the calendar's zero month, so it never reads as the plane.
+          ctx.strokeStyle = rgb(emptyEdge);
+          ctx.lineWidth = 1;
           ctx.stroke();
         }
       }
@@ -395,7 +474,7 @@ export default function ContributionSkyline({
       // The tooltip rides the active day through morphs.
       if (activeRef.current >= 0 && activeRef.current < n) {
         const i = activeRef.current;
-        const z = zs[i] + hov[i] * 0.5 * e;
+        const z = kd[i] === 2 ? 0 : zs[i] + hov[i] * 0.5 * e; // a no-data tile stays on the ground
         const tx = px(wk[i] + 0.5, dy[i] + 0.5);
         const ty = Math.min(py(wk[i] + off, dy[i] + off, z), py(wk[i] + off + w, dy[i] + off, z));
         const half = tipW / 2;
@@ -444,6 +523,7 @@ export default function ContributionSkyline({
     const hit = (x: number, y: number): number => {
       for (let k = order.length - 1; k >= 0; k--) {
         const i = order[k];
+        if (kd[i] === 0) continue;
         const o = i * 8;
         let sign = 0;
         let inside = true;
@@ -494,14 +574,15 @@ export default function ContributionSkyline({
         setActiveIdx(-1);
         return;
       }
+      const lo = live.current.model.firstShown;
       let i = pinnedRef.current >= 0 ? pinnedRef.current : activeRef.current >= 0 ? activeRef.current : n - 1;
       if (ev.key === "ArrowLeft") i -= 7;
       if (ev.key === "ArrowRight") i += 7;
       if (ev.key === "ArrowUp") i -= 1;
       if (ev.key === "ArrowDown") i += 1;
-      if (ev.key === "Home") i = 0;
+      if (ev.key === "Home") i = lo;
       if (ev.key === "End") i = n - 1;
-      i = Math.max(0, Math.min(n - 1, i));
+      i = Math.max(lo, Math.min(n - 1, i));
       pinnedRef.current = i;
       setActiveIdx(i);
       live.current.setAnnounce(live.current.describe(i));
@@ -537,7 +618,11 @@ export default function ContributionSkyline({
   const range = (a: string | null, b: string | null) =>
     a && b ? `${dfs.format(dayMs(a))} — ${dfs.format(dayMs(b))}` : "—";
   const heading = title ?? `${nf.format(stats.total)} ${noun(stats.total)} in the period`;
-  const tipCount = active >= 0 ? model.cells[active] : undefined;
+  const tipCell = active >= 0 && model.cells[active]?.status !== "outside" ? model.cells[active] : undefined;
+  const noDataNote =
+    stats.noData > 0
+      ? `, ${stats.noData} ${stats.noData === 1 ? "day" : "days"} with no data (${coverageChecked ? `${sensor} not observing` : "not verified"})`
+      : "";
 
   return (
     <section className="skyline" aria-label={heading}>
@@ -557,16 +642,14 @@ export default function ContributionSkyline({
           ref={canvasRef}
           tabIndex={0}
           role="img"
-          aria-label={`${nf.format(stats.total)} ${noun(stats.total)} between ${range(stats.first, stats.last)}, as a ${view === "3d" ? "skyline" : "heat map"}. Use the arrow keys to read single days.`}
+          aria-label={`${nf.format(stats.total)} ${noun(stats.total)} between ${range(stats.first, stats.last)}${noDataNote}, as a ${view === "3d" ? "skyline" : "heat map"}. Use the arrow keys to read single days.`}
           className="skyline-canvas"
         />
-        <div ref={tipRef} role="tooltip" className="skyline-tip" style={{ opacity: tipCount ? 1 : 0 }}>
-          {tipCount ? (
+        <div ref={tipRef} role="tooltip" className="skyline-tip" style={{ opacity: tipCell ? 1 : 0 }}>
+          {tipCell ? (
             <>
-              <strong>
-                {tipCount.count ? `${nf.format(tipCount.count)} ${noun(tipCount.count)}` : `No ${plural}`}
-              </strong>
-              <span> on {dfs.format(dayMs(tipCount.date))}</span>
+              <strong>{readDay(tipCell, reading)}</strong>
+              <span> on {dfs.format(dayMs(tipCell.date))}</span>
             </>
           ) : (
             " "
@@ -590,17 +673,31 @@ export default function ContributionSkyline({
           <dt>Run up to the last day</dt>
           <dd>{stats.current.days} days</dd>
         </div>
+        <div>
+          <dt>{coverageChecked ? "Days with no data" : "Days not verified"}</dt>
+          <dd>{stats.noData} days</dd>
+        </div>
       </dl>
       <footer className="skyline-foot">
         <span>
           {footer ?? "Hover a day for details · arrow keys to explore · the bars are hotspot detections, not fires"}
         </span>
         <span className="skyline-legend" aria-hidden="true">
-          Less
-          {SKYLINE_PALETTE.light.map((name) => (
-            <i key={name} className="skyline-swatch" style={{ background: `var(${name})` }} />
-          ))}
-          More
+          <span className="skyline-legend-item">
+            <i className="calendar-chip calendar-chip-zero skyline-chip">0</i>
+            Zero
+          </span>
+          <span className="skyline-legend-item">
+            Less
+            {SKYLINE_PALETTE.light.map((name) => (
+              <i key={name} className="skyline-swatch" style={{ background: `var(${name})` }} />
+            ))}
+            More
+          </span>
+          <span className="skyline-legend-item">
+            <i className="calendar-chip calendar-chip-nodata skyline-chip" />
+            No data
+          </span>
         </span>
       </footer>
       <p className="sr-only" aria-live="polite">
