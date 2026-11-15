@@ -433,7 +433,7 @@
 }
 
 .is-wide .xp-panel {
-  height: 34vh;
+  height: max(28vh, 220px);
 }
 
 .is-wide .xp-panel.is-collapsed {
@@ -480,9 +480,32 @@
 @media (min-width: 64rem) {
   .xp-panel .calendar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-columns: minmax(0, 1fr) 13rem;
     align-items: start;
-    gap: var(--space-3) var(--space-6);
+    gap: var(--space-2) var(--space-5);
+  }
+
+  /* One slim toolbar row: the labels stay for screen readers. */
+  .xp-panel .cal-tool .control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .xp-panel .calendar .tabs-panel {
+    padding-top: var(--space-2);
+  }
+
+  .xp-panel .calendar-legend-row {
+    gap: var(--space-2);
+  }
+
+  .xp-panel .calendar-legend-states {
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
   .xp-panel .calendar > .tabs {
@@ -495,11 +518,15 @@
   }
 
   .xp-panel .calendar-legend-row .calendar-legend-segment {
-    width: 3.5rem;
+    width: 3rem;
+  }
+
+  .xp-panel .calendar-legend-row .calendar-legend-label {
+    font-size: calc(0.9 * var(--font-size-xs));
   }
 
   .xp-panel .dash-charts .line-chart {
-    max-height: calc(34vh - 7rem);
+    max-height: calc(max(28vh, 220px) - 6rem);
   }
 
   .xp-panel .dash-charts .chart-block {
@@ -584,4 +611,36 @@
 
 .is-narrow .xp-panel-head .card-meta {
   display: none;
+}
+
+/* Compact legend over the map: chips and one unit line; the explanation is folded under it. */
+.is-wide .xp-map .map-info {
+  width: auto;
+  max-width: min(30rem, calc(100% - 8rem));
+  gap: var(--space-1);
+}
+
+.xp-map .map-info .legend {
+  gap: var(--space-1);
+}
+
+.xp-map .map-info .fold-body {
+  max-width: 28rem;
+}
+
+/* The guide prompt never covers the map controls: bottom right, above the attribution and the panel. */
+.xp-app.is-wide .hh-prompt {
+  position: fixed;
+  top: auto;
+  right: var(--space-4);
+  bottom: calc(max(28vh, 220px) + var(--space-12));
+}
+
+.xp-app.is-narrow .hh-prompt {
+  position: fixed;
+  top: auto;
+  right: var(--spacing-page-x);
+  bottom: var(--space-4);
+  left: var(--spacing-page-x);
+  justify-content: space-between;
 }

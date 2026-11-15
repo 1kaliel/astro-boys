@@ -45,7 +45,7 @@ const RAW_UNIT = "Native hotspot detections per month, counted by the month's so
 const ANOMALY_UNIT = "Robust z-score of the month against the median of that month of the year";
 
 // Chart geometry in pixels (nivo needs numbers; colors and strokes come from tokens in calendar.css).
-const ROW_PX = 26;
+const ROW_PX = 18; // compact rows: 6 to 8 years fit the explorer's bottom panel without scrolling
 const MARGIN = { top: 30, right: 4, bottom: 4, left: 44 };
 const MIN_CELL_PX = 40; // below this width the grid scrolls sideways instead of squeezing the labels
 // On a phone the 12 months fit the card (no sideways scroll, so the year labels stay in view): compact cells, with
