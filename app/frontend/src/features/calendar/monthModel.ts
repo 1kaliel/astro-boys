@@ -31,6 +31,8 @@ export type DayCell =
       status: "observed" | "no_data";
       count: number | null;
       passes: DailyPass[];
+      /** Detections of the day with no acquisition time: in `count`, in no pass. */
+      untimed: number;
       /** The last local solar date with data in the archive. */
       isLatest: boolean;
     };
@@ -91,6 +93,7 @@ export function buildMonthGrid(year: number, month: number, days: readonly Daily
       status: observed ? "observed" : "no_data",
       count: observed ? (entry?.count ?? 0) : null,
       passes: observed ? (entry?.passes ?? []) : [],
+      untimed: observed ? (entry?.untimed ?? 0) : 0,
       isLatest: lastDate === date,
     });
   }

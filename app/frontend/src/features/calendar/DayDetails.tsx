@@ -70,6 +70,12 @@ export function DayDetails({ cell, source, eraNote, onClose }: DayDetailsProps) 
       {observed && cell.passes.length === 0 && (cell.count ?? 0) > 0 && (
         <p className="day-details-note">Pass times are not available for this day.</p>
       )}
+      {observed && cell.passes.length > 0 && cell.untimed > 0 && (
+        <p className="day-details-note">
+          {formatCount(cell.untimed)} {cell.untimed === 1 ? "detection has" : "detections have"} no acquisition time, so
+          {cell.untimed === 1 ? " it is" : " they are"} counted in the day total but not in a pass.
+        </p>
+      )}
 
       {observed && (
         <p className="day-details-note">
