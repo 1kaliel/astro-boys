@@ -71,6 +71,12 @@ export function AboutDialog() {
           <strong>All, Day or Night</strong> keeps the detections of the daytime or the nighttime overpasses.
         </li>
         <li>
+          <strong>Map sub-cells.</strong> Clicking a cell on the map shows its 16 sub-cells (0.0625°, about 7 km) with the
+          native detections of the month's source satellite, and its 8 neighboring cells, for context only. Harmonized
+          estimates exist only at 0.25°, and a sub-cell with no detection does not mean there was no fire. A cell with
+          fewer than 5 detections is not subdivided.
+        </li>
+        <li>
           <strong>Latest month.</strong> An unfinished month is compared with the same days of earlier years, never with
           full months.
         </li>

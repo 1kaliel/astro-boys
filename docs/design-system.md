@@ -211,13 +211,13 @@ UI primitives come from [Base UI](https://base-ui.com/) (unstyled, accessible), 
 | `components/ui/` | `Popover` | Base UI Popover, used by the Area filter (lat/lon fields, reset to pilot) |
 | `components/viz/` | `KpiTile`, `Legend` | KpiTile: label, compact value, delta in ink, badges. Legend: ramp (or the map's fixed class limits) plus provenance marks |
 | `features/calendar/` | `BurningCalendar`, `CalendarCell`, `CalendarTable` | Heatmap rules above. Takes the calendar the page loaded (shared with the KPI row) |
-| `components/map/` | `MapPanel`, `CellMap`, `MapTools` | Map in a lazy chunk; tools over the map: Flat / Globe, Draw area, Use visible area |
-| `state/` | `DashboardProvider`, `useDashboard` | One shared state: area, period (`ALL`/`D`/`N`), scale, year range, selected month |
+| `components/map/` | `MapPanel`, `CellMap`, `MapTools`, `DrillLegend` | Map in a lazy chunk; tools over the map: Flat / Globe, Draw area, Use visible area; in the L3 drill-down, Back to L2 cells |
+| `state/` | `DashboardProvider`, `useDashboard` | One shared state: area, period (`ALL`/`D`/`N`), scale, year range, selected month, drilled cell (cleared when the month, period or area changes) |
 | `features/dashboard/` | `DashboardPage`, `AppBar`, `FilterBar`, `KpiRow`, `AboutDialog` | Dashboard structure above; "How to read" text is a first draft for task D10 |
 
 Calendar: our own heatmap, not an events calendar (FullCalendar has no year × month view). Map: MapLibre GL JS with
 react-map-gl and terra-draw for the rectangle; basemap from OpenFreeMap. react-globe.gl was considered and not used;
-deck.gl is deferred to the L3 drill-down.
+deck.gl was kept for the L3 drill-down, which turned out not to need it (16 cells and 9 outlines are plain MapLibre layers).
 
 ## Map
 
@@ -234,6 +234,7 @@ deck.gl is deferred to the L3 drill-down.
 | Precision | `maxZoom` 10: a cell is 28 km wide, so closer zoom would suggest precision the data does not have. Rotation and pitch off |
 | Phones | `pixelRatio` capped at 2, no fade, no fly animation with `prefers-reduced-motion`; "Use visible area" selects without drawing |
 | Area rule | A cell belongs to the area when it overlaps the bounds; touching an edge is not enough (same rule in `/api/calendar` and `lib/grid.ts`) |
+| L3 drill-down (D11) | A click on an L2 cell (or Enter on the focused map, for the cell at its center) frames its 3 x 3 block and asks `/api/drilldown`. The harmonized fill, the area outline and the area tools are hidden: only native detections of the month's source satellite are on screen. The target's 16 L3 cells (0.0625°) are filled on the sequential tokens with their own classes (at most 4 equal whole-number steps between the lowest and highest sub-cell, `drillBreaks` in `lib/scale.ts`); empty sub-cells stay unfilled with a hairline. The 8 neighbors are dashed outlines labeled with their native count, and a click on one moves the drill-down there. Its own legend: "Native detections, <satellite> (<instrument>), <month>: not harmonized". Max depth L3; a cell with fewer than `min_detections` (5) is not subdivided and says so. "Back to L2 cells" or Escape restores the previous view; a new month, period or area also leaves it. 503 reads "Detections are unavailable right now" (with Retry); a 422 for a month without data is a neutral note |
 
 Not used: react-globe.gl (separate three.js engine, ~509 KB gzip, no flat map or area selection), Cesium /
 React-CesiumExt (~1.35 MB gzip plus assets; brings OpenLayers and Ant Design, a second UI kit). deck.gl (~276 KB gzip on

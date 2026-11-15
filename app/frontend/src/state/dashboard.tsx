@@ -24,6 +24,11 @@ export type DashboardState = {
   months: readonly number[];
   /** Month picked in the calendar; drives the map. */
   selected: { year: number; month: number } | null;
+  /**
+   * L2 cell the map is drilled into (task D11): its 16 L3 sub-cells of native detections. Null = the harmonized L2
+   * map. Cleared whenever the month, the period or the area changes, so it never shows another slice.
+   */
+  drillCell: string | null;
 };
 
 export type DashboardAction =
@@ -33,7 +38,9 @@ export type DashboardAction =
   | { type: "setMetric"; metric: Metric }
   | { type: "setYears"; startYear: number; endYear: number }
   | { type: "setMonths"; months: readonly number[] }
-  | { type: "select"; year: number; month: number };
+  | { type: "select"; year: number; month: number }
+  | { type: "drill"; cell: string }
+  | { type: "undrill" };
 
 const initialState: DashboardState = {
   area: PILOT_BOUNDS,
@@ -44,14 +51,17 @@ const initialState: DashboardState = {
   endYear: LAST_YEAR,
   months: [],
   selected: null,
+  drillCell: null,
 };
 
 export function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
   switch (action.type) {
-    case "setArea":
-      return { ...state, area: action.area };
+    case "setArea": {
+      const same = sameBounds(state.area, action.area);
+      return { ...state, area: action.area, drillCell: same ? state.drillCell : null };
+    }
     case "setPeriod":
-      return { ...state, period: action.period };
+      return { ...state, period: action.period, drillCell: action.period === state.period ? state.drillCell : null };
     case "setScale":
       return { ...state, scale: action.scale };
     case "setMetric":
@@ -67,9 +77,19 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       const months = [...new Set(action.months)].filter((m) => m >= 1 && m <= 12).sort((a, b) => a - b);
       return { ...state, months: months.length === 12 ? [] : months };
     }
-    case "select":
-      return { ...state, selected: { year: action.year, month: action.month } };
+    case "select": {
+      const same = state.selected?.year === action.year && state.selected.month === action.month;
+      return { ...state, selected: { year: action.year, month: action.month }, drillCell: same ? state.drillCell : null };
+    }
+    case "drill":
+      return { ...state, drillCell: action.cell };
+    case "undrill":
+      return { ...state, drillCell: null };
   }
+}
+
+function sameBounds(a: Bounds, b: Bounds): boolean {
+  return a.west === b.west && a.south === b.south && a.east === b.east && a.north === b.north;
 }
 
 const StateContext = createContext<DashboardState | null>(null);
