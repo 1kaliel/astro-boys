@@ -65,6 +65,15 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+/* On a narrow screen the model badge shortens (full text in its title) instead of passing the right edge. */
+.app-actions .badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .api-status {
