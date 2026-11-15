@@ -15,11 +15,50 @@ Three layers, plain CSS custom properties. No Tailwind, no build step for tokens
 | `primitives.css` | Primitive | Raw values (hex, rem, px). **The only file allowed to hold raw values.** |
 | `semantic.css` | Semantic | Purpose aliases (`--color-surface`, `--color-text-secondary`…). Light default, dark overrides |
 | `viz.css` | Data viz | Every chart and map color (`--viz-seq-*`, `--viz-div-*`, `--viz-series-*`, marking) |
-| `components.css` | Component | Component tokens (`--card-*`, `--tooltip-*`…) and the rules that use them |
-| `index.css` | Entry | Imports the layers in order; base element styles |
+| `components.css` | Component | Component tokens (`--card-*`, `--tooltip-*`…) and the generic component rules |
+| `layout.css` | Layout | App shell, filter bar, 12-column dashboard grid, KPI row, heatmap, map, breakpoints |
+| `index.css` | Entry | Imports the layers in order; base element styles; isolated app root (`#root`) |
 
 Dark mode is declared twice on purpose: under `@media (prefers-color-scheme: dark)` with
 `:root:where(:not([data-theme="light"]))`, and under `:root[data-theme="dark"]`, so an explicit toggle wins both ways.
+The theme button in the app bar sets `data-theme` on `<html>` and remembers it in `localStorage` (if storage is
+blocked, it still applies for the visit).
+
+## Dashboard structure
+
+```text
+App bar (sticky): title · data badge (Simulated data / model) · How to read · theme
+Filter bar (one row, sticky on desktop): Area ▾ · From · To · Time of day · Scale   → scopes every view below
+KPI row: [hero: latest month vs median] [busiest month] [year so far vs medians] [months estimated from MODIS]
+Burning calendar (8 of 12 columns)                 │ Map (4 of 12): month selected in the calendar
+Footer: what this shows · data credit
+```
+
+| Rule | Why |
+|------|-----|
+| Filters live in one row above the content, never inside a card | Every view shows the same slice, so the numbers agree |
+| No empty placeholder cards | A card appears only when it has something to show |
+| One hero figure per view (≥ 48 px), other KPIs smaller; values compact (12.9K) | The eye lands on one number first |
+| Deltas in ink with an arrow and a word ("▼ 60% below the March median") | More or fewer hotspots is not good or bad; no risk claims |
+| While data reloads, the previous render stays, dimmed | No skeleton, no layout jump |
+| The app root is isolated (`isolation: isolate`) and popups use `--layer-popup` | Base UI popups always open above the map |
+| Breakpoints: 75rem (calendar 7 / map 5), 56rem (one column, KPIs 2 × 2, map collapsed until "Show map"), 30rem (phone: 18 px heatmap cells, single-letter months) | Media queries cannot read custom properties: these are the only raw values outside `primitives.css` |
+
+## Burning calendar (heatmap)
+
+Implementation: `features/calendar/BurningCalendar.tsx` (nivo heatmap with our own cell component, task D4). The
+rules below are the target; where it still differs (bins over the visible min–max, a tooltip per cell rather than one
+readout line, raw scale not available yet) the difference is a follow-up, not a new rule.
+
+- One `<button>` per year × month; 2 px surface gap between cells, never a border.
+- Fill: `--viz-seq-1…7`, 7 equal bins from 0 to the 95th percentile of the visible values (top bin includes the rest).
+- Scale "Harmonized" shows `count_harmonized`; "Raw by sensor" shows the native count of the month's source satellite,
+  with a note that the 2012 jump is the change of sensor.
+- Marks: estimated = dashed outline; partial month = corner mark; month outside the data = `--viz-null` ("No data",
+  never zero); month on the map = ink ring.
+- Keyboard: one tab stop, arrow keys / Home / End / Page Up / Page Down move, Enter selects. A readout line
+  (`aria-live`) gives the hovered or focused month in words (value, 90% interval, vs median, provenance), so there is
+  one readout instead of 288 tooltips. A table view has the exact values.
 
 ## Color jobs
 
@@ -93,15 +132,37 @@ UI primitives come from [Base UI](https://base-ui.com/) (unstyled, accessible), 
 |--------|-----------|-------|
 | `components/ui/` | `Button`, `Card`, `Badge` | `Card` takes a `caption` for source, period and unit. `Badge` kinds: estimated, partial, nrt, simulated |
 | `components/ui/` | `Tooltip` (+ `TooltipProvider`), `SegmentedControl`, `YearSelect`, `CoordinateField`, `InfoDialog`, `ChartTableTabs` | Base UI Tooltip, Toggle Group, Select, Number Field, Dialog, Tabs. State attributes used in CSS: `data-pressed`, `data-active`, `data-highlighted`, `data-selected` |
-| `components/viz/` | `Legend`, `StatTile` | Legend shows the ramp plus the provenance marks. StatTile shows the delta in ink, never red or green |
+| `components/ui/` | `Popover` | Base UI Popover, used by the Area filter (lat/lon fields, reset to pilot) |
+| `components/viz/` | `KpiTile`, `Legend` | KpiTile: label, compact value, delta in ink, badges. Legend: ramp (or the map's fixed class limits) plus provenance marks |
+| `features/calendar/` | `BurningCalendar`, `CalendarCell`, `CalendarTable` | Heatmap rules above. Takes the calendar the page loaded (shared with the KPI row) |
+| `components/map/` | `MapPanel`, `CellMap`, `MapTools` | Map in a lazy chunk; tools over the map: Flat / Globe, Draw area, Use visible area |
 | `state/` | `DashboardProvider`, `useDashboard` | One shared state: area, period (`ALL`/`D`/`N`), scale, year range, selected month |
-| `features/dashboard/` | `DashboardPage`, `AboutDialog` | Layout from the spec; "How to read" text is a first draft for task D10 |
+| `features/dashboard/` | `DashboardPage`, `AppBar`, `FilterBar`, `KpiRow`, `AboutDialog` | Dashboard structure above; "How to read" text is a first draft for task D10 |
 
 Calendar: our own heatmap, not an events calendar (FullCalendar has no year × month view). Map: MapLibre GL JS with
 react-map-gl and terra-draw for the rectangle; basemap from OpenFreeMap. react-globe.gl was considered and not used;
 deck.gl is deferred to the L3 drill-down.
 
+## Map
+
+| Topic | Rule |
+|-------|------|
+| Engine | MapLibre GL JS via react-map-gl, in its own lazy chunk (~315 KB gzip). Phones download it only after "Show map" |
+| Projection | Flat (Mercator) by default, best for choosing an area. A Flat / Globe toggle uses MapLibre's own globe (no extra library) |
+| Basemap | OpenFreeMap Positron (light) or Dark, following the theme. If the style does not load in 5 s, a plain background is used and the map says so |
+| Attribution | Comes with the style, compact control, always visible. Never hidden |
+| Cells | L2 polygons built in the browser from the cell ID (`lib/grid.ts`); the API sends values only (~9 KB gzip per month) |
+| Colors | `--viz-seq-1…7`, read with `getComputedStyle` because MapLibre cannot read `var()`; re-read on theme change. Classes: fixed limits from `/api/cells` (`breaks`: quantiles 50–98% of every positive cell-month), the same for every month so a quiet month looks quiet |
+| Estimated month | Cell outlines dashed (`--viz-estimated-outline`), plus the "Estimated from MODIS" badge |
+| Selected area | Ink outline (`--viz-selection`), 2 px |
+| Precision | `maxZoom` 10: a cell is 28 km wide, so closer zoom would suggest precision the data does not have. Rotation and pitch off |
+| Phones | `pixelRatio` capped at 2, no fade, no fly animation with `prefers-reduced-motion`; "Use visible area" selects without drawing |
+| Area rule | A cell belongs to the area when it overlaps the bounds; touching an edge is not enough (same rule in `/api/calendar` and `lib/grid.ts`) |
+
+Not used: react-globe.gl (separate three.js engine, ~509 KB gzip, no flat map or area selection), Cesium /
+React-CesiumExt (~1.35 MB gzip plus assets; brings OpenLayers and Ant Design, a second UI kit). deck.gl (~276 KB gzip on
+top) is kept for the L3 drill-down only if MapLibre is too slow there.
+
 ## Open items
 
 - Texture mode tokens (step 4 of the plan).
-- Map section (basemap, attribution, projection) when the map lands (task D3).

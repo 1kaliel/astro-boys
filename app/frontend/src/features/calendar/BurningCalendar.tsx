@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { Legend } from "../../components/viz/Legend";
 import type { CalendarDataset } from "../../data/calendarSource";
-import { useCalendarDataset } from "../../data/useCalendar";
+import type { CalendarLoad } from "../../data/useCalendar";
 import { MONTHS_LONG, MONTHS_SHORT, formatCount } from "../../lib/format";
 import { useDashboard } from "../../state/dashboard";
 import { CalendarCell, CalendarCellContext } from "./CalendarCell";
@@ -170,11 +170,11 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
   );
 }
 
-/** Year x month heatmap of hotspot detections (task D4): loading, error, empty and ready states. */
-export function BurningCalendar() {
-  const [state] = useDashboard();
-  const [load, reload] = useCalendarDataset(state.area, state.period);
-
+/**
+ * Year x month heatmap of hotspot detections (task D4): loading, error, empty and ready states.
+ * The page loads the calendar once (`useCalendarDataset`) and shares it with the KPI row.
+ */
+export function BurningCalendar({ load, reload }: { load: CalendarLoad; reload: () => void }) {
   if (load.status === "loading") {
     return (
       <p className="calendar-status" role="status">

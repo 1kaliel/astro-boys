@@ -1,6 +1,7 @@
 /*
- * Layer 3: component tokens, then the component rules that use them.
+ * Layer 3: component tokens, then the generic component rules that use them.
  * Components reference semantic and viz tokens only, never primitives or raw values.
+ * Page structure (app bar, filter bar, dashboard grid, heatmap, map) lives in layout.css.
  */
 :root {
   --card-bg: var(--color-surface);
@@ -13,12 +14,12 @@
   --button-fg: var(--color-text-primary);
   --button-border: var(--color-border-strong);
   --button-radius: var(--radius-md);
-  --button-padding: var(--space-2) var(--space-3);
+  --button-padding: var(--space-1) var(--space-3);
 
   --input-bg: var(--color-surface-raised);
   --input-border: var(--color-border-strong);
   --input-radius: var(--radius-md);
-  --input-padding: var(--space-2) var(--space-3);
+  --input-padding: var(--space-1) var(--space-3);
 
   --legend-swatch-size: var(--size-swatch);
   --legend-gap: var(--space-3);
@@ -34,110 +35,6 @@
 
   --banner-bg: var(--color-surface);
   --banner-border: var(--color-border-strong);
-
-  --stat-value-size: var(--font-size-hero);
-  --stat-label-size: var(--font-size-sm);
-
-  --heatmap-cell-min: var(--size-target-min);
-  --heatmap-gap: var(--size-px-2); /* surface gap between cells */
-  --page-max-width: var(--size-container);
-  --panel-min-height: var(--size-panel-min);
-  --map-cell-stroke: var(--viz-cell-outline);
-  --map-selection-stroke: var(--viz-selection);
-}
-
-/* Page layout */
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-section);
-  min-height: 100vh;
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-  padding: var(--spacing-page-y) var(--spacing-page-x);
-}
-
-.header h1 {
-  margin: 0;
-  font-size: var(--font-size-2xl);
-  line-height: var(--line-height-tight);
-  color: var(--color-accent);
-}
-
-.subtitle,
-.status {
-  margin: var(--space-1) 0 0;
-  color: var(--color-text-secondary);
-}
-
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.control-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-4);
-}
-
-.panel-placeholder {
-  display: grid;
-  place-items: center;
-  min-height: var(--panel-min-height);
-  padding: var(--card-padding);
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  text-align: center;
-}
-
-/* Map left, calendar right, the comparison below. One column on narrow screens. */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas:
-    "map calendar"
-    "stat stat";
-  gap: var(--spacing-section);
-}
-
-.dashboard-map {
-  grid-area: map;
-}
-
-.dashboard-calendar {
-  grid-area: calendar;
-}
-
-.dashboard-stat {
-  grid-area: stat;
-}
-
-/* Media queries cannot read custom properties; 56rem (~900px) is the one raw breakpoint. */
-@media (max-width: 56rem) {
-  .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "map"
-      "calendar"
-      "stat";
-  }
-}
-
-.footer {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.footer p {
-  margin: var(--space-1) 0;
 }
 
 /* Card */
@@ -155,15 +52,23 @@
 
 .card-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
 }
 
 .card-title {
   margin: 0;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .card-caption {
@@ -172,8 +77,15 @@
   color: var(--color-text-secondary);
 }
 
-/* Button */
+/* Short context in a card header, e.g. "2003–2026 · day and night" */
+.card-meta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Buttons */
 .button {
+  min-height: var(--size-target-min);
   padding: var(--button-padding);
   border: 1px solid var(--button-border);
   border-radius: var(--button-radius);
@@ -182,11 +94,15 @@
   font: inherit;
   font-size: var(--font-size-sm);
   cursor: pointer;
-  min-height: var(--size-target-min);
 }
 
 .button:hover {
   border-color: var(--color-text-secondary);
+}
+
+.icon-button {
+  min-width: var(--size-target-min);
+  padding-inline: var(--space-2);
 }
 
 /* Controls */
@@ -230,7 +146,8 @@
   color: var(--color-surface);
 }
 
-.select-trigger {
+.select-trigger,
+.chip {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -244,10 +161,17 @@
   font: inherit;
   font-size: var(--font-size-sm);
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.select-icon {
+.select-icon,
+.chip-icon {
   color: var(--color-text-secondary);
+}
+
+/* Every Base UI positioner gets the popup layer. */
+.popup-positioner {
+  z-index: var(--layer-popup);
 }
 
 .select-popup {
@@ -265,6 +189,7 @@
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
@@ -290,7 +215,7 @@
 }
 
 .number-field-input {
-  width: 6ch;
+  width: 7ch;
   min-height: var(--size-target-min);
   padding: var(--space-1) var(--space-2);
   border: 0;
@@ -311,10 +236,9 @@
   cursor: pointer;
 }
 
-/* Tooltip */
-.tooltip {
-  max-width: var(--size-panel-min);
-  padding: var(--space-2) var(--space-3);
+/* Tooltip and popover */
+.tooltip,
+.popover {
   border: 1px solid var(--tooltip-border);
   border-radius: var(--radius-md);
   background: var(--tooltip-bg);
@@ -323,10 +247,30 @@
   font-size: var(--font-size-sm);
 }
 
-/* Dialog */
+.tooltip {
+  max-width: var(--size-panel-min);
+  padding: var(--space-2) var(--space-3);
+}
+
+.popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: min(92vw, var(--size-panel-min) * 1.5);
+  padding: var(--space-4);
+}
+
+.popover-title {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Dialog. The backdrop is absolute, not fixed (Base UI guidance for iOS 26 Safari). */
 .dialog-backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  z-index: var(--layer-overlay);
   background: var(--color-overlay);
 }
 
@@ -334,6 +278,7 @@
   position: fixed;
   top: 50%;
   left: 50%;
+  z-index: var(--layer-overlay);
   transform: translate(-50%, -50%);
   width: min(90vw, calc(var(--size-container) / 2));
   max-height: 85vh;
@@ -420,7 +365,6 @@
   width: var(--size-swatch);
   height: var(--size-swatch);
   border-radius: var(--radius-sm);
-  box-shadow: inset 0 0 0 1px var(--viz-cell-outline);
 }
 
 .legend-marks {
@@ -453,10 +397,33 @@
   background: var(--viz-seq-4);
 }
 
-.legend-mark-estimated,
+/* Estimated = the MODIS era: the same bar as the heatmap's era column, never a dashed outline. */
 .badge-estimated .badge-mark {
-  outline: var(--size-px-2) dashed var(--viz-estimated-outline);
-  outline-offset: calc(-1 * var(--size-px-2));
+  width: calc(2 * var(--size-px-2));
+  border-radius: var(--size-px-2);
+  background: var(--viz-era-estimated);
+}
+
+/* The sensor-change line of the heatmap (February 2012) */
+.legend-mark-boundary {
+  background: linear-gradient(
+    to right,
+    transparent calc(50% - var(--size-px-2) / 2),
+    var(--viz-boundary) calc(50% - var(--size-px-2) / 2),
+    var(--viz-boundary) calc(50% + var(--size-px-2) / 2),
+    transparent calc(50% + var(--size-px-2) / 2)
+  );
+}
+
+.legend-classes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.legend-break {
+  font-variant-numeric: tabular-nums;
 }
 
 .legend-mark-partial::after,
@@ -475,47 +442,7 @@
   background: var(--viz-null);
 }
 
-.badge-nrt .badge-mark {
-  background: none;
-  box-shadow: inset 0 0 0 var(--size-px-2) var(--color-text-secondary);
-}
-
-.badge-simulated .badge-mark {
-  background: var(--color-status-warning);
-}
-
-/* Stat tile: hero figure, delta in ink (more or fewer hotspots is not "good" or "bad") */
-.stat-tile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.stat-label,
-.stat-unit {
-  margin: 0;
-  font-size: var(--stat-label-size);
-  color: var(--color-text-secondary);
-}
-
-.stat-value {
-  margin: 0;
-  font-size: var(--stat-value-size);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-.stat-delta {
-  margin: 0;
-  color: var(--color-text-primary);
-}
-
-.stat-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
+/* Badges */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -527,4 +454,28 @@
   color: var(--badge-fg);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
+  white-space: nowrap;
+}
+
+.badge-nrt .badge-mark {
+  background: none;
+  box-shadow: inset 0 0 0 var(--size-px-2) var(--color-text-secondary);
+}
+
+.badge-simulated .badge-mark {
+  background: var(--color-status-warning);
+}
+
+/* Banner (simulated data) */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--banner-border);
+  border-radius: var(--radius-md);
+  background: var(--banner-bg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
 }

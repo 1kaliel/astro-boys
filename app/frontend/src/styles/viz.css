@@ -33,15 +33,17 @@
   --viz-series-2: var(--series-orange-light);
   --viz-series-3: var(--series-aqua-light); /* below 3:1 on light: always direct-labeled */
 
-  /* Marking and chrome */
+  /* Marking and chrome. Provenance is marked once (era bar + sensor-change line), never on every cell. */
   --viz-null: var(--neutral-200); /* no data: never the same as a zero */
-  --viz-cell-outline: var(--color-border); /* hairline, keeps near-zero cells visible */
-  --viz-estimated-outline: var(--neutral-700); /* dashed: estimated from MODIS */
+  --viz-cell-outline: var(--color-border);
+  --viz-boundary: var(--neutral-1000); /* sensor-change line (February 2012), drawn in the gaps */
+  --viz-era-estimated: var(--neutral-700); /* era bar: estimated from MODIS */
+  --viz-era-observed: var(--neutral-300); /* era bar: observed by VIIRS */
   --viz-partial-mark: var(--neutral-1000); /* corner mark: month not complete */
   --viz-selection: var(--color-text-primary);
   --viz-grid: var(--neutral-200);
   --viz-axis: var(--neutral-300);
-  --viz-band-opacity: 0.2; /* 90% interval band for estimated months */
+  --viz-band-opacity: 0.1; /* 90% interval band: a wash, never a block */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -69,7 +71,9 @@
     --viz-series-3: var(--series-aqua-dark);
 
     --viz-null: var(--neutral-850);
-    --viz-estimated-outline: var(--neutral-300);
+    --viz-boundary: var(--neutral-100);
+  --viz-era-estimated: var(--neutral-300);
+  --viz-era-observed: var(--neutral-800);
     --viz-partial-mark: var(--neutral-100);
     --viz-grid: var(--neutral-850);
     --viz-axis: var(--neutral-800);
@@ -100,7 +104,9 @@
   --viz-series-3: var(--series-aqua-dark);
 
   --viz-null: var(--neutral-850);
-  --viz-estimated-outline: var(--neutral-300);
+  --viz-boundary: var(--neutral-100);
+  --viz-era-estimated: var(--neutral-300);
+  --viz-era-observed: var(--neutral-800);
   --viz-partial-mark: var(--neutral-100);
   --viz-grid: var(--neutral-850);
   --viz-axis: var(--neutral-800);
