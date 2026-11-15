@@ -20,9 +20,11 @@ type KpiTileProps = {
   evidence?: Evidence | null;
   /** Secondary lines the card leaves out to stay short; shown in the evidence panel. */
   notes?: ReactNode;
+  /** A button of its own above the card's stretched evidence target (e.g. "Show on map"). */
+  action?: ReactNode;
 };
 
-export function KpiTile({ label, value, detail, comparison, badges, hero, evidence, notes }: KpiTileProps) {
+export function KpiTile({ label, value, detail, comparison, badges, hero, evidence, notes, action }: KpiTileProps) {
   const [open, setOpen] = useState(false);
   return (
     <div className={cx("kpi", hero && "kpi-hero", evidence && "kpi-clickable")}>
@@ -43,6 +45,7 @@ export function KpiTile({ label, value, detail, comparison, badges, hero, eviden
       <p className="kpi-value">{value}</p>
       {detail && <p className="kpi-detail">{detail}</p>}
       {comparison && <p className="kpi-comparison">{comparison}</p>}
+      {action && <div className="kpi-action">{action}</div>}
       {evidence && (
         <>
           <p className="kpi-source-hint" aria-hidden="true">

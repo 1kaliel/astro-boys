@@ -162,6 +162,7 @@ export default function MapPanel() {
         </div>
       </div>
 
+      <div className="map-info">
       {remote.error && (
         <p className="map-note map-error" role="alert">
           Could not load the cells: {remote.error}
@@ -224,6 +225,12 @@ export default function MapPanel() {
           )}
         </>
       )}
+        <p className="card-caption map-caption">
+          {drillCell
+            ? "Source: NASA FIRMS · native detections per 0.0625° sub-cell · basemap © OpenStreetMap contributors"
+            : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"}
+        </p>
+      </div>
     </div>
   );
 }

@@ -16,13 +16,15 @@ type KpiRowProps = {
   area: Bounds;
   period: Period;
   modelVersion: string;
+  /** Shows a month everywhere (the map, the sidebar, the timeline). */
+  onPickMonth?: (year: number, month: number) => void;
 };
 
 /**
  * The three indicators of the team proposal, all for the selected area, years and time of day:
  * total activity, the peak month, and how many months were above the usual level.
  */
-export function KpiRow({ months, startYear, endYear, baselineYears, area, period, modelVersion }: KpiRowProps) {
+export function KpiRow({ months, startYear, endYear, baselineYears, area, period, modelVersion, onPickMonth }: KpiRowProps) {
   const context = { area, period, modelVersion, startYear, endYear };
   const years = startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
   const total = totalActivity(months, startYear, endYear);
@@ -76,6 +78,13 @@ export function KpiRow({ months, startYear, endYear, baselineYears, area, period
         evidence={peak ? peakEvidence(months, context) : null}
         value={peak ? `${MONTHS_LONG[peak.month - 1]} ${peak.year}` : "No data"}
         detail={peak ? `${formatCount(peak.count ?? 0)} hotspots${peak.isEstimated ? " (estimated)" : ""}` : undefined}
+        action={
+          peak && onPickMonth ? (
+            <button type="button" className="kpi-link" onClick={() => onPickMonth(peak.year, peak.month)}>
+              Show {MONTHS_LONG[peak.month - 1]} {peak.year} on the map
+            </button>
+          ) : undefined
+        }
         comparison={
           usualPeak ? `Usual peak: ${MONTHS_LONG[usualPeak.month - 1]} (median ${formatCompact(usualPeak.median)})` : undefined
         }

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { InfoTip } from "../../components/ui/InfoTip";
 import { Popover } from "../../components/ui/Popover";
 import { SegmentedControl, type SegmentOption } from "../../components/ui/SegmentedControl";
@@ -19,7 +19,6 @@ import {
 } from "../../state/dashboard";
 import "../../styles/filters.css";
 import { AreaPicker, describeArea } from "./AreaPicker";
-import { DownloadCsv } from "./DownloadCsv";
 
 /** The data series: the harmonized VIIRS-equivalent counts, or the native counts of one instrument family. */
 type DataSeries = "harmonized" | "modis" | "viirs";
@@ -160,12 +159,11 @@ function activeFilters(state: DashboardState, dispatch: (action: DashboardAction
 }
 
 /**
- * Global filters, under the header: they drive the KPIs, the calendar and the map. Geography (Region → Country →
- * State), years, data series and time of day stay in view, in one row from 75rem; intensity, relevance and the
- * calendar metric sit behind "More filters", and the CSV download ends the row. Under 56rem the controls fold into
- * one "Filters · N active" button and every chip stays visible; wider, only the changed filters show as chips.
+ * The sidebar steps of the explorer, a sequence: 1 Where (the area), 2 When (the month, given by the page, and the
+ * years of the period), 3 What (data series, time of day, more filters). They drive the map, the numbers, the days
+ * and the timeline. On a phone the list folds behind one button; the month stays in view outside it.
  */
-export function FilterBar() {
+export function FilterBar({ when, collapsible }: { when?: ReactNode; collapsible?: boolean }) {
   const [state, dispatch] = useDashboard();
   const [panelOpen, setPanelOpen] = useState(false);
   const panelId = useId();
@@ -174,46 +172,56 @@ export function FilterBar() {
   const chips = activeFilters(state, dispatch);
   const active = chips.filter((chip) => chip.changed).length;
   const series = dataSeriesOf(state);
+  const folded = Boolean(collapsible) && !panelOpen;
 
   function resetAll() {
     for (const chip of chips) if (chip.changed) chip.clear?.();
   }
 
   return (
-    <section className="fbar" data-tour="filters" aria-label="Filters for every view">
-      <button
-        type="button"
-        className="button fbar-toggle"
-        aria-expanded={panelOpen}
-        aria-controls={panelId}
-        onClick={() => setPanelOpen((open) => !open)}
-      >
-        <span>
-          Filters
-          {active > 0 ? (
-            <>
-              {" · "}
-              <span className="fbar-toggle-count">{active} active</span>
-            </>
-          ) : null}
-        </span>
-        <span className="fbar-toggle-icon" aria-hidden="true">
-          ▾
-        </span>
-      </button>
-
-      <div id={panelId} className="fbar-panel" data-open={panelOpen || undefined}>
-        <AreaPicker
-          area={state.area}
-          areaLabel={state.areaLabel}
-          onArea={(area, label) => dispatch({ type: "setArea", area, label })}
-        />
-
-        <div className="fbar-group" role="group" aria-label="Years">
-          <div className="control">
-            <span className="control-label" aria-hidden="true">
-              Years
+    <section className="xp-steps" data-tour="filters" aria-label="Area, month and data">
+      {collapsible && (
+        <button
+          type="button"
+          className="button xp-steps-toggle"
+          aria-expanded={panelOpen}
+          aria-controls={panelId}
+          onClick={() => setPanelOpen((open) => !open)}
+        >
+          <span>
+            Change area, years or data
+            {active > 0 ? <span className="fbar-toggle-count">{` · ${active} changed`}</span> : null}
+          </span>
+          <span className="fbar-toggle-icon" aria-hidden="true">
+            ▾
+          </span>
+        </button>
+      )}
+      <ol id={panelId} className="xp-step-list" hidden={folded || undefined}>
+        <li className="xp-step">
+          <h2 className="xp-step-title">
+            <span className="xp-step-n" aria-hidden="true">
+              1
             </span>
+            Where
+          </h2>
+          <AreaPicker
+            area={state.area}
+            areaLabel={state.areaLabel}
+            onArea={(area, label) => dispatch({ type: "setArea", area, label })}
+          />
+        </li>
+
+        <li className="xp-step">
+          <h2 className="xp-step-title">
+            <span className="xp-step-n" aria-hidden="true">
+              2
+            </span>
+            When
+          </h2>
+          {when}
+          <div className="xp-years" role="group" aria-label="Years of the period">
+            <span className="control-label">Period of the timeline and the totals</span>
             <div className="filter-years">
               <YearSelect
                 label="From year"
@@ -234,71 +242,58 @@ export function FilterBar() {
               />
             </div>
           </div>
-        </div>
+        </li>
 
-        <div className="fbar-group fbar-data">
-          <SegmentedControl
-            label="Data"
-            options={DATA_OPTIONS}
-            value={series === "mixed" ? ("mixed" as DataSeries) : series}
-            onChange={(next) => setDataSeries(next, state.sensor, dispatch)}
-          />
-          {series === "mixed" ? (
+        <li className="xp-step">
+          <h2 className="xp-step-title">
+            <span className="xp-step-n" aria-hidden="true">
+              3
+            </span>
+            What
+          </h2>
+          <div className="xp-row">
+            <SegmentedControl
+              label="Data"
+              options={DATA_OPTIONS}
+              value={series === "mixed" ? ("mixed" as DataSeries) : series}
+              onChange={(next) => setDataSeries(next, state.sensor, dispatch)}
+            />
+            {series !== "mixed" && <InfoTip label="About the data series">{DATA_HINT[series]}</InfoTip>}
+          </div>
+          {series === "mixed" && (
             <p className="fbar-note" id={hintId} data-tone="warn">
               {DATA_HINT[series]}
             </p>
-          ) : (
-            <InfoTip label="About the data series">{DATA_HINT[series]}</InfoTip>
           )}
-        </div>
-
-        <div className="fbar-group">
-          <SegmentedControl
-            label="Time of day"
-            options={PERIOD_OPTIONS}
-            value={state.period}
-            onChange={(period) => dispatch({ type: "setPeriod", period })}
-          />
-        </div>
-
-        <div className="fbar-group fbar-tail">
-          <MoreFilters
-            metric={state.metric}
-            minFrp={state.minFrp}
-            relevance={state.relevance}
-            onMetric={(metric) => dispatch({ type: "setMetric", metric })}
-            onMinFrp={(minFrp) => dispatch({ type: "setMinFrp", minFrp })}
-            onRelevance={(relevance) => dispatch({ type: "setRelevance", relevance })}
-          />
-        </div>
-      </div>
-
-      {/* An action on the filtered view, not a filter: at the end of the row, in view on a phone too. */}
-      <div className="fbar-download">
-        <DownloadCsv />
-      </div>
-
-      {/* What is applied. On wide screens only the changed filters show (the controls already say the rest). */}
-      <div className="fbar-active" data-changed={active > 0 || undefined}>
-        <span className="fbar-active-label" id={`${panelId}-chips`}>
-          Showing
-        </span>
-        <ul className="fbar-chips" aria-labelledby={`${panelId}-chips`}>
-          {chips.map((chip) => (
-            <li key={chip.key} className="fbar-chip" data-changed={chip.changed || undefined}>
-              <span className="fbar-chip-text">{chip.text}</span>
-              {chip.changed && chip.clear && (
-                <button type="button" className="fbar-chip-clear" aria-label={`Clear filter: ${chip.text}`} onClick={chip.clear}>
-                  <span aria-hidden="true">×</span>
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-        <button type="button" className="fbar-reset" onClick={resetAll} disabled={active === 0}>
-          Reset all
-        </button>
-      </div>
+          <div className="xp-row">
+            <SegmentedControl
+              label="Time of day"
+              options={PERIOD_OPTIONS}
+              value={state.period}
+              onChange={(period) => dispatch({ type: "setPeriod", period })}
+            />
+            <MoreFilters
+              metric={state.metric}
+              minFrp={state.minFrp}
+              relevance={state.relevance}
+              onMetric={(metric) => dispatch({ type: "setMetric", metric })}
+              onMinFrp={(minFrp) => dispatch({ type: "setMinFrp", minFrp })}
+              onRelevance={(relevance) => dispatch({ type: "setRelevance", relevance })}
+            />
+          </div>
+        </li>
+      </ol>
+      {active > 0 && !folded && (
+        <p className="xp-reset">
+          {`${active} ${active === 1 ? "filter" : "filters"} changed: ${chips
+            .filter((chip) => chip.changed)
+            .map((chip) => chip.text)
+            .join(" · ")}. `}
+          <button type="button" className="fbar-reset" onClick={resetAll}>
+            Reset all
+          </button>
+        </p>
+      )}
     </section>
   );
 }
@@ -327,6 +322,9 @@ function MoreFilters({
   const active = [metric !== "count", minFrp > 0, relevance !== "l"].filter(Boolean).length;
   return (
     <div className="control fbar-more">
+      <span className="control-label" aria-hidden="true">
+        Detections
+      </span>
       <Popover
         open={open}
         onOpenChange={setOpen}

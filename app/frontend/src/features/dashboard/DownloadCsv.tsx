@@ -75,7 +75,7 @@ export function DownloadCsv() {
         trigger={
           <>
             <Icon name="download" />
-            CSV
+            Download (CSV)
           </>
         }
       >
