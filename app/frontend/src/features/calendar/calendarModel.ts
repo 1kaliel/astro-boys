@@ -13,6 +13,8 @@ export type CalendarDatum = {
   year: number;
   month: number; // 1..12
   entry: CalendarMonth | null;
+  /** True when an active filter hides this month: it keeps its place but is drawn as "filtered out". */
+  filtered?: boolean;
 };
 
 /** One row of the calendar: a year with its months. */
@@ -226,6 +228,7 @@ export function provenanceText(entry: CalendarMonth): string {
 export function cellAriaLabel(cell: CalendarDatum): string {
   const when = `${monthLong(cell.month)} ${cell.year}`;
   if (!cell.entry) return `${when}: no data`;
+  if (cell.filtered) return `${when}: filtered out by the active filters. ${provenanceText(cell.entry)}`;
   if (cell.entry.count === null) return `${when}: no estimate. ${provenanceText(cell.entry)}`;
   return `${when}: ${formatCount(cell.entry.count)} hotspot detections. ${provenanceText(cell.entry)}`;
 }

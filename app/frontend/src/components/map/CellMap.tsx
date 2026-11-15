@@ -95,6 +95,9 @@ const MERCATOR_LIMITS: [number, number, number, number] = [-80, -40, -20, 14];
 /** The region of the live wind lattice (wider than Brazil), framed until the outline of Brazil is loaded. */
 /** How far the map is tilted while the municipalities are shown (degrees; MapLibre allows up to 60). */
 const MUNI_PITCH = 50;
+/** Tilt of the 3D view, and the height of one class of cells in meters (the heights are classes, not measurements). */
+const RELIEF_PITCH = 55;
+const RELIEF_STEP_M = 9000;
 const LIVE_REGION: Bounds = { west: -75, south: -35, east: -25, north: 8 };
 
 /** Loads the names and borders for the satellite basemap; without them (service down) the imagery shows alone. */
@@ -151,8 +154,13 @@ type CellMapProps = {
   cells: readonly CellFeatureProps[];
   /** Fixed, strictly increasing class limits from the API (the same for every month). */
   breaks: readonly number[];
+  /** What a value is and where it comes from, for the cell popup (from the answer on screen). */
+  cellUnit?: string;
+  cellSource?: string;
+  cellDate?: string | null;
   area: Bounds;
-  projection: "mercator" | "globe"; // the MapLibre projections; the 3D view is GlobeView
+  /** "3d" is the globe projection tilted, with the cells extruded by class. */
+  projection: "mercator" | "globe" | "3d";
   /** What is drawn: the hotspot cells (default) or one ERA5 weather layer. Never both at once. */
   layer?: MapLayer;
   /** ERA5 monthly means at sampled points, for the weather layers. */
@@ -163,7 +171,12 @@ type CellMapProps = {
    */
   live?: WeatherField | null;
   /** A state's municipalities (IBGE) colored by the current feels-like temperature: a tilted view with a compass. */
-  municipal?: { geo: MunicipalitiesGeoJSON; weather: MunicipalitiesWeather | null } | null;
+  municipal?: {
+    geo: MunicipalitiesGeoJSON;
+    weather: MunicipalitiesWeather | null;
+    /** The outline of the state itself (IBGE), drawn in bold so the municipalities read as a whole. */
+    outline?: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon> | null;
+  } | null;
   /**
    * The default view: the live temperature surface, the hotspot cells and the live wind together. The wind has no
    * switch (it is always on while the map is visible); the surface and the cells can be hidden, and the surface has an
@@ -184,6 +197,9 @@ export function CellMap({
   mapRef,
   cells,
   breaks,
+  cellUnit,
+  cellSource,
+  cellDate,
   area,
   projection,
   layer = "hotspots",
@@ -192,6 +208,7 @@ export function CellMap({
   municipal = null,
   overview = null,
 }: CellMapProps) {
+  const relief = projection === "3d";
   const scheme = useColorScheme();
   const { style, offline } = useBasemap();
   // Re-read the tokens whenever the theme changes.
@@ -216,6 +233,8 @@ export function CellMap({
   const brazil = useBrazil(windOn);
   const brazilData = useMemo(() => brazil?.geojson ?? null, [brazil]);
   const [muniHover, setMuniHover] = useState<{ lng: number; lat: number; props: Record<string, unknown> } | null>(null);
+  // Matches no municipality when nothing is under the pointer (an empty code never occurs in the data).
+  const muniHoverCode = muniHover ? String(muniHover.props.code ?? "") : "";
   const muniShapes = useMemo(() => (municipal ? joinWeather(municipal.geo, municipal.weather) : null), [municipal]);
   const muniPoints = useMemo(
     () => (municipal && muniShapes ? centroidPoints(municipal.geo, muniShapes) : null),
@@ -304,6 +323,17 @@ export function CellMap({
     ] as unknown as ExpressionSpecification;
   }, [colors, breaks]);
 
+  // Height of a cell in the 3D view: its class (the same classes as the colors) times a fixed step.
+  const reliefHeight = useMemo((): ExpressionSpecification => {
+    if (breaks.length === 0) return RELIEF_STEP_M as unknown as ExpressionSpecification;
+    return [
+      "step",
+      ["get", "value"],
+      RELIEF_STEP_M,
+      ...breaks.flatMap((edge, i) => [edge, RELIEF_STEP_M * (i + 2)]),
+    ] as unknown as ExpressionSpecification;
+  }, [breaks]);
+
   // Follow the selected area, or show the whole wide region while the live wind is on (no animation when the user
   // asked for reduced motion).
   // The overview opens on the selected area (the Northeast by default): the wind covers Brazil, the view stays on the study area.
@@ -315,9 +345,14 @@ export function CellMap({
         [target.east, target.north],
       ],
       // The municipalities are seen from an angle (a tilted map); every other layer is flat and north up.
-      { padding: 24, duration: prefersReducedMotion() ? 0 : 400, pitch: muniOn ? MUNI_PITCH : 0, bearing: 0 },
+      {
+        padding: 24,
+        duration: prefersReducedMotion() ? 0 : 400,
+        pitch: muniOn ? MUNI_PITCH : relief ? RELIEF_PITCH : 0,
+        bearing: 0,
+      },
     );
-  }, [target.west, target.south, target.east, target.north, muniOn, mapRef]);
+  }, [target.west, target.south, target.east, target.north, muniOn, relief, mapRef]);
 
   const onPointer = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
@@ -334,6 +369,9 @@ export function CellMap({
         value: Number(p.value),
         estimated: p.estimated === true || p.estimated === "true",
         partial: p.partial === true || p.partial === "true",
+        ci_low: p.ci_low == null ? undefined : Number(p.ci_low),
+        ci_high: p.ci_high == null ? undefined : Number(p.ci_high),
+        satellite: typeof p.satellite === "string" ? p.satellite : undefined,
       },
     });
   };
@@ -376,13 +414,13 @@ export function CellMap({
           ],
           fitBoundsOptions: { padding: 16 },
         }}
-        projection={projection}
+        projection={projection === "mercator" ? "mercator" : "globe"}
         maxBounds={projection === "mercator" ? MERCATOR_LIMITS : undefined}
-        minZoom={projection === "globe" ? 1 : 3}
+        minZoom={projection === "mercator" ? 3 : 1}
         maxZoom={10}
-        dragRotate={muniOn}
-        pitchWithRotate={muniOn}
-        touchPitch={muniOn}
+        dragRotate={muniOn || relief}
+        pitchWithRotate={muniOn || relief}
+        touchPitch={muniOn || relief}
         pixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
         fadeDuration={0}
         attributionControl={{ compact: true }}
@@ -417,25 +455,41 @@ export function CellMap({
         // it): with the overview as the default view the arrow layer already exists when the style arrives, before
         // `load`, so asking for the image later would be too late.
         onStyleData={(event) => ensureWindArrow(event.target)}
-        cursor={hover || wxHover ? "pointer" : "grab"}
+        cursor={hover || wxHover || muniHover ? "pointer" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-right" showCompass={false} />
         <Source id="cells" type="geojson" data={cellData}>
           {/* No stroke around cells: an estimated month is flagged once (badge), not on thousands of cells. */}
-          <Layer
-            id="cells-fill"
-            type="fill"
-            beforeId={bordersBefore}
-            layout={{ visibility: hideCells ? "none" : "visible" }}
-            paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
-          />
+          {relief ? (
+            // Same cells, raised by class. The id stays "cells-fill" for the pointer and the layers placed under it.
+            <Layer
+              id="cells-fill"
+              key="cells-extrusion"
+              type="fill-extrusion"
+              paint={{
+                "fill-extrusion-color": fillColor,
+                "fill-extrusion-height": reliefHeight,
+                "fill-extrusion-opacity": 0.92,
+                "fill-extrusion-vertical-gradient": true,
+              }}
+            />
+          ) : (
+            <Layer
+              id="cells-fill"
+              key="cells-flat"
+              type="fill"
+              beforeId={bordersBefore}
+              layout={{ visibility: hideCells ? "none" : "visible" }}
+              paint={{ "fill-color": fillColor, "fill-opacity": 0.85 }}
+            />
+          )}
           {/* A fine light outline, so the hotspot cells stay readable over the temperature colors. */}
           <Layer
             id="cells-outline"
             type="line"
             beforeId={bordersBefore}
-            layout={{ visibility: hideCells ? "none" : "visible" }}
+            layout={{ visibility: hideCells || relief ? "none" : "visible" }}
             paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.6 }}
           />
         </Source>
@@ -479,8 +533,8 @@ export function CellMap({
                   "circle-color": wxFill,
                   "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 6, 12, 9, 22],
                   "circle-stroke-color": colors["--color-surface"],
-                  "circle-stroke-width": 1,
-                  "circle-opacity": 0.95,
+                  "circle-stroke-width": 0.5,
+                  "circle-opacity": 0.9,
                 }}
               />
             )}
@@ -498,20 +552,42 @@ export function CellMap({
         {muniOn && muniShapes && muniPoints && (
           <>
             <Source id="municipalities" type="geojson" data={muniShapes}>
-              <Layer id="muni-fill" type="fill" paint={{ "fill-color": muniFill, "fill-opacity": 0.55 }} />
+              <Layer id="muni-fill" type="fill" paint={{ "fill-color": muniFill, "fill-opacity": 0.7 }} />
+              {/* The municipality under the pointer: a brighter fill and a clear outline, only for that one. */}
+              <Layer
+                id="muni-hover-fill"
+                type="fill"
+                filter={["==", ["get", "code"], muniHoverCode]}
+                paint={{ "fill-color": colors["--color-text-primary"], "fill-opacity": 0.28 }}
+              />
+              <Layer
+                id="muni-hover-line"
+                type="line"
+                filter={["==", ["get", "code"], muniHoverCode]}
+                paint={{ "line-color": colors["--color-text-primary"], "line-width": 2.5, "line-opacity": 1 }}
+              />
               <Layer
                 id="muni-line"
                 type="line"
                 paint={{ "line-color": colors["--color-text-primary"], "line-width": 0.6, "line-opacity": 0.45 }}
               />
             </Source>
+            {municipal?.outline && (
+              <Source id="state-outline" type="geojson" data={municipal.outline}>
+                <Layer
+                  id="state-outline-line"
+                  type="line"
+                  paint={{ "line-color": colors["--color-text-primary"], "line-width": 2, "line-opacity": 0.9 }}
+                />
+              </Source>
+            )}
             <Source id="municipality-centres" type="geojson" data={muniPoints}>
               <Layer
                 id="muni-centre"
                 type="circle"
                 paint={{
                   "circle-color": muniFill,
-                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 2.5, 7, 5.5, 9, 11],
+                  "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 1.5, 7, 3, 9, 5.5],
                   "circle-stroke-color": colors["--color-text-primary"],
                   "circle-stroke-width": 1,
                   "circle-opacity": 0.95,
@@ -607,11 +683,24 @@ export function CellMap({
             offset={10}
             className="map-popup"
           >
-            <strong>{formatCount(hover.cell.value)}</strong> VIIRS-equivalent hotspots
+            <strong>{formatCount(hover.cell.value)}</strong> {cellUnit ?? "VIIRS-equivalent hotspots"}
             <br />
-            Cell {hover.cell.id}
+            {cellDate && <>{cellDate} · </>}Cell {hover.cell.id}
             {hover.cell.estimated && " · Estimated from MODIS"}
+            {hover.cell.estimated && hover.cell.ci_low != null && hover.cell.ci_high != null && (
+              <>
+                {" "}
+                · 90% interval {formatCount(hover.cell.ci_low)} to {formatCount(hover.cell.ci_high)}
+              </>
+            )}
+            {hover.cell.satellite && <> · {hover.cell.satellite}</>}
             {hover.cell.partial && " · Partial month"}
+            {cellSource && (
+              <>
+                <br />
+                Source: {cellSource}
+              </>
+            )}
           </Popup>
         )}
       </Map>

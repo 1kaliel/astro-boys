@@ -45,7 +45,17 @@ export function cellsInBounds(bounds: Bounds): string[] {
   return ids;
 }
 
-export type CellFeatureProps = { id: string; value: number; estimated: boolean; partial: boolean };
+export type CellFeatureProps = {
+  id: string;
+  value: number;
+  estimated: boolean;
+  partial: boolean;
+  /** 90% interval of an estimated harmonized cell. */
+  ci_low?: number;
+  ci_high?: number;
+  /** Native series: the one satellite the count belongs to. */
+  satellite?: string;
+};
 
 /** Polygons for the map, built in the browser so the API only sends values. */
 export function cellsToGeoJSON(cells: readonly CellFeatureProps[]): GeoJSON.FeatureCollection<GeoJSON.Polygon> {

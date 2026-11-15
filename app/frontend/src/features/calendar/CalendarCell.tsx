@@ -128,7 +128,8 @@ export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: 
   const height = Math.max(0, cell.height - CELL_GAP_PX);
   const radius = Math.min(CELL_RADIUS_PX, height / 2);
   const mark = Math.min(width, height) * PARTIAL_MARK_RATIO;
-  const fill = hasCount ? cell.color : `url(#${HATCH_ID})`;
+  const filtered = cell.data.filtered === true;
+  const fill = filtered ? "transparent" : hasCount ? cell.color : `url(#${HATCH_ID})`;
 
   return (
     <g
@@ -138,7 +139,8 @@ export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: 
         isHovered && "calendar-cell-hover",
         isDimmed && "calendar-cell-dim",
         !hasCount && "calendar-cell-empty",
-        isZero && "calendar-cell-zero",
+        isZero && !filtered && "calendar-cell-zero",
+        filtered && "calendar-cell-filtered",
       )}
       // nivo positions cells by their center.
       transform={`translate(${cell.x - cell.width / 2 + inset}, ${cell.y - cell.height / 2 + inset})`}
@@ -162,8 +164,14 @@ export function CalendarCell({ cell, onMouseEnter, onMouseMove, onMouseLeave }: 
       onKeyDown={hasData ? (event) => handleKeyDown(event, year, month, onSelect) : undefined}
     >
       <rect className="calendar-cell-rect" width={width} height={height} rx={radius} style={{ fill }} />
-      {isZero && (
-        <text className="calendar-cell-zero-label" x={width / 2} y={height / 2} textAnchor="middle" dominantBaseline="central">
+      {isZero && !filtered && (
+        <text
+          className="calendar-cell-zero-label"
+          x={width / 2}
+          y={height / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
           0
         </text>
       )}

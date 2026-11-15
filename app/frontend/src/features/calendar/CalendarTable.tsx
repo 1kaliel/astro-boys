@@ -23,6 +23,7 @@ export function CalendarTable({ series, unit }: { series: ReadonlyArray<Calendar
               <th scope="row">{row.id}</th>
               {row.data.map((cell) => (
                 <td key={cell.month}>
+                  {cell.filtered ? "filtered out · " : ""}
                   {cell.entry && cell.y === null ? "No estimate" : formatCount(cell.y)}
                   {cell.entry?.isEstimated ? " est." : ""}
                   {cell.entry?.isPartial ? " partial" : ""}
@@ -33,7 +34,8 @@ export function CalendarTable({ series, unit }: { series: ReadonlyArray<Calendar
         </tbody>
       </table>
       <p className="calendar-table-note">
-        est. = estimated from MODIS, partial = month not complete, No data = no row (not zero).
+        est. = estimated from MODIS, partial = month not complete, No data = no row (not zero), filtered out = the month
+        has data but an active filter hides it in the chart.
       </p>
     </div>
   );

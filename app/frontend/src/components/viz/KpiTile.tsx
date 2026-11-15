@@ -1,3 +1,4 @@
+import { Dialog } from "@base-ui/react/dialog";
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
 import { KpiIcon, type KpiIconName } from "./kpiIcons";
@@ -19,6 +20,8 @@ type KpiTileProps = {
   detail?: ReactNode;
   /** Period, origin, observation state or the methodological note. */
   footer?: ReactNode;
+  /** True when the tile sits inside a detail panel (Dialog.Root): it then gets the control that opens it. */
+  opens?: boolean;
 };
 
 const ICON_OF: Record<KpiVariant, KpiIconName> = {
@@ -28,8 +31,8 @@ const ICON_OF: Record<KpiVariant, KpiIconName> = {
   provenance: "provenance",
 };
 
-/** Same four-part layout for every indicator: header (category + icon), content, footer. Not interactive. */
-export function KpiTile({ variant, category, title, value, comparison, detail, footer }: KpiTileProps) {
+/** Same four-part layout for every indicator: header (category + icon), content, footer. With `opens`, the whole tile opens its records. */
+export function KpiTile({ variant, category, title, value, comparison, detail, footer, opens }: KpiTileProps) {
   return (
     <article className={cx("kpi", `kpi-${variant}`)} aria-label={`${category}: ${title}`}>
       <header className="kpi-head">
@@ -45,6 +48,11 @@ export function KpiTile({ variant, category, title, value, comparison, detail, f
         {detail && <p className="kpi-detail">{detail}</p>}
       </div>
       {footer && <footer className="kpi-footer">{footer}</footer>}
+      {opens && (
+        <Dialog.Trigger className="kpi-open" aria-label={`${category}: ${title}. Open the records behind this figure`}>
+          See the records
+        </Dialog.Trigger>
+      )}
     </article>
   );
 }

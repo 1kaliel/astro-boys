@@ -81,7 +81,9 @@ export function DashboardPage() {
           ) : (
             <div className="map-collapsed">
               <p>The map shows the 0.25° cells of the selected month and lets you draw the area.</p>
-              <Button className="button-primary" onClick={() => setMapOpen(true)}>Show map</Button>
+              <Button className="button-primary" onClick={() => setMapOpen(true)}>
+                Show map
+              </Button>
             </div>
           )}
         </Card>
@@ -92,6 +94,15 @@ export function DashboardPage() {
             startYear={state.startYear}
             endYear={state.endYear}
             baselineYears={dataset.baselineYears}
+            context={{
+              areaText: `${state.area.west}, ${state.area.south} to ${state.area.east}, ${state.area.north} (lon, lat)`,
+              periodText: PERIOD_TEXT[dataset.period ?? state.period],
+              apiUrl: dataset.synthetic
+                ? null
+                : `/api/calendar?${new URLSearchParams({ west: String(state.area.west), south: String(state.area.south), east: String(state.area.east), north: String(state.area.north), period: dataset.period ?? state.period })}`,
+              modelVersion: dataset.modelVersion,
+              synthetic: dataset.synthetic,
+            }}
           />
         )}
 
@@ -151,8 +162,8 @@ export function DashboardPage() {
           not burned area. Months before February 2012 are estimated from MODIS.
         </p>
         <p>
-          Data: NASA FIRMS (MODIS and VIIRS active fire products). This prototype is exploratory and must not be used for
-          emergency or resource decisions.
+          Data: NASA FIRMS (MODIS and VIIRS active fire products). This prototype is exploratory and must not be used
+          for emergency or resource decisions.
         </p>
       </footer>
     </div>

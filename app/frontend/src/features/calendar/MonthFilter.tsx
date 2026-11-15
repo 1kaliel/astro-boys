@@ -25,7 +25,12 @@ export function MonthFilter({ months, peak, onChange }: MonthFilterProps) {
     <div className="month-filter" role="group" aria-label="Months of the year">
       <div className="month-filter-head">
         <span className="control-label">Months</span>
-        <Button className="chip" aria-label="All months" aria-pressed={months.length === 0} onClick={() => onChange([])}>
+        <Button
+          className="chip"
+          aria-label="All months"
+          aria-pressed={months.length === 0}
+          onClick={() => onChange([])}
+        >
           All
         </Button>
         {peak && (
