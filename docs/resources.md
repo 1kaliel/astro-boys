@@ -43,4 +43,4 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 
 | What | Tool | Notes |
 |------|------|-------|
-| | | |
+| Historical FIRMS ingestion and monthly aggregation implementation, regression fixture, and runbook | Codex | Assisted with pipeline code and verification. Historical detections come from NASA FIRMS. See [historical batch](historical-batch.md). |

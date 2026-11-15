@@ -101,13 +101,60 @@ Per `cell_l2 × year × month × daynight × satellite`: `n_hotspots`, `n_active
 ## 4. `processed/factors/v1/`
 
 Per `cell_l2 × month × period`: `f`, `b`, `sum_aqua_pos`, `sum_viirs_pos`, `n_zero`, `sum_viirs_zero`, `r_region`,
-`b_region`, `k`, `m`, `weight_cell`, `calibration_years`, `model_version`. Lets anyone recompute an estimate by hand.
+`b_region`, `k`, `m`, `weight_cell`, `calibration_years`, `model_version`, `r_parent`, `b_parent`, `pool_level`.
+Lets anyone recompute an estimate by hand: `f = (sum_viirs_pos + k·r_parent) / (sum_aqua_pos + k)` and
+`b = (sum_viirs_zero + m·b_parent) / (n_zero + m)`. `r_parent`/`b_parent` are the values the cell was pooled
+toward (`pool_level`: `l1` = its 1° parent cell, `region` = the whole extent). To convert: `f × Aqua` when
+Aqua > 0, otherwise `b`; a cell with no row uses `r_region × Aqua` and gets no background.
 
-## 5. Sample for app development
+Terra-aware background: `b_witness1` (Terra recorded something in that cell, month and period) and
+`b_witness0` (it did not), with `n_zero_witness*`, `sum_viirs_zero_witness*`, `b_parent_witness*`, `m_witness`
+and `witness_satellite` for the same hand calculation. When Aqua = 0: use `b_witness1` if Terra > 0,
+`b_witness0` if Terra = 0, and `b` if Terra is unknown that month (see `coverage_monthly`) or the witness
+columns are null.
+
+Reconciliation: `r_total` (all S-NPP over all Aqua for that month and period in the calibration years),
+`reconcile_lambda` and `reconcile_min_regional_aqua`. After the cell estimates, each year, month and period
+is multiplied by `(1 − λ) + λ × (regional Aqua × r_total) / Σ cell estimates`, unless regional Aqua is below
+the minimum. **The sums run over the whole extent, so estimates must be computed for all cells at once.**
+
+**Do not reimplement any of this: call `astro_fire.calibration.build_source` and `apply_factors`** on the
+whole extent. `apply_factors` returns `estimate` (final) and `estimate_unreconciled`.
+
+## 5. `processed/coverage_daily/v1/` and `processed/coverage_monthly/v1/`
+
+Which days and months each satellite was observing, from `uv run astro-fire coverage`
+([rule](methodology.md#observation-gaps)).
+
+| Table | Field | Type | Meaning |
+|-------|-------|------|---------|
+| daily | `satellite`, `date_local` | string, date | One row per satellite and local day of the whole period |
+| daily | `n_all` | int | Detections in the whole extent that day, all confidence classes and types |
+| daily | `expected` | double | Detections implied by the other satellites that day; null when none was operating |
+| daily | `status` | string | `ok`, `missing` (outage) or `not_operating` (before its first or after its last record) |
+| monthly | `satellite`, `year`, `month` | string, int, int | |
+| monthly | `days_in_month`, `days_missing`, `days_not_operating`, `days_observed` | int | `days_observed` feeds `calendar.days_observed` |
+| monthly | `coverage_fraction` | double | `days_observed / days_in_month` |
+| monthly | `is_complete` | bool | At least 90% of the days observed. Incomplete months must not be read as low activity |
+
+## 6. Sample for app development
 
 `uv run astro-fire export --sample` writes a small `calendar` extract with this schema (one L1 cell, all years),
 committed under `app/` by the Dashboard team if they want fixtures (max 100 KB) or read from the bucket.
-Until the real pipeline runs, a **mock with the same columns** is provided so the app can be built in parallel.
+Until the real pipeline runs, a **mock with the same columns** lets the app be built in parallel:
+
+```bash
+uv run astro-fire mock-calendar                              # 144 cells (lon -47..-44, lat -11..-8), ~94k rows, 1 MB
+uv run astro-fire mock-calendar --bbox=-48.8,-18.4,-34.7,-1.0   # whole pilot extent, ~2.6M rows, 16 MB
+```
+
+It writes `data/processed/calendar/mock/year=YYYY/*.parquet` (git-ignored) with exactly the columns of section 1,
+2003-01 → 2026-11, the last month partial. Read it with
+`read_parquet('data/processed/calendar/mock/**/*.parquet', hive_partitioning = true)`.
+
+**The mock's numbers are synthetic** (a seeded formula, `model_version = 'MOCK'`). They are for building screens
+only and must never appear in a figure, the demo or the submission. Switching to real data means pointing the
+app at `processed/calendar/v1/` instead; the schema is the same.
 
 ## API shape (if the app has a backend)
 

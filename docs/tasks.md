@@ -26,16 +26,16 @@ Spec: [spec/harmonization.md](spec/harmonization.md). Commands run locally on a 
 
 | # | Task | Owner | Due (local) | Status | Deliverable |
 |---|------|-------|-------------|--------|-------------|
-| H1 | Mock `calendar` sample with the v1 columns | Mateus | Sat 19:30 | ⬜ | Small Parquet/JSON for Dashboard |
-| H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ⬜ | Parquet + manifest |
+| H1 | Mock `calendar` sample with the v1 columns | Mateus (delivered by Kali) | Sat 19:30 | ✅ | `uv run astro-fire mock-calendar` → `data/processed/calendar/mock/` ([how](data-dictionary.md#6-sample-for-app-development)); synthetic numbers |
+| H2 | `ingest`: zips → Brazil CSVs → Northeast clip → normalized `hotspots/v1` (IDs, UTC time, local solar date, cells, filter flags) | Mateus | Sat 22:00 | ✅ | Full 2003–2025 MVP local Parquet + manifest prepared for H3 QA; bucket publication pending |
 | H3 | QA report: rows, duplicates, ranges, `version` by sensor and year, confidence and type tables | Justino | Sat 22:30 | ⬜ | `artifacts/.../qa.md` |
-| H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ⬜ | **Checkpoint A** |
-| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ⬜ | Notebook or script + test |
-| H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ⬜ | Parquet + manifest |
+| H4 | `aggregate` → `cell_month_counts/v1` (Northeast) | Mateus | Sat 23:00 | ✅ | **Checkpoint A**: full 2003–2025 local Parquet + manifest; bucket publication pending |
+| H5 | Calibration prototype on a sample: F, B, pooling; reproduce the worked example | Kali | Sat 23:00 | ✅ | `src/astro_fire/calibration.py` + `tests/test_calibration.py` (synthetic sample; real data comes with H4) |
+| H6 | `calibrate` on the Northeast, 2012–2019 → `factors/v1` | Kali | Sun 01:00 | ✅ | Real counts: 74,592 factor rows, pooling to L1, K = 50, M = 5, Terra-aware background, reconciled with λ = 0.75 ([results](methodology.md)). Published to the bucket (`fb-l1-terra-rec-4`) |
 | H7 | `harmonize` → `calendar/v1` (no intervals yet) pushed to the bucket | Mateus | Sun 02:00 | ⬜ | **Checkpoint B** |
 | H8 | Before/after-2012 chart (raw vs harmonized) for the demo region | Kali | Sun 02:00 | ⬜ | `artifacts/figures/` |
 | H9 | Put the team's MAP_KEY in `.env` (VM and local, never in git); pull 2026 for the Northeast (S-NPP + NOAA-20, SP and NRT); log in `SOURCES.md` | Justino | Sun 09:00 | ⬜ | `raw/firms/api/…` |
-| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | ⬜ | `validation.json` + table |
+| H10 | `validate`: baselines (global ratio, OLS, month-only) vs F and F + B on 2020–2021; K, M by cross-validation | Kali | Sun 10:00 | ✅ | Final test on 2022–2023, opened once: passes the pre-set rule (cell MAE 3.46 vs 4.22 for the best baseline; regional totals level). All methods are 6% high there and 20% high in 2024–2025 ([methodology.md](methodology.md)) |
 | H11 | Bootstrap intervals; anomalies; NOAA-20 continuity factor; partial month → `calendar/v1.1` | Kali + Mateus | Sun 11:00 | ⬜ | **Checkpoint C** |
 | H12 | Should-haves: Terra-only 2000-11 → 2002-06; sensitivity to the confidence filter | Kali | Sun 15:00 | ⬜ | Only if H10–H11 are done |
 | H13 | Methodology and limitations text ([methodology.md](methodology.md)); reproducibility run from a clean clone | Justino + Jean | Sun 18:00 | ⬜ | |

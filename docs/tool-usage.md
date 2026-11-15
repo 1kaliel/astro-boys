@@ -127,7 +127,45 @@ uv run astro-fire info                          # where data is read from / writ
 uv run astro-fire --data-root data smoke        # force local storage
 ```
 
-Pipeline stages to come (`ingest`, `aggregate`, `calibrate`, `harmonize`, `validate`, `export`) are listed in
+Stages that exist:
+
+```bash
+uv run astro-fire --data-root data ingest --years 2012-2021 --satellites Aqua SNPP   # FIRMS files → hotspots/v1
+uv run astro-fire --data-root data aggregate                                       # → cell_month_counts/v1
+uv run astro-fire mock-calendar     # SYNTHETIC calendar table for building the app (data-dictionary.md, section 5)
+uv run astro-fire coverage          # processed/hotspots/v1 → coverage_daily, coverage_monthly + gap report
+uv run astro-fire coverage --hotspots gs://<bucket>/astro/processed/hotspots/v1   # read it from the bucket
+uv run astro-fire calibrate         # processed/cell_month_counts/v1 → processed/factors/v1 + report + manifest
+uv run astro-fire calibrate --counts path/to/cell_month_counts --years 2012-2019 --k 20 --m 2   # overrides
+```
+
+`ingest` and `aggregate` are described in the [historical Northeast batch runbook](historical-batch.md).
+
+`calibrate` reads the monthly counts (`cell_l2, year, month, daynight, satellite, n_hotspots`; satellites named
+`Aqua` and `SNPP`), chooses the pooling weights by leave-one-year-out cross-validation unless `--k`/`--m` are
+given, and writes `artifacts/<run_id>/metrics/calibration.json` with the scores and the regional ratios. It
+stops with a message if a calibration year is missing for a satellite, if keys are duplicated, or if the years
+include the test years (2020–2021). A month with no detections at all for one satellite is treated as a data
+gap and left out, never counted as zero.
+
+`validate` refits the factors on the calibration years and scores six methods on the held-out years
+(2020–2021) against what S-NPP observed: raw Aqua, one global ratio, a global OLS line, a ratio per month and
+day/night, `F`, and `F + B`.
+
+```bash
+uv run astro-fire validate          # prints the table; writes artifacts/<run_id>/metrics/validation.json
+                                    # and artifacts/<run_id>/reports/validation.md
+```
+
+By default it scores the development years (2020–2021). The final test years (2022–2023, plus 2024–2025
+reported separately) are locked: `uv run astro-fire validate --final` opens them, **once, after the method
+is frozen**. Run `coverage` first so months with a satellite outage are left out of the scores.
+
+The JSON holds every method at two levels (cell-month, and regional monthly totals) split by day/night, year,
+season and Aqua = 0 vs Aqua > 0, plus a `verdict`: whether `F + B` beats every baseline at both levels, and
+which method ships if it does not.
+
+Stages to come (`harmonize`, `export`) are listed in
 [spec/harmonization.md](spec/harmonization.md#10-pipeline-commands-to-build).
 
 DuckDB, for quick looks (also works in a notebook with `import duckdb`):

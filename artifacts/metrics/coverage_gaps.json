@@ -1,0 +1,219 @@
+{
+  "run_id": "20261115T010717Z_coverage_fa7b98",
+  "rule": {
+    "missing_day": "at most 10% of the detections implied by the other satellites, at least 30 expected, for 3 or more days in a row",
+    "complete_month": "at least 90% of its days observed"
+  },
+  "gaps": [
+    {
+      "satellite": "Terra",
+      "first_day": "2003-12-17",
+      "last_day": "2003-12-23",
+      "days": 7,
+      "detections": 0,
+      "expected": 978
+    },
+    {
+      "satellite": "SNPP",
+      "first_day": "2012-03-24",
+      "last_day": "2012-03-26",
+      "days": 3,
+      "detections": 16,
+      "expected": 1432
+    },
+    {
+      "satellite": "Terra",
+      "first_day": "2016-02-22",
+      "last_day": "2016-02-25",
+      "days": 4,
+      "detections": 0,
+      "expected": 208
+    },
+    {
+      "satellite": "Aqua",
+      "first_day": "2020-08-16",
+      "last_day": "2020-08-18",
+      "days": 3,
+      "detections": 21,
+      "expected": 1075
+    },
+    {
+      "satellite": "Aqua",
+      "first_day": "2020-08-20",
+      "last_day": "2020-08-23",
+      "days": 4,
+      "detections": 21,
+      "expected": 1017
+    },
+    {
+      "satellite": "Aqua",
+      "first_day": "2020-08-27",
+      "last_day": "2020-08-30",
+      "days": 4,
+      "detections": 19,
+      "expected": 1886
+    },
+    {
+      "satellite": "Aqua",
+      "first_day": "2022-03-31",
+      "last_day": "2022-04-02",
+      "days": 3,
+      "detections": 5,
+      "expected": 190
+    },
+    {
+      "satellite": "Aqua",
+      "first_day": "2022-04-04",
+      "last_day": "2022-04-11",
+      "days": 8,
+      "detections": 0,
+      "expected": 557
+    },
+    {
+      "satellite": "SNPP",
+      "first_day": "2022-07-27",
+      "last_day": "2022-08-10",
+      "days": 15,
+      "detections": 0,
+      "expected": 40062
+    },
+    {
+      "satellite": "Terra",
+      "first_day": "2022-10-10",
+      "last_day": "2022-10-22",
+      "days": 13,
+      "detections": 33,
+      "expected": 9159
+    },
+    {
+      "satellite": "N20",
+      "first_day": "2023-07-19",
+      "last_day": "2023-07-22",
+      "days": 4,
+      "detections": 0,
+      "expected": 9429
+    },
+    {
+      "satellite": "SNPP",
+      "first_day": "2024-05-30",
+      "last_day": "2024-06-03",
+      "days": 5,
+      "detections": 0,
+      "expected": 3690
+    },
+    {
+      "satellite": "SNPP",
+      "first_day": "2024-07-10",
+      "last_day": "2024-07-16",
+      "days": 7,
+      "detections": 0,
+      "expected": 10167
+    },
+    {
+      "satellite": "SNPP",
+      "first_day": "2024-07-25",
+      "last_day": "2024-07-28",
+      "days": 4,
+      "detections": 0,
+      "expected": 5586
+    },
+    {
+      "satellite": "SNPP",
+      "first_day": "2024-11-03",
+      "last_day": "2024-11-06",
+      "days": 4,
+      "detections": 0,
+      "expected": 13719
+    }
+  ],
+  "incomplete_months": [
+    {
+      "satellite": "Terra",
+      "year": 2003,
+      "month": 12,
+      "days_in_month": 31,
+      "days_missing": 7,
+      "days_observed": 24
+    },
+    {
+      "satellite": "SNPP",
+      "year": 2012,
+      "month": 1,
+      "days_in_month": 31,
+      "days_missing": 0,
+      "days_observed": 12
+    },
+    {
+      "satellite": "Terra",
+      "year": 2016,
+      "month": 2,
+      "days_in_month": 29,
+      "days_missing": 4,
+      "days_observed": 25
+    },
+    {
+      "satellite": "Aqua",
+      "year": 2020,
+      "month": 8,
+      "days_in_month": 31,
+      "days_missing": 11,
+      "days_observed": 20
+    },
+    {
+      "satellite": "Aqua",
+      "year": 2022,
+      "month": 4,
+      "days_in_month": 30,
+      "days_missing": 10,
+      "days_observed": 20
+    },
+    {
+      "satellite": "SNPP",
+      "year": 2022,
+      "month": 7,
+      "days_in_month": 31,
+      "days_missing": 5,
+      "days_observed": 26
+    },
+    {
+      "satellite": "SNPP",
+      "year": 2022,
+      "month": 8,
+      "days_in_month": 31,
+      "days_missing": 10,
+      "days_observed": 21
+    },
+    {
+      "satellite": "Terra",
+      "year": 2022,
+      "month": 10,
+      "days_in_month": 31,
+      "days_missing": 13,
+      "days_observed": 18
+    },
+    {
+      "satellite": "N20",
+      "year": 2023,
+      "month": 7,
+      "days_in_month": 31,
+      "days_missing": 4,
+      "days_observed": 27
+    },
+    {
+      "satellite": "SNPP",
+      "year": 2024,
+      "month": 7,
+      "days_in_month": 31,
+      "days_missing": 11,
+      "days_observed": 20
+    },
+    {
+      "satellite": "SNPP",
+      "year": 2024,
+      "month": 11,
+      "days_in_month": 30,
+      "days_missing": 4,
+      "days_observed": 26
+    }
+  ]
+}
