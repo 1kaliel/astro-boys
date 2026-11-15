@@ -186,7 +186,8 @@ Chronological only. Nothing from the test years is used to choose `K`, `M` or th
 
 - Metrics: MAE, RMSE, relative bias, correlation, at cell-month level and for regional monthly totals; split by
   day/night, by season, and by low/high activity.
-- **Acceptance:** the final method must beat the baselines out of sample. If it doesn't, we ship the simplest
+- **Acceptance (as implemented):** `F + B` must have a lower MAE than every baseline both at cell-month
+  level and for regional monthly totals. In short: the final method must beat the baselines out of sample. If it doesn't, we ship the simplest
   method that wins and say so.
 - **Step test:** the raw series jumps at 2012; the harmonized one must not. This before/after chart is the main
   proof in the pitch.
