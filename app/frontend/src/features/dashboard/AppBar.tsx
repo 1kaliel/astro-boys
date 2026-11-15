@@ -27,7 +27,7 @@ export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
         <span className="app-logo" aria-hidden="true" />
         <div>
           <h1 className="app-title">Hotspot calendar</h1>
-          <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2003 to present</p>
+          <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
         </div>
       </div>
       <div className="app-actions">

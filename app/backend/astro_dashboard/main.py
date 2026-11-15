@@ -46,8 +46,12 @@ app.include_router(router)
 
 
 @app.get("/healthz")
+@app.get("/api/healthz", tags=["meta"])
 def healthz() -> dict[str, str]:
-    """Liveness probe for Cloud Run and for the local container check."""
+    """Liveness probe for the local container check, and the status the page shows.
+
+    Use /api/healthz from outside: on a run.app URL Cloud Run keeps /healthz for itself and answers 404
+    before the request reaches the container."""
     return {"status": "ok"}
 
 

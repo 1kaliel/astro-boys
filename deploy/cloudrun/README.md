@@ -29,7 +29,8 @@ Whatever the stack (Python, Node, static site behind a tiny server…), the imag
    ([IAM](../../docs/cloud/iam-and-access.md)); Kali grants it. The request timeout is 300 s because large CSVs
    are streamed; only the files of the requested years are read (about 60 to 90 MB per year).
 4. **Start fast** (under ~10 s) and **use ≤ 1 GiB RAM** by default (raise `--memory` in `deploy.sh` if needed).
-5. **Have a `/healthz` (or `/`) route** that returns 200 quickly.
+5. **Have a `/healthz` (or `/`) route** that returns 200 quickly. On a `run.app` URL Cloud Run keeps `/healthz` for
+   itself (it answers 404 before the container sees the request): from outside use `/api/healthz`, the same answer.
 6. Contain **no secrets and no `.env`**. Add a `.dockerignore` excluding `.env`, `data/`, `.venv/`, `node_modules/`.
 
 Put the app in [`app/`](../../app/) with its `Dockerfile` there (or set `APP_DIR`).
