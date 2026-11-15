@@ -5,6 +5,7 @@ import { cx } from "../../lib/cx";
 import type { Bounds } from "../../lib/grid";
 import { PILOT_BOUNDS } from "../../state/dashboard";
 import { Button } from "../ui/Button";
+import { Icon } from "../ui/Icon";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 
 export type Projection = "mercator" | "globe";
@@ -93,7 +94,7 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
 
   return (
     <>
-      <div className="map-tools">
+      <div className="map-tools" role="toolbar" aria-label="Map tools">
         {drilled && (
           <Button className="map-back" onClick={onBack} aria-keyshortcuts="Escape">
             ← Back to L2 cells
@@ -102,11 +103,26 @@ export function MapTools({ mapRef, projection, onProjection, onArea, drilled, on
         <SegmentedControl label="Map view" options={PROJECTIONS} value={projection} onChange={onProjection} hideLabel />
         {!drilled &&
           (drawing ? (
-            <Button onClick={stopDrawing}>Cancel</Button>
+            <Button className="map-tool" onClick={stopDrawing}>
+              Cancel
+            </Button>
           ) : (
-            <Button onClick={() => void startDrawing()}>Draw area</Button>
+            <Button className="map-tool" onClick={() => void startDrawing()}>
+              <Icon name="draw" />
+              Draw area
+            </Button>
           ))}
-        {!drilled && <Button onClick={applyVisibleArea}>Use visible area</Button>}
+        {!drilled && (
+          <Button
+            className="map-tool"
+            onClick={applyVisibleArea}
+            aria-label="Use view: set the area filter to the visible map"
+            title="Use the visible map area as the area filter"
+          >
+            <Icon name="frame" />
+            Use view
+          </Button>
+        )}
         {!drilled && coords}
       </div>
       {(drawing || error) && (

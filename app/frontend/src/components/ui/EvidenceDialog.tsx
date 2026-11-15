@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import type { Evidence } from "../../features/dashboard/kpiEvidence";
 
 type EvidenceDialogProps = {
@@ -7,10 +7,12 @@ type EvidenceDialogProps = {
   evidence: Evidence;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Detail lines the card leaves out to stay short (baseline years, estimated months, the month so far). */
+  notes?: ReactNode;
 };
 
 /** The proof behind a KPI: the figure, how it is made, the records it is made of and where they come from. */
-export function EvidenceDialog({ title, evidence, open, onOpenChange }: EvidenceDialogProps) {
+export function EvidenceDialog({ title, evidence, open, onOpenChange, notes }: EvidenceDialogProps) {
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const { source } = evidence;
   return (
@@ -23,6 +25,7 @@ export function EvidenceDialog({ title, evidence, open, onOpenChange }: Evidence
           </Dialog.Title>
           <div className="dialog-body" tabIndex={0}>
             <p className="evidence-value">{evidence.value}</p>
+            {notes && <div className="evidence-notes">{notes}</div>}
             <h3>How it is computed</h3>
             <p>{evidence.how}</p>
             <h3>Records behind the figure</h3>

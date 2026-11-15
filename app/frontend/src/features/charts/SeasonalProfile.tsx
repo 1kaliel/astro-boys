@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { ImageDownload } from "../../components/ui/DownloadBar";
+import { ExportMenu } from "../../components/ui/ExportMenu";
 import type { CalendarMonth } from "../../data/calendarSource";
 import { axisTicks, monthsOfYear, niceCeil, seasonalProfile } from "../../lib/charts";
 import { areaText, exportFileName, periodText, SOURCE_TEXT, type ExportContext } from "../../lib/exportFile";
@@ -27,6 +28,7 @@ type SeasonalProfileProps = {
  * as error bars; a partial month is a hollow point and is never read as "little activity".
  */
 export function SeasonalProfile({ months, startYear, endYear, year, exportContext }: SeasonalProfileProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const profile = useMemo(() => seasonalProfile(months, startYear, endYear), [months, startYear, endYear]);
   const yearMonths = useMemo(() => monthsOfYear(months, year), [months, year]);
 
@@ -126,11 +128,6 @@ export function SeasonalProfile({ months, startYear, endYear, year, exportContex
         </g>
       </svg>
     </div>
-    <ImageDownload
-      meta={exportMeta}
-      fileName={(ext) => exportFileName("seasonal-profile", [year, `${startYear}-${endYear}`, exportContext.period], ext)}
-      svgSelector="svg.line-chart"
-    />
     </>
   );
 
@@ -177,7 +174,7 @@ export function SeasonalProfile({ months, startYear, endYear, year, exportContex
   );
 
   return (
-    <div className="chart-block">
+    <div className="chart-block" ref={rootRef}>
       <ul className="chart-legend" aria-label="Marks">
         <li>
           <span className="chart-swatch chart-swatch-band" aria-hidden="true" />
@@ -202,7 +199,21 @@ export function SeasonalProfile({ months, startYear, endYear, year, exportContex
           </span>
         </li>
       </ul>
-      <ChartTableTabs label="Seasonal profile" chart={chart} table={table} />
+      <ChartTableTabs
+        label="Seasonal profile"
+        chart={chart}
+        table={table}
+        actions={
+          <ExportMenu label="Export the seasonal profile">
+            <ImageDownload
+              meta={exportMeta}
+              fileName={(ext) => exportFileName("seasonal-profile", [year, `${startYear}-${endYear}`, exportContext.period], ext)}
+              svgSelector="svg.line-chart"
+              findSvg={() => rootRef.current?.querySelector<SVGSVGElement>("svg.line-chart") ?? null}
+            />
+          </ExportMenu>
+        }
+      />
       <p className="chart-note">
         {hasEstimated && "Vertical bars: 90% interval of the months estimated from MODIS. "}
         {hasPartial && "Hollow point: a partial month, not comparable with the full months of the band. "}

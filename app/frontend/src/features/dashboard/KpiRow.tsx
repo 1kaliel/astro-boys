@@ -33,6 +33,11 @@ export function KpiRow({ months, startYear, endYear, baselineYears, area, period
   const latest = months.at(-1) ?? null;
   const latestText = latest && latest.year <= endYear && latest.year >= startYear ? latestKpiText(latest) : null;
 
+  const sameDays = latestText?.comparison && latest?.isPartial ? latestText.comparison.replace(/^[▲▼] /, "") : null;
+  const latestMonth = latest ? `${MONTHS_LONG[latest.month - 1]} ${latest.year}` : "";
+
+  // Each card shows its figure, one line of what it counts and one comparison. The rest (estimated months, the
+  // month so far, the baseline years) is in the card's evidence panel, one click away.
   return (
     <section className="kpi-row kpi-row-3" aria-label="Key figures for the selected area" data-tour="kpis">
       <KpiTile
@@ -40,20 +45,10 @@ export function KpiRow({ months, startYear, endYear, baselineYears, area, period
         label={`Total activity, ${years}`}
         evidence={total ? totalEvidence(months, context) : null}
         value={formatCompact(total?.value)}
-        detail={
-          total
-            ? `VIIRS-equivalent hotspots in ${total.months} months${
-                total.estimated > 0 ? ` · ${total.estimated} estimated from MODIS` : ""
-              }${total.missing > 0 ? ` · ${total.missing} without an estimate, left out` : ""}`
-            : "No data for these years"
-        }
+        detail={total ? `VIIRS-equivalent hotspots in ${total.months} months` : "No data for these years"}
         comparison={
           total?.complete
-            ? `${deltaText(total.complete.value, total.complete.median, `the usual level of the same ${total.complete.months} months`)}${
-                latestText?.comparison && latest?.isPartial
-                  ? ` · ${MONTHS_LONG[latest.month - 1]} so far: ${latestText.comparison.replace(/^[▲▼] /, "")}`
-                  : ""
-              }`
+            ? deltaText(total.complete.value, total.complete.median, `the usual level of the same ${total.complete.months} months`)
             : undefined
         }
         badges={
@@ -61,10 +56,18 @@ export function KpiRow({ months, startYear, endYear, baselineYears, area, period
           (total.estimated > 0 || total.partial) && (
             <>
               {total.estimated > 0 && <Badge kind="estimated" />}
-              {total.partial && latest?.isPartial && (
-                <Badge kind="partial">{`${MONTHS_LONG[latest.month - 1]} ${latest.year}: ${latest.daysObserved} days so far`}</Badge>
-              )}
+              {total.partial && latest?.isPartial && <Badge kind="partial" />}
             </>
+          )
+        }
+        notes={
+          total && (
+            <ul>
+              {total.estimated > 0 && <li>{`${total.estimated} of the ${total.months} months are estimated from MODIS.`}</li>}
+              {total.missing > 0 && <li>{`${total.missing} months without an estimate, left out.`}</li>}
+              {total.partial && latest?.isPartial && <li>{`${latestMonth}: ${latest.daysObserved} days so far.`}</li>}
+              {sameDays && latest && <li>{`${MONTHS_LONG[latest.month - 1]} so far: ${sameDays}`}</li>}
+            </ul>
           )
         }
       />
@@ -72,30 +75,37 @@ export function KpiRow({ months, startYear, endYear, baselineYears, area, period
         label={`Peak month, ${years}`}
         evidence={peak ? peakEvidence(months, context) : null}
         value={peak ? `${MONTHS_LONG[peak.month - 1]} ${peak.year}` : "No data"}
-        detail={
-          peak
-            ? `${formatCount(peak.count ?? 0)} VIIRS-equivalent hotspots${peak.isEstimated ? " (estimated)" : ""}`
-            : undefined
-        }
+        detail={peak ? `${formatCount(peak.count ?? 0)} hotspots${peak.isEstimated ? " (estimated)" : ""}` : undefined}
         comparison={
-          usualPeak
-            ? `Usual peak: ${MONTHS_LONG[usualPeak.month - 1]} (median ${formatCompact(usualPeak.median)}, ${baseline})`
-            : undefined
+          usualPeak ? `Usual peak: ${MONTHS_LONG[usualPeak.month - 1]} (median ${formatCompact(usualPeak.median)})` : undefined
+        }
+        notes={
+          peak && (
+            <ul>
+              <li>{`${formatCount(peak.count ?? 0)} VIIRS-equivalent hotspots${peak.isEstimated ? " (estimated)" : ""}.`}</li>
+              {usualPeak && (
+                <li>{`Usual peak: ${MONTHS_LONG[usualPeak.month - 1]} (median ${formatCompact(usualPeak.median)}, ${baseline}).`}</li>
+              )}
+            </ul>
+          )
         }
       />
       <KpiTile
         label="Months above usual"
         evidence={above.judged > 0 ? aboveEvidence(months, context) : null}
         value={above.judged > 0 ? `${above.above} of ${above.judged}` : "No data"}
-        detail={
-          above.judged > 0
-            ? `complete months above the median of their month of the year, ${baseline}`
-            : "No complete month in these years"
-        }
+        detail={above.judged > 0 ? "complete months above the median of their month of the year" : "No complete month in these years"}
         comparison={
           above.judged > 0
             ? `${above.unusual} unusually high (robust z ≥ ${UNUSUAL_Z}). An anomaly, not a risk level.`
             : undefined
+        }
+        notes={
+          above.judged > 0 && (
+            <ul>
+              <li>{`Complete months above the median of their month of the year, ${baseline}.`}</li>
+            </ul>
+          )
         }
       />
     </section>

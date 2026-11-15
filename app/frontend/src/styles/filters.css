@@ -2,13 +2,16 @@
  * Global filter bar (FilterBar.tsx, AreaPicker.tsx). Tokens only: no raw values except the 56rem breakpoint
  * (media queries cannot read custom properties; it is the same breakpoint as layout.css).
  *
- * Phone first: one "Filters · N active" button folds the controls; the active-filter chips stay in view.
- * From 56rem: every control in one wrapping row, groups split by hairlines, sticky under the app bar.
+ * Phone first: one "Filters · N active" button folds the controls; the active-filter chips and the CSV download
+ * stay in view. From 56rem: every control in one row (it wraps between 56 and 75rem), groups split by hairlines,
+ * the CSV download at the row end, and a second line only when a filter is changed. Sticky from 75rem.
  */
 
 .fbar {
-  display: grid;
-  gap: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
   padding: var(--space-3) var(--spacing-page-x);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-page);
@@ -16,6 +19,7 @@
 
 /* Mobile toggle */
 .fbar-toggle {
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -71,13 +75,20 @@
   min-width: 0;
 }
 
-/* Phone order: the toggle, then what is applied, then the panel it opens. */
-.fbar-active {
-  order: 1;
+/* Phone order: the toggle with the download beside it, the panel it opens, then what is applied. */
+.fbar-download {
+  order: 0;
+  flex: none;
 }
 
 .fbar-panel {
+  order: 1;
+  flex: 1 1 100%;
+}
+
+.fbar-active {
   order: 2;
+  flex: 1 1 100%;
 }
 
 .fbar .segmented {
@@ -173,6 +184,14 @@
   font-size: var(--font-size-xs);
   line-height: 1.35;
   color: var(--color-text-secondary);
+}
+
+.fbar-data {
+  align-items: flex-end;
+}
+
+.fbar-data > .control {
+  flex: 1 1 0;
 }
 
 .fbar-note[data-tone="warn"] {
@@ -278,15 +297,14 @@
   cursor: default;
 }
 
-/* "Download [CSV ▾]" on one line, at the end of the chips row */
-.fbar-download > .control {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-2);
-}
-
+/* "Download CSV": an icon and a label, at the end of the filter row */
 .fbar .fbar-download .chip {
   width: auto;
+}
+
+.fbar-download .chip,
+.fbar-state > .chip {
+  justify-content: flex-start;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -295,37 +313,56 @@
   }
 }
 
-/* Wide screens: one wrapping row, each control at its natural width, sticky under the app bar. */
+/* Wide screens: one row, each control at its natural width. */
 @media (min-width: 56rem) {
   .fbar {
     position: sticky;
     top: var(--size-app-bar);
     z-index: var(--layer-sticky);
-    gap: var(--space-2);
+    align-items: flex-end;
+    column-gap: var(--space-4);
   }
 
   .fbar-toggle {
     display: none;
   }
 
-  .fbar-active,
-  .fbar-panel {
+  .fbar-panel,
+  .fbar-download {
     order: 0;
   }
 
   .fbar-panel,
   .fbar-panel[data-open] {
     display: flex;
+    flex: 1 1 0;
     flex-wrap: wrap;
-    align-items: flex-start;
-    gap: var(--space-3) 0;
+    align-items: flex-end;
+    gap: var(--space-2) 0;
+    min-width: 0;
     padding: 0;
     border: 0;
     background: transparent;
   }
 
+  /* Second line: only the changed filters, with Reset all. Hidden when nothing is changed. */
+  .fbar-active {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .fbar-active:not([data-changed]),
+  .fbar-chip:not([data-changed]) {
+    display: none;
+  }
+
+  .fbar-reset {
+    margin-inline-start: 0;
+  }
+
   .fbar-group {
     flex-wrap: nowrap;
+    align-items: flex-end;
     padding-inline: var(--space-3);
     border-inline-start: 1px solid var(--color-border);
   }
@@ -335,21 +372,8 @@
     border-inline-start: 0;
   }
 
-  .fbar-geo {
-    flex-wrap: wrap;
-  }
-
-  .fbar-data {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-1);
-  }
-
-  /* Hints take the width of their controls and wrap inside it, never widening the row. */
-  .fbar-geo > .fbar-note,
-  .fbar-data > .fbar-note {
-    max-width: none;
-    contain: inline-size;
+  .fbar-tail {
+    border-inline-start: 0;
   }
 
   .fbar-group > .control,
@@ -358,21 +382,29 @@
     flex: none;
   }
 
-  /* Region and Country hold one live option each: narrow. State names fit in 14rem. */
+  .fbar-data > .fbar-note {
+    max-width: 22ch;
+  }
+
+  /* Region and Country hold one live option each: narrow. State names fit in 12rem. */
   .fbar-geo {
     column-gap: var(--space-2);
   }
 
   .fbar-geo .fbar-field {
-    width: 9rem;
+    width: 8.5rem;
   }
 
   .fbar-geo .fbar-field:nth-child(2) {
-    width: 7.5rem;
+    width: 6.5rem;
+  }
+
+  .fbar-state {
+    gap: var(--space-1);
   }
 
   .fbar-state > .fbar-field-wide {
-    width: 13.5rem;
+    width: 12rem;
   }
 
   .fbar .segmented {
@@ -384,5 +416,4 @@
   .fbar .select-trigger {
     width: auto;
   }
-
 }

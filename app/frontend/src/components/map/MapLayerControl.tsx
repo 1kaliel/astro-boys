@@ -1,4 +1,5 @@
 import type { Sensor } from "../../state/dashboard";
+import { InfoTip } from "../ui/InfoTip";
 import { SegmentedControl, type SegmentOption } from "../ui/SegmentedControl";
 
 type Family = "harmonized" | "modis" | "viirs";
@@ -68,6 +69,7 @@ export function MapLayerControl({ sensor, onSensor }: { sensor: Sensor; onSensor
     <div className="map-layers" role="group" aria-label="Map layer">
       <SegmentedControl
         label="Map layer"
+        hideLabel
         options={FAMILIES}
         value={family}
         onChange={(next) => onSensor(next === "harmonized" ? "harmonized" : next === "modis" ? "aqua" : "snpp")}
@@ -75,12 +77,13 @@ export function MapLayerControl({ sensor, onSensor }: { sensor: Sensor; onSensor
       {family !== "harmonized" && (
         <SegmentedControl
           label="Satellite"
+          hideLabel
           options={family === "modis" ? MODIS_SATELLITES : VIIRS_SATELLITES}
           value={sensor}
           onChange={onSensor}
         />
       )}
-      <p className="map-layer-note">{NOTE[family]}</p>
+      <InfoTip label="About this map layer">{NOTE[family]}</InfoTip>
     </div>
   );
 }

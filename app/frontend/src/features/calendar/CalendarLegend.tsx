@@ -26,6 +26,8 @@ type CalendarLegendProps = LegendFilter & {
   /** The colors in use, each with the range of detections it covers. Empty when every month shown is zero. */
   ranges: ReadonlyArray<LegendRange>;
   unit: string;
+  /** Print the unit above the legend; otherwise it is for screen readers only (the card caption states it). */
+  showUnit?: boolean;
 };
 
 /**
@@ -33,10 +35,11 @@ type CalendarLegendProps = LegendFilter & {
  * this screen), followed by the states of a month that are not a plain count: zero, estimated, partial, no data and
  * the selected month. Each state has its own look, so none depends on color alone.
  */
-export function CalendarLegend({ ranges, unit, hidden, onToggle, onReset }: CalendarLegendProps) {
+export function CalendarLegend({ ranges, unit, showUnit, hidden, onToggle, onReset }: CalendarLegendProps) {
   return (
     <div className="calendar-legend" aria-label="Legend">
-      <p className="calendar-legend-title">{unit}</p>
+      <p className={showUnit ? "calendar-legend-title" : "sr-only"}>{unit}</p>
+      <div className="calendar-legend-row">
       {ranges.length > 0 && (
         <ol className="calendar-legend-scale" aria-label="Detections per month, by color">
           {ranges.map((range) => (
@@ -88,6 +91,7 @@ export function CalendarLegend({ ranges, unit, hidden, onToggle, onReset }: Cale
           Selected month
         </li>
       </ul>
+      </div>
       <ResetColors hidden={hidden} onReset={onReset} />
       <p className="calendar-legend-note">
         Click a color to hide or show its months.
@@ -104,6 +108,7 @@ export function AnomalyLegend({ unit, hidden, onToggle, onReset }: { unit: strin
   return (
     <div className="calendar-legend" aria-label="Legend">
       <p className="calendar-legend-title">{unit}</p>
+      <div className="calendar-legend-row">
       <ol className="calendar-legend-scale" aria-label="Robust z-score, by color">
         {anomalyLegend().map((item) => (
           <li key={item.step} className="calendar-legend-segment">
@@ -139,6 +144,7 @@ export function AnomalyLegend({ unit, hidden, onToggle, onReset }: { unit: strin
           Selected month
         </li>
       </ul>
+      </div>
       <ResetColors hidden={hidden} onReset={onReset} />
       <p className="calendar-legend-note">
         Click a color to hide or show its months. Blue is below the median, orange above it, neutral has no comparison.

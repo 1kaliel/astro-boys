@@ -1,3 +1,4 @@
+import { Tabs } from "@base-ui/react/tabs";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
@@ -29,11 +30,18 @@ const MOBILE_VIEWS: ReadonlyArray<SegmentOption<MobileView>> = [
   { value: "charts", label: "Charts" },
 ];
 
-/** Dashboard layout: app bar, one filter row, KPI row, calendar + map. */
+/** The two analysis charts share one card, one tab each. */
+type ChartTab = "season" | "trend";
+
+/**
+ * Dashboard layout, in reading order: app bar, one filter row, the three KPIs, the workspace (calendar large on the
+ * left, map on the right, same height) and the analysis charts below.
+ */
 export function DashboardPage() {
   const [state] = useDashboard();
   const narrow = useMediaQuery(NARROW);
   const [mobileView, setMobileView] = useState<MobileView>("calendar");
+  const [chartTab, setChartTab] = useState<ChartTab>("season");
   const apiStatus = useApiStatus();
   // One request for the area, shared by the KPI row and the calendar.
   const [load, reload] = useCalendarDataset(state.area, state.period);
@@ -110,66 +118,71 @@ export function DashboardPage() {
         <Card
           data-tour="map"
           className="dash-map"
-          title="Map"
           caption={
             state.drillCell
               ? "Source: NASA FIRMS · native detections per 0.0625° sub-cell · basemap © OpenStreetMap contributors"
               : "Source: NASA FIRMS · VIIRS-equivalent hotspots per 0.25° cell · basemap © OpenStreetMap contributors"
           }
         >
-          {(
-            <Suspense
-              fallback={
+          {/* The map panel draws its own header: the month on the map and the layer switch share the title row. */}
+          <Suspense
+            fallback={
+              <div className="map-panel">
+                <header className="card-header map-head">
+                  <h2 className="card-title">Map</h2>
+                </header>
                 <div className="map-stage">
                   <div className="map-canvas map-loading">Loading map…</div>
                 </div>
-              }
-            >
-              <MapPanel />
-            </Suspense>
-          )}
+              </div>
+            }
+          >
+            <MapPanel />
+          </Suspense>
         </Card>
         )}
 
         {showCharts && dataset && exportContext && profileYear !== null && (
-          <>
-            <Card
-              data-tour="charts"
-              className="dash-season"
-              title="Seasonal profile"
-              actions={
+          <Card
+            data-tour="charts"
+            className="dash-charts"
+            caption={`Source: NASA FIRMS · ${chartTab === "season" ? SEASONAL_UNIT : TREND_UNIT}`}
+          >
+            <Tabs.Root value={chartTab} onValueChange={(value) => setChartTab(value as ChartTab)} className="charts-tabs">
+              <header className="card-header">
+                <h2 className="sr-only">Charts</h2>
+                <Tabs.List className="card-tabs" aria-label="Chart">
+                  <Tabs.Tab value="season" className="card-tab">
+                    Seasonal profile
+                  </Tabs.Tab>
+                  <Tabs.Tab value="trend" className="card-tab">
+                    Raw vs harmonized
+                  </Tabs.Tab>
+                </Tabs.List>
                 <span className="card-meta">
-                  {profileYear} against {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
-                </span>
-              }
-              caption={`Source: NASA FIRMS · ${SEASONAL_UNIT}`}
-            >
-              <SeasonalProfile
-                months={dataset.months}
-                startYear={state.startYear}
-                endYear={state.endYear}
-                year={profileYear}
-                exportContext={exportContext}
-              />
-            </Card>
-            <Card
-              className="dash-trend"
-              title="Trend: raw and harmonized"
-              actions={
-                <span className="card-meta">
+                  {chartTab === "season" ? `${profileYear} against ` : ""}
                   {state.startYear}–{state.endYear} · {PERIOD_TEXT[state.period]}
                 </span>
-              }
-              caption={`Source: NASA FIRMS · ${TREND_UNIT}`}
-            >
-              <TrendChart
-                months={dataset.months}
-                startYear={state.startYear}
-                endYear={state.endYear}
-                exportContext={exportContext}
-              />
-            </Card>
-          </>
+              </header>
+              <Tabs.Panel value="season" className="card-tab-panel">
+                <SeasonalProfile
+                  months={dataset.months}
+                  startYear={state.startYear}
+                  endYear={state.endYear}
+                  year={profileYear}
+                  exportContext={exportContext}
+                />
+              </Tabs.Panel>
+              <Tabs.Panel value="trend" className="card-tab-panel">
+                <TrendChart
+                  months={dataset.months}
+                  startYear={state.startYear}
+                  endYear={state.endYear}
+                  exportContext={exportContext}
+                />
+              </Tabs.Panel>
+            </Tabs.Root>
+          </Card>
         )}
       </main>
 

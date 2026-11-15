@@ -105,19 +105,22 @@ export default function MapPanel() {
 
   return (
     <div className="map-panel" onKeyDown={onKeyDown}>
-      <div className="map-head">
-        <p className="map-month">
-          {monthLabel ?? "Loading…"}
-          {drillCell && ` · Cell ${drillCell}: native detections of its 0.0625° sub-cells`}
-          {remote.loading && data ? " · updating…" : ""}
-        </p>
+      <header className="card-header map-head">
+        <h2 className="card-title">
+          Map <span className="card-meta">{monthLabel ?? "Loading…"}{remote.loading && data ? " · updating…" : ""}</span>
+        </h2>
         <MapLayerControl sensor={state.sensor} onSensor={(sensor) => dispatch({ type: "setSensor", sensor })} />
-        <div className="map-badges">
-          {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
-          {estimated && !drillCell && <Badge kind="estimated" />}
-          {partial && <Badge kind="partial" />}
+      </header>
+      {(drillCell || (estimated && !drillCell) || partial) && (
+        <div className="map-sub">
+          {drillCell && <p className="map-month">Cell {drillCell}: native detections of its 0.0625° sub-cells</p>}
+          <div className="map-badges">
+            {/* "Estimated" belongs to the harmonized layer, which the drill-down does not show. */}
+            {estimated && !drillCell && <Badge kind="estimated" />}
+            {partial && <Badge kind="partial" />}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* The frame holds the tools and the map: over the map on wide screens, in a row above it on a phone. */}
       <div className="map-frame">
@@ -205,10 +208,11 @@ export default function MapPanel() {
             <Legend
               mode="sequential"
               breaks={breaks}
-              unit={`${layerUnit(state.sensor)} per 0.25° cell and month · an empty cell has no detection (not zero) · click a cell for its sub-cells`}
+              unit={`${layerUnit(state.sensor)} per 0.25° cell and month`}
               showMarking={false}
             />
             <Fold summary="How to read the map">
+              <p className="map-note">An empty cell has no detection (not zero). Click a cell for its sub-cells.</p>
               <p className="map-note">
                 Classes are the same for every month, so a quiet month looks quiet. Cells with no detection that month are
                 left empty and the basemap shows through: that is missing, not zero. Cell outlines appear when you zoom in;
