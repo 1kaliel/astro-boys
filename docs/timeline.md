@@ -58,7 +58,7 @@ We **submit by Sun 22:30**, keeping 1.5 hours of margin.
 | Data contract v1 frozen; frontend framework named | Sat 19:30 | 🔄 React + Vite named; contract sign-off (L3) open |
 | Mock sample to Dashboard | Sat 19:30 | ✅ (Sat 20:30, generator command) |
 | Checkpoint A: counts table + app skeleton | Sat 23:00 | ✅ (counts Sat 21:13; calendar heatmap on a fixture Sat 22:40) |
-| Checkpoint B: `calendar/v1` + app on real data | Sun 02:00 | 🔄 `calendar/v1` in the bucket Sat 22:40; app still on the fixture |
+| Checkpoint B: `calendar/v1` + app on real data | Sun 02:00 | ✅ data (final calendar with 2026, Sat 23:55); app API reads the real calendar |
 | First Cloud Run deploy | Sun 09:00 | ⬜ |
 | Checkpoint C: public URL + validation table | Sun 11:00 | ⬜ |
 | Feature freeze | Sun 15:00 | ⬜ |
