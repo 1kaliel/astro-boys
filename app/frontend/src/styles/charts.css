@@ -1,7 +1,8 @@
 /*
  * Line charts (trend, seasonal profile). Colors come from the viz tokens; the SVG is drawn in a fixed
- * 640 x 280 box and scales with the card, and on a narrow screen the chart scrolls sideways instead of
- * shrinking its labels.
+ * 640 x 280 box and scales with the card. Between 30rem and 480 px of card the chart scrolls sideways instead of
+ * shrinking its labels; on a phone it fits the card (all twelve months and every year in view) with larger
+ * labels in drawing units, so they stay about 10 px on screen.
  */
 .chart-block {
   display: flex;
@@ -174,4 +175,27 @@
 .download-error {
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
+}
+
+/* Phone: the drawing scales to about half size (340 / 640 at 390 px), so the labels are drawn twice as large. */
+@media (max-width: 30rem) {
+  /* The first and last month or year labels may pass the drawing edge by a few units, into the card padding. */
+  .chart-scroll {
+    overflow: visible;
+  }
+
+  .line-chart {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .chart-tick,
+  .chart-marker-label {
+    font-size: 20px;
+  }
+
+  /* Larger labels: the month and year labels move down, clear of the "0" of the value axis. */
+  .chart-tick-x {
+    transform: translateY(8px);
+  }
 }

@@ -26,16 +26,23 @@ export function AppBar({ apiStatus, simulated, modelVersion }: AppBarProps) {
       <div className="app-brand">
         <span className="app-logo" aria-hidden="true" />
         <div>
-          <h1 className="app-title">Hotspot calendar</h1>
-          <p className="app-subtitle">Northeast Brazil · harmonized MODIS and VIIRS active-fire hotspots, 2002 to present</p>
+          <h1 className="app-title">FIREWATCHER</h1>
+          {/* The name alone could read as live fire alerts: the subtitle always says what the app is. */}
+          <p className="app-subtitle">
+            <span className="app-subtitle-full">
+              Hotspot calendar for Northeast Brazil, 2002 to present · harmonized MODIS and VIIRS hotspots
+            </span>
+            <span className="app-subtitle-short">Hotspot calendar, Northeast Brazil, 2002 to present</span>
+          </p>
         </div>
       </div>
       <div className="app-actions">
         <span className="api-status" role="status" aria-live="polite">
           {API_TEXT[apiStatus]}
         </span>
+        {/* Hidden on phones; the calendar card states the model too ("Data 2002–2026, model …"). */}
         {simulated ? <Badge kind="simulated" /> : modelVersion && (
-          <span className="badge" title={`Model ${modelVersion}`}>
+          <span className="badge app-model" title={`Model ${modelVersion}`}>
             Model {modelVersion}
           </span>
         )}

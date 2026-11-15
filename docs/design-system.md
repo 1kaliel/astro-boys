@@ -27,9 +27,9 @@ blocked, it still applies for the visit).
 ## Dashboard structure
 
 ```text
-App bar (sticky): title · data badge (Simulated data / model) · How to read · theme
+App bar (sticky): FIREWATCHER + subtitle (hotspot calendar, Northeast Brazil, 2002 to present) · data badge (Simulated data / model) · How to read · theme
 Filter bar (one row, sticky on desktop): Area ▾ · From · To · Time of day · Scale   → scopes every view below
-KPI row: [hero: latest month vs median] [busiest month] [year so far vs medians] [months estimated from MODIS]
+KPI row: [hero: latest month; unit · period; delta vs median on its own line] [busiest month] [year so far vs medians] [months estimated from MODIS]
 Burning calendar (8 of 12 columns)                 │ Map (4 of 12): month selected in the calendar
 Footer: what this shows · data credit
 ```
@@ -42,7 +42,7 @@ Footer: what this shows · data credit
 | Deltas in ink with an arrow and a word ("▼ 60% below the March median") | More or fewer hotspots is not good or bad; no risk claims |
 | While data reloads, the previous render stays, dimmed | No skeleton, no layout jump |
 | The app root is isolated (`isolation: isolate`) and popups use `--layer-popup` | Base UI popups always open above the map |
-| Breakpoints: 75rem (calendar 7 / map 5), 56rem (one column, KPIs 2 × 2, map collapsed until "Show map", map tools in a row above a 420 px map), 30rem (phone: the calendar's 12 months fit the card with 20 px cells and one-letter months, so the year labels never scroll away; month buttons 6 + 6) | Media queries cannot read custom properties: these are the only raw values outside `primitives.css` |
+| Breakpoints: 75rem (calendar 7 / map 5), 56rem (one column, KPIs 2 × 2, map collapsed until "Show map", map tools in a row above a 420 px map), 30rem (phone: the calendar's 12 months fit the card with 20 px cells and one-letter months, so the year labels never scroll away; month buttons 6 + 6; the line charts fit the card; app bar on one row: title on one line, short subtitle, model badge hidden (the calendar card states the model), How to read stays) | Media queries cannot read custom properties: these are the only raw values outside `primitives.css` |
 | Touch targets: every control takes `--control-size`: 24 px (`--size-target-min`) with a mouse, 44 px (`--size-target-touch`) under 56rem or with `pointer: coarse`, MapLibre's zoom buttons included | Fingers need 44 px (WCAG 2.5.5, Apple HIG); a mouse does not, and the desktop filter row stays one line |
 
 ## Burning calendar (heatmap)
@@ -183,8 +183,11 @@ labels scroll with it.
 - **Anomaly** (calendar): months colored by robust z-score on the diverging tokens, in nine classes with limits at
   0.5, 1, 2 and 3 (`lib/charts.ts`): blue below the median, orange above, neutral without a comparison. The legend
   prints the limits. A z-score is never worded as a probability or a risk.
-- Both charts are plain SVG in a fixed 640 x 280 box, with a table view; on a narrow screen they scroll sideways
-  instead of shrinking the labels. Seen in Chrome on the deployed page (2026-11-15, dark OS mode, 1568 px wide);
+- Both charts are plain SVG in a fixed 640 x 280 box, with a table view. Between 30rem and a 480 px card they scroll
+  sideways instead of shrinking the labels; on a phone (30rem) they fit the card, so all twelve months (the Sep–Nov
+  peak included) and every year label are in view: the labels are drawn at 20 units (about 10 px on a 360–390 px
+  screen), the month and year labels move 8 units down, clear of the value axis, and the first and last label may pass
+  the drawing edge into the card padding. Seen in Chrome on the deployed page (2026-11-15, dark OS mode, 1568 px wide);
   not seen yet: a phone, the light theme.
 - Inside the calendar card the diverging tokens are re-pointed to their light values in every OS mode (the card is
   always light): about the median is white, "no comparison" takes the plane color.
@@ -226,8 +229,9 @@ UI primitives come from [Base UI](https://base-ui.com/) (unstyled, accessible), 
 |--------|-----------|-------|
 | `components/ui/` | `Button`, `Card`, `Badge` | `Card` takes a `caption` for source, period and unit. `Badge` kinds: estimated, partial, nrt, simulated |
 | `components/ui/` | `Tooltip` (+ `TooltipProvider`), `SegmentedControl`, `YearSelect`, `CoordinateField`, `InfoDialog`, `ChartTableTabs` | Base UI Tooltip, Toggle Group, Select, Number Field, Dialog, Tabs. State attributes used in CSS: `data-pressed`, `data-active`, `data-highlighted`, `data-selected` |
+| `components/ui/` | `Fold` | Native `<details>`: secondary detail one click away, e.g. "About the 90% intervals" under the calendar legend. Summary at `--control-size` |
 | `components/ui/` | `Popover` | Base UI Popover, used by the Area filter: four fields in a 2 × 2 grid, a live preview (L2 cells, size in km, why the box cannot be applied, edges clamped to the study area), "Reset to the study area" |
-| `components/viz/` | `KpiTile`, `Legend` | KpiTile: label, compact value, delta in ink, badges. Legend: ramp (or the map's fixed class limits) plus provenance marks |
+| `components/viz/` | `KpiTile`, `Legend` | KpiTile: label, compact value, detail (unit · period), comparison (the delta vs a named baseline, its own line, in ink: never a series, accent or status color), badges. Legend: ramp (or the map's fixed class limits) plus provenance marks |
 | `features/calendar/` | `BurningCalendar`, `CalendarCell`, `CalendarTable` | Heatmap rules above. Takes the calendar the page loaded (shared with the KPI row) |
 | `components/map/` | `MapPanel`, `CellMap`, `MapTools`, `DrillLegend` | Map in a lazy chunk; tools over the map: Flat / Globe, Draw area, Use visible area; in the L3 drill-down, Back to L2 cells |
 | `state/` | `DashboardProvider`, `useDashboard` | One shared state: area, period (`ALL`/`D`/`N`), scale, year range, selected month, drilled cell (cleared when the month, period or area changes) |

@@ -90,7 +90,7 @@ export function TrendChart({ months, startYear, endYear, exportContext }: TrendC
         ))}
         {rows.map((row, index) =>
           index % labelEvery === 0 ? (
-            <text key={row.year} className="chart-tick" x={xOf(index, rows.length)} y={BASELINE_Y + 18} textAnchor="middle">
+            <text key={row.year} className="chart-tick chart-tick-x" x={xOf(index, rows.length)} y={BASELINE_Y + 18} textAnchor="middle">
               {row.year}
             </text>
           ) : null,

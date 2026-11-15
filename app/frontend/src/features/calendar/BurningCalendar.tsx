@@ -4,6 +4,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ChartTableTabs } from "../../components/ui/ChartTableTabs";
 import { ImageDownload, TextDownload } from "../../components/ui/DownloadBar";
+import { Fold } from "../../components/ui/Fold";
 import { rawView, type CalendarDataset } from "../../data/calendarSource";
 import type { CalendarLoad } from "../../data/useCalendar";
 import { anomalyColor, anomalyStep } from "../../lib/charts";
@@ -169,7 +170,7 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
     [scale, anomaly],
   );
 
-  // Intervals of an area are approximate; say so where the interval is shown and once above the chart.
+  // Intervals of an area are approximate; say so where the interval is shown and once, folded, under the legend.
   const tooltip = useCallback(
     (props: TooltipProps<CalendarDatum>) => <CalendarTooltip {...props} approximate={dataset.intervalApproximate} />,
     [dataset.intervalApproximate],
@@ -292,12 +293,6 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
           {refreshing && ". Updating…"}
         </p>
       )}
-      {showsIntervals && (
-        <p className="calendar-notice">
-          Intervals for an area are approximate: the errors of nearby cells are correlated, so the interval of the sum is
-          widened (variance sum × n<sup>0.32</sup>).
-        </p>
-      )}
       {raw && (
         <p className="calendar-notice">
           <strong>Raw by sensor:</strong> each month shows the native count of its source satellite, Aqua MODIS until
@@ -337,6 +332,14 @@ function CalendarView({ dataset, refreshing }: { dataset: CalendarDataset; refre
         <AnomalyLegend unit={ANOMALY_UNIT} />
       ) : (
         <CalendarLegend ranges={legendRanges(scale)} unit={raw ? RAW_UNIT : CALENDAR_UNIT} />
+      )}
+      {showsIntervals && (
+        <Fold summary="About the 90% intervals">
+          <p className="calendar-notice">
+            Intervals for an area are approximate: the errors of nearby cells are correlated, so the interval of the sum
+            is widened (variance sum × n<sup>0.32</sup>).
+          </p>
+        </Fold>
       )}
     </div>
   );
