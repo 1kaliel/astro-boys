@@ -154,3 +154,9 @@ happens. See [challenge/official-requirements.md](challenge/official-requirement
 ## D12 screenshot evidence assistance
 
 Browser capture, visual inspection and the D12 evidence/checklist text were prepared for Jean Gustavo with AI assistance. The JPEGs are actual screenshots of the public application, not AI-generated illustrations or synthetic scientific data. The captured app keeps its NASA FIRMS and basemap credits. No new model, data transformation or scientific result was generated. See [D12 validation](d12-validation.md).
+
+### S1 editorial review for Jean (15 November 2026)
+
+AI assistance was used to revise docs/submission.md against the team's existing methodology: project name,
+sensor-transition wording, inferred coverage gaps, NRT type limitations and reproduction scope. No new method,
+data or scientific result was generated. Final team approval and the demo link remain pending.
