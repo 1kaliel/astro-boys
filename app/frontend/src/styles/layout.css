@@ -1,0 +1,556 @@
+/*
+ * Dashboard structure: app bar, one filter row that scopes everything, a 12-column grid with the KPI row,
+ * the burning calendar (heatmap) and the map. Tokens only; the raw breakpoints are the documented exception
+ * (media queries cannot read custom properties).
+ */
+:root {
+  --heatmap-cell-min: var(--size-target-min);
+  --heatmap-gap: var(--size-px-2); /* surface gap between cells, never a border */
+  --dash-gap: var(--space-4);
+}
+
+/* App shell */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--layer-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--size-app-bar);
+  padding: var(--space-2) var(--spacing-page-x);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.app-logo {
+  flex: none;
+  width: var(--size-target-min);
+  height: var(--size-target-min);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--viz-seq-3), var(--viz-seq-6));
+}
+
+.app-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+.app-subtitle {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.api-status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* One row of filters, above everything it scopes */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--spacing-page-x);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-page);
+}
+
+.area-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.area-summary,
+.area-error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.area-error {
+  color: var(--color-text-primary);
+}
+
+/* Dashboard grid */
+.dash {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--dash-gap);
+  width: 100%;
+  max-width: var(--size-dashboard-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--spacing-page-x) var(--space-6);
+}
+
+.dash > * {
+  grid-column: 1 / -1;
+}
+
+.dash-calendar {
+  grid-column: span 8;
+}
+
+.dash-map {
+  grid-column: span 4;
+}
+
+/* While new data loads, keep the previous render, dimmed: no skeleton, no layout jump. */
+.dash.is-refetching .card,
+.dash.is-refetching .kpi {
+  opacity: 0.6;
+  transition: opacity var(--duration-normal);
+}
+
+/* KPI row */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--dash-gap);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--card-padding);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.kpi-label {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.kpi-value {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+}
+
+.kpi-hero .kpi-value {
+  font-size: var(--font-size-hero);
+}
+
+.kpi-detail {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.kpi-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+/* Burning calendar heatmap */
+.heatmap-wrap {
+  overflow-x: auto;
+}
+
+/* Columns: era bar, year label, 12 months. Every item is placed explicitly (row and column) by the component. */
+.heatmap {
+  display: grid;
+  grid-template-columns: var(--size-era) var(--size-heat-label) repeat(12, minmax(var(--heatmap-cell-min), 1fr));
+  gap: var(--heatmap-gap);
+  min-width: calc(
+    var(--size-era) + var(--size-heat-label) + 12 * (var(--heatmap-cell-min) + var(--heatmap-gap))
+  );
+}
+
+/* Era bar: one vertical rule per run of estimated or observed years, labelled vertically. */
+.heat-era {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-inline-end: var(--size-px-2) solid var(--viz-era-observed);
+}
+
+.heat-era[data-era="estimated"] {
+  border-inline-end-color: var(--viz-era-estimated);
+}
+
+.heat-era-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.heat-col-label,
+.heat-row-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmap-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.heat-col-label {
+  text-align: center;
+}
+
+.heat-col-short {
+  display: none;
+}
+
+.heat-row-label {
+  align-self: center;
+  padding-right: var(--space-2);
+  text-align: right;
+}
+
+/* Cells have no border. Their box-shadow is composed of three optional parts:
+   the selection ring and the sensor-change line above / to the left (drawn inside the 2px gap). */
+.heat-cell {
+  --heat-ring: 0 0 transparent;
+  --heat-edge-top: 0 0 transparent;
+  --heat-edge-left: 0 0 transparent;
+  position: relative;
+  height: var(--heatmap-cell-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--viz-null);
+  box-shadow: var(--heat-ring), var(--heat-edge-top), var(--heat-edge-left);
+  cursor: pointer;
+}
+
+.heat-cell[data-edge-top] {
+  --heat-edge-top: 0 calc(-1 * var(--heatmap-gap)) 0 0 var(--viz-boundary);
+}
+
+.heat-cell[data-edge-left] {
+  --heat-edge-left: calc(-1 * var(--heatmap-gap)) 0 0 0 var(--viz-boundary);
+}
+
+.heat-cell[data-step="1"] { background: var(--viz-seq-1); }
+.heat-cell[data-step="2"] { background: var(--viz-seq-2); }
+.heat-cell[data-step="3"] { background: var(--viz-seq-3); }
+.heat-cell[data-step="4"] { background: var(--viz-seq-4); }
+.heat-cell[data-step="5"] { background: var(--viz-seq-5); }
+.heat-cell[data-step="6"] { background: var(--viz-seq-6); }
+.heat-cell[data-step="7"] { background: var(--viz-seq-7); }
+
+.heat-cell[data-null] {
+  cursor: default;
+}
+
+.heat-cell[data-partial]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40%;
+  height: 50%;
+  background: var(--viz-partial-mark);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.heat-cell:not([data-null]):hover {
+  filter: brightness(1.12);
+}
+
+/* Selection: double ring (a gap in the card color, then ink), so it reads on any fill and never looks like data. */
+.heat-cell[data-selected] {
+  z-index: var(--layer-raised);
+  --heat-ring: 0 0 0 var(--size-px-2) var(--card-bg), 0 0 0 calc(2 * var(--size-px-2)) var(--viz-selection);
+}
+
+/* Keyboard focus: the ring color, outside the selection ring, so both can show at once. */
+.heat-cell:focus-visible {
+  z-index: var(--layer-raised);
+  outline: var(--size-px-2) solid var(--color-ring);
+  outline-offset: calc(2 * var(--size-px-2) + 1px);
+}
+
+.heat-readout {
+  min-height: calc(2 * var(--line-height-normal) * var(--font-size-sm));
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.heat-readout strong {
+  color: var(--color-text-primary);
+}
+
+.heat-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: var(--size-px-2) solid var(--color-border-strong);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.heat-table-wrap {
+  max-height: calc(var(--size-panel-min) * 1.6);
+  overflow: auto;
+}
+
+.heat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.heat-table th,
+.heat-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.heat-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+}
+
+/* Map */
+.dash-map .card-header {
+  align-items: flex-start;
+}
+
+.map-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.map-stage {
+  position: relative;
+  flex: 1;
+  min-height: var(--size-panel-min);
+  overflow: hidden;
+  isolation: isolate; /* keeps MapLibre's own z-index inside the map */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.map-tools {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  right: var(--space-12); /* leaves room for the zoom buttons */
+  z-index: var(--layer-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.map-tools > * {
+  pointer-events: auto;
+}
+
+.map-tools .button,
+.map-tools .segmented {
+  box-shadow: var(--shadow-sm);
+}
+
+.map-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.map-month {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.map-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.map-loading,
+.map-collapsed {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.map-collapsed {
+  min-height: calc(var(--size-panel-min) / 2);
+  padding: var(--card-padding);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.map-collapsed p {
+  margin: 0;
+}
+
+.map-note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.map-error {
+  color: var(--color-text-primary);
+}
+
+.map-offline,
+.map-hint {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  z-index: var(--layer-sticky);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-sm);
+}
+
+/* MapLibre popup, restyled with our tooltip tokens */
+.map-popup .maplibregl-popup-content {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-md);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  box-shadow: var(--tooltip-shadow);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}
+
+.map-popup .maplibregl-popup-tip {
+  display: none;
+}
+
+/* Footer */
+.app-footer {
+  width: 100%;
+  max-width: var(--size-dashboard-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--spacing-page-x) var(--space-6);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.app-footer p {
+  margin: var(--space-1) 0;
+}
+
+/* Breakpoints: 75rem (~1200px) narrows the calendar, 56rem (~900px) stacks everything, 30rem (~480px) is a phone. */
+@media (min-width: 56rem) {
+  .filter-bar {
+    position: sticky;
+    top: var(--size-app-bar);
+    z-index: var(--layer-sticky);
+  }
+}
+
+@media (max-width: 75rem) {
+  .dash-calendar {
+    grid-column: span 7;
+  }
+
+  .dash-map {
+    grid-column: span 5;
+  }
+}
+
+@media (max-width: 56rem) {
+  .dash-calendar,
+  .dash-map {
+    grid-column: 1 / -1;
+  }
+
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .api-status,
+  .app-subtitle {
+    display: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  :root {
+    --heatmap-cell-min: var(--size-target-compact);
+    --card-padding: var(--space-3);
+    --dash-gap: var(--space-3);
+    --spacing-page-x: var(--space-3);
+  }
+
+  .kpi-hero {
+    grid-column: 1 / -1;
+  }
+
+  .heat-col-full {
+    display: none;
+  }
+
+  .heat-col-short {
+    display: inline;
+  }
+}

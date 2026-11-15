@@ -4,6 +4,7 @@
 @import "./viz.css";
 @import "./components.css";
 @import "./calendar.css";
+@import "./layout.css";
 
 *,
 *::before,
@@ -12,12 +13,21 @@
 }
 
 body {
+  /* Base UI: lets absolutely positioned backdrops cover the whole page after scrolling (iOS 26 Safari). */
+  position: relative;
   margin: 0;
   background: var(--color-page);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
+}
+
+/* Base UI: an isolated app root keeps portaled popups (select, tooltip, popover, dialog) above the page,
+   including the map's own controls, whatever z-index the page uses. */
+#root {
+  isolation: isolate;
+  min-height: 100vh;
 }
 
 a {
@@ -27,6 +37,15 @@ a {
 :focus-visible {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
