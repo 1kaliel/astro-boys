@@ -1,0 +1,954 @@
+[
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2003,
+    "median_local_solar_time": "13:36",
+    "detections": 116397
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2004,
+    "median_local_solar_time": "13:36",
+    "detections": 113275
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2005,
+    "median_local_solar_time": "13:35",
+    "detections": 109058
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2006,
+    "median_local_solar_time": "13:37",
+    "detections": 72876
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2007,
+    "median_local_solar_time": "13:38",
+    "detections": 149320
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2008,
+    "median_local_solar_time": "13:40",
+    "detections": 86099
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2009,
+    "median_local_solar_time": "13:39",
+    "detections": 59952
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2010,
+    "median_local_solar_time": "13:39",
+    "detections": 118524
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2011,
+    "median_local_solar_time": "13:38",
+    "detections": 73466
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2012,
+    "median_local_solar_time": "13:39",
+    "detections": 100325
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2013,
+    "median_local_solar_time": "13:38",
+    "detections": 50363
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2014,
+    "median_local_solar_time": "13:39",
+    "detections": 67211
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2015,
+    "median_local_solar_time": "13:39",
+    "detections": 89730
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2016,
+    "median_local_solar_time": "13:38",
+    "detections": 59566
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2017,
+    "median_local_solar_time": "13:37",
+    "detections": 65207
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2018,
+    "median_local_solar_time": "13:38",
+    "detections": 43716
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2019,
+    "median_local_solar_time": "13:38",
+    "detections": 61588
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2020,
+    "median_local_solar_time": "13:38",
+    "detections": 53873
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2021,
+    "median_local_solar_time": "13:38",
+    "detections": 66392
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2022,
+    "median_local_solar_time": "13:43",
+    "detections": 65058
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2023,
+    "median_local_solar_time": "13:56",
+    "detections": 71343
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2024,
+    "median_local_solar_time": "14:19",
+    "detections": 72151
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "D",
+    "year": 2025,
+    "median_local_solar_time": "14:56",
+    "detections": 76941
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2003,
+    "median_local_solar_time": "01:26",
+    "detections": 5878
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2004,
+    "median_local_solar_time": "01:27",
+    "detections": 7007
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2005,
+    "median_local_solar_time": "01:25",
+    "detections": 8381
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2006,
+    "median_local_solar_time": "01:29",
+    "detections": 3433
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2007,
+    "median_local_solar_time": "01:30",
+    "detections": 13303
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2008,
+    "median_local_solar_time": "01:30",
+    "detections": 4840
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2009,
+    "median_local_solar_time": "01:32",
+    "detections": 3281
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2010,
+    "median_local_solar_time": "01:29",
+    "detections": 10421
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2011,
+    "median_local_solar_time": "01:27",
+    "detections": 4453
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2012,
+    "median_local_solar_time": "01:29",
+    "detections": 10891
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2013,
+    "median_local_solar_time": "01:30",
+    "detections": 3771
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2014,
+    "median_local_solar_time": "01:28",
+    "detections": 5849
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2015,
+    "median_local_solar_time": "01:30",
+    "detections": 13364
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2016,
+    "median_local_solar_time": "01:28",
+    "detections": 5338
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2017,
+    "median_local_solar_time": "01:29",
+    "detections": 7747
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2018,
+    "median_local_solar_time": "01:28",
+    "detections": 3599
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2019,
+    "median_local_solar_time": "01:29",
+    "detections": 6139
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2020,
+    "median_local_solar_time": "01:30",
+    "detections": 5231
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2021,
+    "median_local_solar_time": "01:29",
+    "detections": 6880
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2022,
+    "median_local_solar_time": "01:34",
+    "detections": 7125
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2023,
+    "median_local_solar_time": "01:48",
+    "detections": 7102
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2024,
+    "median_local_solar_time": "02:12",
+    "detections": 6972
+  },
+  {
+    "satellite": "Aqua",
+    "daynight": "N",
+    "year": 2025,
+    "median_local_solar_time": "02:46",
+    "detections": 6898
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2018,
+    "median_local_solar_time": "13:36",
+    "detections": 219838
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2019,
+    "median_local_solar_time": "13:36",
+    "detections": 313999
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2020,
+    "median_local_solar_time": "13:35",
+    "detections": 278616
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2021,
+    "median_local_solar_time": "13:36",
+    "detections": 320878
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2022,
+    "median_local_solar_time": "13:37",
+    "detections": 313211
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2023,
+    "median_local_solar_time": "13:37",
+    "detections": 309435
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2024,
+    "median_local_solar_time": "13:34",
+    "detections": 274492
+  },
+  {
+    "satellite": "N20",
+    "daynight": "D",
+    "year": 2025,
+    "median_local_solar_time": "13:35",
+    "detections": 290081
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2018,
+    "median_local_solar_time": "01:16",
+    "detections": 69844
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2019,
+    "median_local_solar_time": "01:17",
+    "detections": 119043
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2020,
+    "median_local_solar_time": "01:18",
+    "detections": 106674
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2021,
+    "median_local_solar_time": "01:16",
+    "detections": 133523
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2022,
+    "median_local_solar_time": "01:17",
+    "detections": 130221
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2023,
+    "median_local_solar_time": "01:17",
+    "detections": 129067
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2024,
+    "median_local_solar_time": "01:18",
+    "detections": 135361
+  },
+  {
+    "satellite": "N20",
+    "daynight": "N",
+    "year": 2025,
+    "median_local_solar_time": "01:17",
+    "detections": 150542
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2012,
+    "median_local_solar_time": "13:33",
+    "detections": 503054
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2013,
+    "median_local_solar_time": "13:37",
+    "detections": 258340
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2014,
+    "median_local_solar_time": "13:43",
+    "detections": 337577
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2015,
+    "median_local_solar_time": "13:38",
+    "detections": 459133
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2016,
+    "median_local_solar_time": "13:36",
+    "detections": 303501
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2017,
+    "median_local_solar_time": "13:37",
+    "detections": 330100
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2018,
+    "median_local_solar_time": "13:36",
+    "detections": 236543
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2019,
+    "median_local_solar_time": "13:37",
+    "detections": 328227
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2020,
+    "median_local_solar_time": "13:37",
+    "detections": 297311
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2021,
+    "median_local_solar_time": "13:37",
+    "detections": 340419
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2022,
+    "median_local_solar_time": "13:37",
+    "detections": 313220
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2023,
+    "median_local_solar_time": "13:38",
+    "detections": 334889
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2024,
+    "median_local_solar_time": "13:36",
+    "detections": 272234
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "D",
+    "year": 2025,
+    "median_local_solar_time": "13:39",
+    "detections": 300559
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2012,
+    "median_local_solar_time": "01:17",
+    "detections": 221240
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2013,
+    "median_local_solar_time": "01:17",
+    "detections": 71631
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2014,
+    "median_local_solar_time": "01:25",
+    "detections": 117381
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2015,
+    "median_local_solar_time": "01:23",
+    "detections": 245819
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2016,
+    "median_local_solar_time": "01:19",
+    "detections": 109021
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2017,
+    "median_local_solar_time": "01:18",
+    "detections": 152058
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2018,
+    "median_local_solar_time": "01:19",
+    "detections": 73076
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2019,
+    "median_local_solar_time": "01:17",
+    "detections": 120423
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2020,
+    "median_local_solar_time": "01:18",
+    "detections": 109508
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2021,
+    "median_local_solar_time": "01:16",
+    "detections": 135153
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2022,
+    "median_local_solar_time": "01:19",
+    "detections": 124611
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2023,
+    "median_local_solar_time": "01:19",
+    "detections": 134033
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2024,
+    "median_local_solar_time": "01:19",
+    "detections": 127715
+  },
+  {
+    "satellite": "SNPP",
+    "daynight": "N",
+    "year": 2025,
+    "median_local_solar_time": "01:20",
+    "detections": 151516
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2003,
+    "median_local_solar_time": "10:28",
+    "detections": 29493
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2004,
+    "median_local_solar_time": "10:27",
+    "detections": 34684
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2005,
+    "median_local_solar_time": "10:27",
+    "detections": 37885
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2006,
+    "median_local_solar_time": "10:30",
+    "detections": 21448
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2007,
+    "median_local_solar_time": "10:26",
+    "detections": 59324
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2008,
+    "median_local_solar_time": "10:27",
+    "detections": 28420
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2009,
+    "median_local_solar_time": "10:30",
+    "detections": 19793
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2010,
+    "median_local_solar_time": "10:27",
+    "detections": 49326
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2011,
+    "median_local_solar_time": "10:28",
+    "detections": 28091
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2012,
+    "median_local_solar_time": "10:27",
+    "detections": 51667
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2013,
+    "median_local_solar_time": "10:28",
+    "detections": 24037
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2014,
+    "median_local_solar_time": "10:28",
+    "detections": 33320
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2015,
+    "median_local_solar_time": "10:28",
+    "detections": 44411
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2016,
+    "median_local_solar_time": "10:28",
+    "detections": 28383
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2017,
+    "median_local_solar_time": "10:28",
+    "detections": 32836
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2018,
+    "median_local_solar_time": "10:29",
+    "detections": 21162
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2019,
+    "median_local_solar_time": "10:27",
+    "detections": 31225
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2020,
+    "median_local_solar_time": "10:28",
+    "detections": 29673
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2021,
+    "median_local_solar_time": "10:25",
+    "detections": 31415
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2022,
+    "median_local_solar_time": "10:15",
+    "detections": 27852
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2023,
+    "median_local_solar_time": "10:01",
+    "detections": 32879
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2024,
+    "median_local_solar_time": "09:42",
+    "detections": 26556
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "D",
+    "year": 2025,
+    "median_local_solar_time": "09:13",
+    "detections": 22643
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2003,
+    "median_local_solar_time": "22:33",
+    "detections": 13073
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2004,
+    "median_local_solar_time": "22:31",
+    "detections": 15691
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2005,
+    "median_local_solar_time": "22:30",
+    "detections": 19075
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2006,
+    "median_local_solar_time": "22:32",
+    "detections": 8598
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2007,
+    "median_local_solar_time": "22:34",
+    "detections": 28398
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2008,
+    "median_local_solar_time": "22:33",
+    "detections": 12550
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2009,
+    "median_local_solar_time": "22:31",
+    "detections": 8894
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2010,
+    "median_local_solar_time": "22:34",
+    "detections": 19685
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2011,
+    "median_local_solar_time": "22:33",
+    "detections": 11150
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2012,
+    "median_local_solar_time": "22:33",
+    "detections": 24110
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2013,
+    "median_local_solar_time": "22:33",
+    "detections": 9566
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2014,
+    "median_local_solar_time": "22:33",
+    "detections": 13358
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2015,
+    "median_local_solar_time": "22:33",
+    "detections": 30676
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2016,
+    "median_local_solar_time": "22:33",
+    "detections": 13174
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2017,
+    "median_local_solar_time": "22:33",
+    "detections": 18674
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2018,
+    "median_local_solar_time": "22:33",
+    "detections": 9781
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2019,
+    "median_local_solar_time": "22:35",
+    "detections": 15928
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2020,
+    "median_local_solar_time": "22:33",
+    "detections": 14064
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2021,
+    "median_local_solar_time": "22:31",
+    "detections": 17443
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2022,
+    "median_local_solar_time": "22:19",
+    "detections": 15822
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2023,
+    "median_local_solar_time": "22:04",
+    "detections": 24971
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2024,
+    "median_local_solar_time": "21:43",
+    "detections": 27402
+  },
+  {
+    "satellite": "Terra",
+    "daynight": "N",
+    "year": 2025,
+    "median_local_solar_time": "21:17",
+    "detections": 30411
+  }
+]

@@ -114,7 +114,15 @@ Terra-aware background: `b_witness1` (Terra recorded something in that cell, mon
 `b_witness0` (it did not), with `n_zero_witness*`, `sum_viirs_zero_witness*`, `b_parent_witness*`, `m_witness`
 and `witness_satellite` for the same hand calculation. When Aqua = 0: use `b_witness1` if Terra > 0,
 `b_witness0` if Terra = 0, and `b` if Terra is unknown that month (see `coverage_monthly`) or the witness
-columns are null. **Do not reimplement this: call `astro_fire.calibration.build_source` and `apply_factors`.**
+columns are null.
+
+Reconciliation: `r_total` (all S-NPP over all Aqua for that month and period in the calibration years),
+`reconcile_lambda` and `reconcile_min_regional_aqua`. After the cell estimates, each year, month and period
+is multiplied by `(1 − λ) + λ × (regional Aqua × r_total) / Σ cell estimates`, unless regional Aqua is below
+the minimum. **The sums run over the whole extent, so estimates must be computed for all cells at once.**
+
+**Do not reimplement any of this: call `astro_fire.calibration.build_source` and `apply_factors`** on the
+whole extent. `apply_factors` returns `estimate` (final) and `estimate_unreconciled`.
 
 ## 5. `processed/coverage_daily/v1/` and `processed/coverage_monthly/v1/`
 

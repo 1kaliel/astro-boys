@@ -35,6 +35,11 @@ WEIGHT_GRID = (0, 2, 5, 10, 20, 50, 100, 200)
 # extent).
 POOL_LEVELS = ("region", "l1")
 PARENT = "split_part(cell_l2, '.', 1)"
+# Reconciliation with the regional ratio (see `fit_factors`): candidate strengths, the improvement in
+# out-of-year deviance needed to use it at all, and the regional Aqua count below which it is not applied.
+RECONCILE_GRID = (0, 0.25, 0.5, 0.75, 1)
+RECONCILE_MIN_GAIN = 0.005
+RECONCILE_MIN_REGIONAL_AQUA = 30
 # S-NPP science data starts on 2012-01-20: January 2012 is a partial month for the reference.
 PARTIAL_REFERENCE_MONTHS = ((2012, 1),)
 
@@ -141,8 +146,14 @@ def fit_factors(
     model_version: str = "dev",
     witness: bool = False,
     m_witness: float | None = None,
+    reconcile_lambda: float = 0.0,
 ) -> str:
     """Factors per `cell_l2 × month × period`, with the columns of `processed/factors/v1`.
+
+    `reconcile_lambda` (0 to 1) is stored with the regional ratio `r_total` (all S-NPP over all Aqua for
+    the month and period). When estimates are applied, each month's cell estimates are scaled so that their
+    sum moves that fraction of the way toward `regional Aqua × r_total`: the cells keep their spatial
+    pattern and the regional total borrows the stability of the simple ratio.
 
     With `witness`, the background is also fitted separately for months in which the witness satellite
     recorded something in the cell (`b_witness1`) and months in which it did not (`b_witness0`), with
@@ -201,7 +212,33 @@ def fit_factors(
         {"k": float(k), "m": float(m), "model_version": model_version, "pool": pool},
     )
     _add_witness_background(con, panel, name, pool, m if m_witness is None else m_witness, witness)
+    if not 0 <= reconcile_lambda <= 1:
+        raise ValueError("reconcile_lambda must be between 0 and 1")
+    con.execute(
+        f"""
+        CREATE OR REPLACE TEMP TABLE {name} AS
+        WITH total AS (
+            SELECT month, period, sum(v) / nullif(sum(a), 0) AS r_total FROM {panel} GROUP BY ALL
+        )
+        SELECT f.*, t.r_total, $lam::DOUBLE AS reconcile_lambda,
+               {RECONCILE_MIN_REGIONAL_AQUA}::BIGINT AS reconcile_min_regional_aqua
+        FROM {name} f LEFT JOIN total t USING (month, period)
+        """,
+        {"lam": float(reconcile_lambda)},
+    )
     return name
+
+
+RECONCILE_COLUMNS = ("r_total", "reconcile_lambda", "reconcile_min_regional_aqua")
+
+
+def reconcile_sql(estimate: str, regional_aqua: str, regional_estimate: str, r_total: str, lam: str,
+                  min_aqua: str) -> str:
+    """Estimate scaled toward the regional ratio. No scaling when regional Aqua is below `min_aqua`."""
+    scale = (f"CASE WHEN {regional_aqua} < {min_aqua} OR {regional_estimate} IS NULL "
+             f"OR {regional_estimate} = 0 OR {r_total} IS NULL THEN 1 "
+             f"ELSE {regional_aqua} * {r_total} / {regional_estimate} END")
+    return f"{estimate} * ((1 - {lam}) + {lam} * {scale})"
 
 
 WITNESS_COLUMNS = (
@@ -359,6 +396,7 @@ def apply_factors(
     *,
     name: str = "estimates",
     use_background: bool = True,
+    reconcile: bool = True,
 ) -> str:
     """VIIRS-equivalent estimate for every row of `source` (`cell_l2, year, month, period, a`, optional `t`).
 
@@ -367,25 +405,46 @@ def apply_factors(
       With a witness count `t` and fitted witness backgrounds, `b_witness1` when t > 0 and `b_witness0`
       when t = 0; plain `b` when the witness is unknown.
     - The estimate is null (missing, never zero) when no factor exists for that month and period.
+    - With `reconcile` and a stored `reconcile_lambda` > 0, each month and period is then scaled toward
+      `regional Aqua × r_total`. **`source` must then hold the whole extent**, not a subset of cells:
+      the scale is computed from its sums. `estimate_unreconciled` keeps the value before scaling.
     """
     with_witness = use_background and _has_column(con, source, "t")
     background = BACKGROUND_SQL if with_witness else ("f.b" if use_background else "0")
     rule = BACKGROUND_RULE_SQL if with_witness else "'background'"
+    can_reconcile = reconcile and use_background and _has_column(con, factors, "reconcile_lambda")
+    lam = f"(SELECT coalesce(max(reconcile_lambda), 0) FROM {factors})" if can_reconcile else "0"
+    r_total = "any_value(r_total)" if can_reconcile else "NULL::DOUBLE"
+    reconciled = reconcile_sql("e.estimate_unreconciled", "g.regional_aqua", "g.regional_estimate",
+                               "g.r_total", lam, str(RECONCILE_MIN_REGIONAL_AQUA))
     con.execute(
         f"""
         CREATE OR REPLACE TEMP TABLE {name} AS
         WITH region AS (
-            SELECT month, period, any_value(r_region) AS r_region FROM {factors} GROUP BY ALL
+            SELECT month, period, any_value(r_region) AS r_region, {r_total} AS r_total
+            FROM {factors} GROUP BY ALL
+        ),
+        e AS (
+            SELECT s.cell_l2, s.year, s.month, s.period, s.a AS raw_aqua,
+                   CASE WHEN s.a > 0 THEN s.a * coalesce(f.f, r.r_region) ELSE {background} END
+                       AS estimate_unreconciled,
+                   CASE WHEN s.a = 0 THEN {rule}
+                        WHEN f.f IS NOT NULL THEN 'cell_factor'
+                        ELSE 'regional_factor' END AS estimate_rule,
+                   r.r_total
+            FROM {source} s
+            LEFT JOIN {factors} f USING (cell_l2, month, period)
+            LEFT JOIN region r USING (month, period)
+            WHERE s.a > 0 OR f.cell_l2 IS NOT NULL
+        ),
+        g AS (
+            SELECT year, month, period, sum(raw_aqua) AS regional_aqua,
+                   sum(estimate_unreconciled) AS regional_estimate, any_value(r_total) AS r_total
+            FROM e GROUP BY ALL
         )
-        SELECT s.cell_l2, s.year, s.month, s.period, s.a AS raw_aqua,
-               CASE WHEN s.a > 0 THEN s.a * coalesce(f.f, r.r_region) ELSE {background} END AS estimate,
-               CASE WHEN s.a = 0 THEN {rule}
-                    WHEN f.f IS NOT NULL THEN 'cell_factor'
-                    ELSE 'regional_factor' END AS estimate_rule
-        FROM {source} s
-        LEFT JOIN {factors} f USING (cell_l2, month, period)
-        LEFT JOIN region r USING (month, period)
-        WHERE s.a > 0 OR f.cell_l2 IS NOT NULL
+        SELECT e.cell_l2, e.year, e.month, e.period, e.raw_aqua,
+               {reconciled} AS estimate, e.estimate_rule, e.estimate_unreconciled
+        FROM e JOIN g USING (year, month, period)
         """
     )
     return name
@@ -552,3 +611,76 @@ def choose_pooling(
         if best is None or candidate["deviance"] < best["deviance"] - 1e-12:
             best = candidate
     return {**best, "scores": scores}
+
+
+def reconcile_scores(
+    con: duckdb.DuckDBPyConnection,
+    panel: str,
+    *,
+    k: float,
+    m: float,
+    pool: str,
+    witness: bool,
+    m_witness: float | None,
+    lambdas: Sequence[float] = RECONCILE_GRID,
+) -> list[dict]:
+    """Out-of-year scores of the reconciliation strength, calibration years only.
+
+    Each year is predicted by the full model fitted on the other years (one refit per year), then scaled
+    toward that year's regional ratio estimate for every lambda. Returns one dict per lambda with the
+    cell-month deviance, MAE and RMSE and the MAE of regional monthly totals.
+    """
+    years = [r[0] for r in con.execute(f"SELECT DISTINCT year FROM {panel} ORDER BY 1").fetchall()]
+    background = BACKGROUND_SQL.replace("s.t", "p.t") if witness else "f.b"
+    con.execute(
+        "CREATE OR REPLACE TEMP TABLE _loo (year INT, month INT, period VARCHAR, a BIGINT, v BIGINT, "
+        "mu DOUBLE, r_total DOUBLE)"
+    )
+    for held in years:
+        con.execute(f"CREATE OR REPLACE TEMP TABLE _train AS SELECT * FROM {panel} WHERE year <> {held}")
+        fit_factors(con, "_train", k=k, m=m, pool=pool, witness=witness, m_witness=m_witness, name="_fold")
+        con.execute(
+            f"""
+            INSERT INTO _loo
+            SELECT p.year, p.month, p.period, p.a, p.v,
+                   CASE WHEN p.a > 0 THEN p.a * f.f ELSE {background} END, f.r_total
+            FROM {panel} p JOIN _fold f USING (cell_l2, month, period)
+            WHERE p.year = {held}
+            """
+        )
+    out = []
+    for lam in lambdas:
+        final = reconcile_sql("l.mu", "g.ra", "g.smu", "g.r_total", str(float(lam)),
+                              str(RECONCILE_MIN_REGIONAL_AQUA))
+        row = con.execute(
+            f"""
+            WITH g AS (
+                SELECT year, month, period, sum(a) AS ra, sum(mu) AS smu, any_value(r_total) AS r_total
+                FROM _loo GROUP BY ALL
+            ),
+            scored AS (
+                SELECT l.year, l.month, l.v, {final} AS mu FROM _loo l JOIN g USING (year, month, period)
+            ),
+            region AS (SELECT year, month, sum(mu) AS mu, sum(v) AS v FROM scored GROUP BY ALL)
+            SELECT (SELECT avg({_deviance_sql("mu")}) FROM scored),
+                   (SELECT avg(abs(mu - v)) FROM scored),
+                   (SELECT sqrt(avg(pow(mu - v, 2))) FROM scored),
+                   (SELECT avg(abs(mu - v)) FROM region),
+                   (SELECT (sum(mu) - sum(v)) / nullif(sum(v), 0) FROM region)
+            """
+        ).fetchone()
+        names = ("deviance", "mae", "rmse", "region_month_mae", "bias_rel")
+        rec = {"lambda": float(lam), **dict(zip(names, row, strict=True))}
+        out.append({key: (None if isinstance(val, float) and not math.isfinite(val) else val)
+                    for key, val in rec.items()})
+    return out
+
+
+def choose_lambda(scores: Sequence[dict], min_gain: float = RECONCILE_MIN_GAIN) -> float:
+    """Strength with the lowest out-of-year deviance; 0 unless it beats no reconciliation by `min_gain`."""
+    valid = [s for s in scores if s["deviance"] is not None]
+    base = next((s["deviance"] for s in valid if s["lambda"] == 0), None)
+    if not valid or base is None:
+        return 0.0
+    best = min(valid, key=lambda s: (round(s["deviance"], 9), s["lambda"]))
+    return best["lambda"] if best["deviance"] <= base * (1 - min_gain) else 0.0
