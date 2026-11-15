@@ -5,6 +5,7 @@
 #   ./scripts/sync_data.sh push <layer> [subpath]   data/<layer>/... → gs://...
 #
 # Layers: raw | interim | processed | artifacts | manifests
+# Set ASTRO_SYNC_DATA_ROOT to synchronize an alternate local data tree.
 # DRY RUN by default (prints the command). APPLY=1 to run.
 # raw is immutable: pushes never overwrite existing objects, and nothing is ever deleted.
 # Pulling to a laptop is internet egress (billed per GB): pull only what you need.
@@ -22,7 +23,7 @@ case "$layer" in raw|interim|processed|artifacts|manifests) ;; *)
 [[ -n "${GCS_BUCKET:-}" && "$GCS_BUCKET" != *"<"* ]] || { echo "Set GCS_BUCKET in .env or infra/gcp/gcp.env" >&2; exit 1; }
 
 remote="gs://$GCS_BUCKET/$GCS_PREFIX/$layer${sub:+/$sub}"
-local_path="$REPO/data/$layer${sub:+/$sub}"
+local_path="${ASTRO_SYNC_DATA_ROOT:-$REPO/data}/$layer${sub:+/$sub}"
 mkdir -p "$local_path"
 
 case "$dir" in

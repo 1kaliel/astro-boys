@@ -165,7 +165,12 @@ The JSON holds every method at two levels (cell-month, and regional monthly tota
 season and Aqua = 0 vs Aqua > 0, plus a `verdict`: whether `F + B` beats every baseline at both levels, and
 which method ships if it does not.
 
-Stages to come (`harmonize`, `export`) are listed in
+Run `uv run astro-fire harmonize` with the monthly counts, factors and coverage Parquet under
+the configured data root. Use `--counts`, `--factors` and `--coverage` for inputs stored elsewhere.
+The calendar is partitioned by year and the manifest identifies the model and the input files.
+For a local rerun, stage the release in a fresh data root and compare it before publishing.
+
+The remaining `export` stage is listed in
 [spec/harmonization.md](spec/harmonization.md#10-pipeline-commands-to-build).
 
 DuckDB, for quick looks (also works in a notebook with `import duckdb`):

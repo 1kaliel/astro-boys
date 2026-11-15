@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from astro_fire import __version__, batch, calibrate, coverage, mock, smoke, storage, validate
+from astro_fire import __version__, batch, calibrate, coverage, harmonize, mock, smoke, storage, validate
 from astro_fire.config import get_settings
 
 
@@ -51,6 +51,10 @@ def main(argv: list[str] | None = None) -> int:
     i.add_argument("--years", default="2003-2025", help="local solar year or inclusive range (YYYY-YYYY)")
     i.add_argument("--satellites", nargs="+", choices=batch.SATELLITES, default=list(batch.SATELLITES))
     sub.add_parser("aggregate", help="aggregate hotspots into monthly counts by satellite")
+    h = sub.add_parser("harmonize", help="build the historical dashboard calendar from calibrated factors")
+    h.add_argument("--counts", help="override the monthly count dataset folder")
+    h.add_argument("--factors", help="override the calibration factor dataset folder")
+    h.add_argument("--coverage", help="override the monthly coverage dataset folder")
 
     args = p.parse_args(argv)
     witness = {"on": True, "off": False}.get(getattr(args, "witness", None))
@@ -110,6 +114,13 @@ def main(argv: list[str] | None = None) -> int:
                 result = batch.ingest(settings, batch.parse_years(args.years), args.satellites)
             else:
                 result = batch.aggregate(settings)
+        except (OSError, ValueError) as exc:
+            p.error(str(exc))
+        print(json.dumps(result, indent=2))
+        return 0
+    if args.cmd == "harmonize":
+        try:
+            result = harmonize.run(settings, counts=args.counts, factors=args.factors, coverage=args.coverage)
         except (OSError, ValueError) as exc:
             p.error(str(exc))
         print(json.dumps(result, indent=2))

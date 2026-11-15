@@ -63,6 +63,9 @@ One row per L2 cell × local year-month × period. Partitioned by `year`.
 
 Rules for consumers:
 
+- The historical H7 release leaves estimated intervals, estimated variance, and anomalies null.
+  Months with incomplete Aqua coverage keep their partial flag and a null estimate.
+  Incomplete S-NPP months show the observed subset with `is_partial=true`.
 - To get a region, **sum `count_harmonized` over its cells first**, then compute medians and anomalies on the sum.
   Do not average per-cell anomalies. Variances add (independence approximation; note it in the UI).
 - Never add `raw_*` columns of different satellites together.
